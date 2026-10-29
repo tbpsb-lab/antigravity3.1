@@ -97,12 +97,42 @@ export function ReaderApp() {
     [],
   )
 
-  const handleChunkSizeChange = useCallback((size: number) => {
-    setChunkSize(size)
-    setChunkBadge(`${size} Kelime Öbeği`)
-    const t = setTimeout(() => setChunkBadge(null), 1200)
-    return () => clearTimeout(t)
-  }, [])
+  // Chunk boyutu değiştiğinde mevcut kalınan kelimeden zıplama olmadan aynı konumu koru
+  const handleChunkSizeChange = useCallback(
+    (newSize: number) => {
+      if (newSize === chunkSize) return
+
+      // 1. Mevcut aktif öbeğin başlangıç kelime indeksini tespit et
+      const activeWordIndex = chunks[index]?.startIndex ?? index
+
+      // 2. Yeni öbek boyutuna göre öbek listesini hesapla
+      const nextChunks = createChunks(text, newSize, { enableFootnotes: readFootnotes })
+
+      // 3. Kalınan kelimenin yeni listedeki karşılık gelen öbek indeksini bul
+      const nextIndex = findChunkIndexForWord(nextChunks, activeWordIndex)
+
+      // 4. Boyutu ve indeksi eşzamanlı güncelle (kelime konumunu sabitle)
+      setChunkSize(newSize)
+      setIndex(nextIndex)
+
+      setChunkBadge(`${newSize} Kelime Öbeği`)
+      const t = setTimeout(() => setChunkBadge(null), 1200)
+      return () => clearTimeout(t)
+    },
+    [chunkSize, chunks, index, text, readFootnotes],
+  )
+
+  // Dipnot ayarı değiştiğinde de kalınan kelimeyi koru
+  const handleReadFootnotesChange = useCallback(
+    (enabled: boolean) => {
+      const activeWordIndex = chunks[index]?.startIndex ?? index
+      const nextChunks = createChunks(text, chunkSize, { enableFootnotes: enabled })
+      const nextIndex = findChunkIndexForWord(nextChunks, activeWordIndex)
+      setReadFootnotes(enabled)
+      setIndex(nextIndex)
+    },
+    [chunks, index, text, chunkSize],
+  )
 
   const onKeyDown = useEffectEvent((e: KeyboardEvent) => {
     if (sheetOpen) return
@@ -137,12 +167,7 @@ export function ReaderApp() {
         break
       case 'KeyC':
         e.preventDefault()
-        setChunkSize((prev) => {
-          const next = prev >= 4 ? 1 : prev + 1
-          setChunkBadge(`${next} Kelime Öbeği`)
-          setTimeout(() => setChunkBadge(null), 1200)
-          return next
-        })
+        handleChunkSizeChange(chunkSize >= 4 ? 1 : chunkSize + 1)
         break
       case 'Digit1':
       case 'Digit2':
@@ -245,7 +270,7 @@ export function ReaderApp() {
             chunkSize={chunkSize}
             onChunkSizeChange={handleChunkSizeChange}
             readFootnotes={readFootnotes}
-            onReadFootnotesChange={setReadFootnotes}
+            onReadFootnotesChange={handleReadFootnotesChange}
           />
         }
         theme={theme}

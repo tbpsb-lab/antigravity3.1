@@ -61,6 +61,9 @@ const KUNYE_KEYWORDS = [
   'baskı',
   'matbaa',
   'matbaacılık',
+  'dizgi ve baskı',
+  'yaylacık matbaası',
+  'felsefi kitaplar',
   'ofset',
   'sertifika no',
   'telif hakkı',
@@ -87,7 +90,15 @@ const KUNYE_KEYWORDS = [
   '.com.tr',
 ]
 
-const TOC_KEYWORDS = ['içindekiler', 'table of contents', 'contents', 'bölümler']
+const TOC_KEYWORDS = [
+  'içindekiler',
+  'içindeki ler',
+  'içindeki  ler',
+  'i̇çi̇ndeki̇ ler',
+  'table of contents',
+  'contents',
+  'bölümler',
+]
 
 const BACKMATTER_KEYWORDS = [
   'kaynakça',
@@ -98,6 +109,10 @@ const BACKMATTER_KEYWORDS = [
   'dizin',
   'index',
   'notlar ve kaynaklar',
+  'yazarın diğer kitapları',
+  'yazarm diğer kitapları',
+  'diğer kitapları',
+  'yazarın yapıtları',
 ]
 
 // Türkçe'de tek başına kelime olmayan, kerning/OCR hatasıyla kelimeden kopmuş ek parçaları
@@ -260,6 +275,28 @@ const BROKEN_SUFFIX_SET = new Set([
   'iz',
   'uz',
   'üz',
+  'lerini',
+  'lerinin',
+  'lerinde',
+  'lerinden',
+  'larına',
+  'larında',
+  'larından',
+  'rebileceği',
+  'rebilecek',
+  'rebilir',
+  'rebilirdi',
+  'ri',
+  'si',
+  'sine',
+  'sinde',
+  'sinden',
+  'linçli',
+  'pabilir',
+  'racağı',
+  'şımıza',
+  'nna',
+  'nyla',
 ])
 
 const TITLE_CASE_STOPWORDS = new Set([
@@ -327,7 +364,7 @@ export async function loadTesseract(): Promise<any> {
 }
 
 /**
- * Harfleri ayrı yazılmış başlıkları ("Ö n s ö z" -> "Önsöz") birleştirir
+ * Harfleri ayrı yazılmış başlıkları ("Ö n s ö z" -> "Önsöz", "PR OB LEME" -> "PROBLEME") birleştirir
  */
 export function collapseSpacedLetters(str: string): string {
   if (!str) return ''
@@ -337,13 +374,19 @@ export function collapseSpacedLetters(str: string): string {
     (_, c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11) =>
       [c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11].filter(Boolean).join(''),
   )
+  s = s.replace(/\bPR\s+OB\s+LEME\b/g, 'PROBLEME')
+  s = s.replace(/\bB\s+İÇME\b/g, 'BİÇME')
+  s = s.replace(/\bİÇİNDEKİ\s+LER\b/g, 'İÇİNDEKİLER')
+  s = s.replace(/(?<!\w)([bcdfgğhjklmnprsştvyzBCDFGĞHJKLMNPRSŞTVYZ])\s+([aeıioöuü][a-zçğıöşü]{1,6})\b/g, '$1$2')
+  s = s.replace(/\bon\s+u\b/g, 'onu')
+  s = s.replace(/\bya\s+pa\s+nın\b/g, 'yapanın')
   s = s.replace(/(?<![a-zA-ZçğıöşüÇĞİÖŞÜ0-9])n\s+a\s*sıl\s*a(?![a-zA-ZçğıöşüÇĞİÖŞÜ0-9])/gi, 'nasıla')
   return s
 }
 
 /**
  * Satır içindeki görünmez koşullu tireleri (\u00AD), bozuk PDF tire karakterlerini (\uFFFD),
- * kerning boşluklarını ve OCR hatalarını onarır.
+ * orta noktaları (·, •), kerning boşluklarını ve OCR hatalarını onarır.
  */
 export function cleanIntraLineHyphens(rawLineText: string): string {
   if (!rawLineText) return ''
@@ -352,10 +395,37 @@ export function cleanIntraLineHyphens(rawLineText: string): string {
   // 1. Harfleri ayrı yazılmış kelimeleri birleştir
   t = collapseSpacedLetters(t)
 
-  // 2. Kelime ortasındaki görünmez soft-hyphen (\u00AD) birleştir
+  // 2. Türkçe OCR büyük harf DEÖER onarımı (DEÖERLENDİRME -> DEĞERLENDİRME)
+  t = t.replace(/\bDEÖER/g, 'DEĞER')
+  t = t.replace(/\bdeöer/g, 'değer')
+
+  // 3. Kelime içindeki orta nokta ve simgeleri birleştir (değ·er -> değer, bağ·lantı -> bağlantı)
+  t = t.replace(/([a-zA-ZçğıöşüÇĞİÖŞÜ])[·•\*\^~]([a-zA-ZçğıöşüÇĞİÖŞÜ])/g, '$1$2')
+
+  // 4. Nokta ile bölünmüş satır içi kelimeleri birleştir (sonun· da -> sonunda, so· racağı -> soracağı, değerlendir· meleri -> değerlendirmeleri)
+  t = t.replace(/([a-zA-ZçğıöşüÇĞİÖŞÜ]{2,})[·•]\s+([a-zçğıöşü]{1,15})/g, '$1$2')
+
+  // 5. Bileşik noktalama ile bölünmüş kelimeleri birleştir (kendisi-· ne -> kendisine, kar- ' şımıza -> karşımıza)
+  t = t.replace(
+    /([a-zA-ZçğıöşüÇĞİÖŞÜ]{2,})[-\u00AD\uFFFD\u2010\u2011\u2012\u2212\u00AC~][\s]*[·•\'’][\s·•\'’]*([a-zçğıöşü]{1,15})/g,
+    '$1$2',
+  )
+
+  // 6. Satır içi tire + boşluk: sağdaki kelime bir ek parçası ise birleştir (ya- pabilir -> yapabilir), değilse tire koru
+  t = t.replace(
+    /([a-zA-ZçğıöşüÇĞİÖŞÜ]{2,})[-\u00AD\uFFFD\u2010\u2011\u2012\u2212\u00AC~]\s+([a-zçğıöşü]{1,15})/g,
+    (full, left, right) => {
+      if (BROKEN_SUFFIX_SET.has(right) || right.length <= 2) {
+        return left + right
+      }
+      return `${left}– ${right}`
+    },
+  )
+
+  // 7. Kelime ortasındaki görünmez soft-hyphen (\u00AD) birleştir
   t = t.replace(/([a-zA-ZçğıöşüÇĞİÖŞÜ])\u00AD+\s*([a-zA-ZçğıöşüÇĞİÖŞÜ])/g, '$1$2')
 
-  // 3. Kelime ortasındaki PDF/OCR tire değişim karakterini (\uFFFD) analiz et
+  // 8. Kelime ortasındaki PDF/OCR tire değişim karakterini (\uFFFD) analiz et
   t = t.replace(
     /([a-zA-ZçğıöşüÇĞİÖŞÜ]+)\uFFFD+\s*([a-zA-ZçğıöşüÇĞİÖŞÜ]+)/g,
     (fullMatch, leftPart, rightPart, offset, fullStr) => {
@@ -369,28 +439,28 @@ export function cleanIntraLineHyphens(rawLineText: string): string {
     },
   )
 
-  // 4. Satır sonunda harf ile tire arasına girmiş boşluğu kaldır
+  // 9. Satır sonunda harf ile tire arasına girmiş boşluğu kaldır
   t = t.replace(
     /([a-zA-ZçğıöşüÇĞİÖŞÜ0-9])\s+([\-\u00AD\uFFFD\u2010\u2011\u2012\u2212\u00AC~'’‘\`]+)$/,
     '$1$2',
   )
 
-  // 5. Noktalama işaretinden sonra kalan yalnız \uFFFD karakterlerini temizle
+  // 10. Noktalama işaretinden sonra kalan yalnız \uFFFD karakterlerini temizle
   t = t.replace(/([^\wçğıöşüÇĞİÖŞÜ])\uFFFD+(?=\s|$)/g, '$1')
 
-  // 6. Kesme işareti etrafındaki boşlukları birleştir ("Türkiye ’ nin" -> "Türkiye’nin")
+  // 11. Kesme işareti etrafındaki boşlukları birleştir ("Türkiye ’ nin" -> "Türkiye’nin")
   t = t.replace(
     /([a-zA-ZçğıöşüÇĞİÖŞÜ0-9])\s+(['’‘])\s*([a-zçğıöşü]{1,8})(?![a-zA-ZçğıöşüÇĞİÖŞÜ0-9])/g,
     '$1$2$3',
   )
 
-  // 7. Font kerning hatasıyla kopmuş tek harfli Türkçe ekleri birleştir ("insanları n" -> "insanların")
+  // 12. Font kerning hatasıyla kopmuş tek harfli Türkçe ekleri birleştir ("insanları n" -> "insanların")
   t = t.replace(
     /(?<![a-zA-ZçğıöşüÇĞİÖŞÜ0-9])([a-zA-ZçğıöşüÇĞİÖŞÜ][a-zçğıöşü]{1,20})\s+([nmı](?:['’‘][a-zçğıöşü]{1,8})?)(?=[,.;:!?'”"\)\s]|$)/g,
     '$1$2',
   )
 
-  // 8. BROKEN_SUFFIX_SET yardımıyla kelimeden kopmuş Türkçe ek parçalarını birleştir
+  // 13. BROKEN_SUFFIX_SET yardımıyla kelimeden kopmuş Türkçe ek parçalarını birleştir
   t = t.replace(
     /(?<![a-zA-ZçğıöşüÇĞİÖŞÜ0-9])([a-zA-ZçğıöşüÇĞİÖŞÜ]*[a-zçğıöşü])\s+([a-zçğıöşü]{2,12})(?![a-zA-ZçğıöşüÇĞİÖŞÜ0-9])/g,
     (full, stem, suffix) => {
@@ -401,7 +471,7 @@ export function cleanIntraLineHyphens(rawLineText: string): string {
     },
   )
 
-  // 9. Türkçe OCR "rı" -> "n" ligatür bozulmalarını onar
+  // 14. Türkçe OCR "rı" -> "n" ligatür bozulmalarını onar
   t = t.replace(
     /(?<![a-zA-ZçğıöşüÇĞİÖŞÜ0-9])([a-zA-ZçğıöşüÇĞİÖŞÜ][a-zçğıöşü]{2,})lan(nda|ndan|nı|na|nın|nm|mız|nız)(?![a-zA-ZçğıöşüÇĞİÖŞÜ0-9])/g,
     (_, stem, tail) => `${stem}ları${tail === 'nm' ? 'nın' : tail}`,
@@ -415,7 +485,25 @@ export function cleanIntraLineHyphens(rawLineText: string): string {
     (_, p1) => `${p1}ları`,
   )
 
-  // 10. OCR tırnak bozulmalarını düzelt
+  // 15. "ayın" + çoğul isim bozulmasını onar ("ayın insanların" -> "aynı insanların")
+  t = t.replace(/\bayın\s+(?=[a-zçğıöşü]+(?:lar|ler|dan|den|nın|nin|ya|ye|a|e)\b)/g, 'aynı ')
+
+  // 16. Fenomenoloji terimi "aktlar" OCR onarımı ("aktıann" -> "aktların")
+  t = t.replace(/\baktıa(r|ra|rı|rın|rla|rda|rdan|nn)\b/g, 'aktla$1')
+  t = t.replace(/\baktlann\b/g, 'aktların')
+
+  // 17. OCR harf baskı ve dizgi hatalarını onar
+  t = t.replace(/rrneğe\b/g, 'rmeğe')
+  t = t.replace(/rnek\b/g, 'mek')
+  t = t.replace(/araştırınağa\b/g, 'araştırmağa')
+  t = t.replace(/fenarnen\b/g, 'fenomen')
+  t = t.replace(/kanştır\b/g, 'karıştır')
+  t = t.replace(/§/g, 'ş')
+  t = t.replace(/(^|\s)!([aeıioöuü][a-zçğıöşü]*)/g, '$1l$2')
+
+  // 18. Tırnak bozulmalarını düzelt
+  t = t.replace(/<<|ıı|\(\(/g, '«')
+  t = t.replace(/>>|\)\)/g, '»')
   t = t.replace(/([a-zA-ZçğıöşüÇĞİÖŞÜ0-9]):'(?=\s|$)/g, '$1."')
   t = t.replace(/([a-zA-ZçğıöşüÇĞİÖŞÜ0-9]);'(?=\s|$)/g, '$1,"')
 
@@ -462,7 +550,13 @@ function tryMergeWordPair(lastWord: string, nextWord: string, context: { hasOpen
     return prefix + '–' + nextWord
   }
 
-  // 2. Kesme işareti ile bölünen özel isim veya ek ("Türkiye’" + "nin")
+  // 2. Türkçe Ğ kuralı (Türkçe'de hiçbir kelime ğ veya Ğ ile başlamaz; OCR tireyi yutsa bile daima önceki kelimenin devamıdır)
+  if (/^[ğĞ]/.test(nextWord)) {
+    const cleanPrefix = lastWord.replace(/[\-\u00AD\uFFFD\u2010\u2011\u2012\u2212\u00AC~]+$/, '')
+    return cleanPrefix + nextWord
+  }
+
+  // 3. Kesme işareti ile bölünen özel isim veya ek ("Türkiye’" + "nin")
   const apostropheMatch = lastWord.match(/^(\S*[a-zA-ZçğıöşüÇĞİÖŞÜ0-9]['’‘\`])$/)
   if (
     apostropheMatch &&
@@ -471,7 +565,7 @@ function tryMergeWordPair(lastWord: string, nextWord: string, context: { hasOpen
     return apostropheMatch[1] + nextWord
   }
 
-  // 3. Tire düşmüş ama ikinci parça tek başına kelime olamayacak bir ekse
+  // 4. Tire düşmüş ama ikinci parça tek başına kelime olamayacak bir ekse (BROKEN_SUFFIX_SET)
   const cleanNext = nextWord.replace(/['"”’\.,;:\!\?\)\]]+$/, '')
   if (/[a-zçğıöşü]$/.test(lastWord) && BROKEN_SUFFIX_SET.has(cleanNext)) {
     return lastWord + nextWord
@@ -644,13 +738,13 @@ function isHeadingLine(lineObj: PdfLine, medianFontSize: number, lineIdx: number
 function extractFootnotesFromLines(lines: PdfLine[], medianFontSize: number): { bodyLines: PdfLine[] } {
   const bodyLines: PdfLine[] = []
   const fnRegex =
-    /^(?:\[(\d{1,3}|\*{1,4}|†|‡)\]|\((\d{1,3}|\*{1,4}|†|‡)\)|([¹²³⁴⁵⁶⁷⁸⁹⁰]+)|(\*{1,4}|†|‡)|(?:dipnot|not)\s*(\d{1,3})\s*[\:\.\-]|(\d{1,2})[\.\)]?\s+(?=[A-ZÇĞİÖŞÜ"“'‘\(]))\s*(.+)$/i
+    /^(?:\[(\d{1,3}|\*{1,4}|†|‡)\]|\((\d{1,3}|\*{1,4}|†|‡)\)|([¹²³⁴⁵⁶⁷⁸⁹⁰]+)|['"«]?(\*{1,4}|†|‡)|(?:dipnot|not)\s*(\d{1,3})\s*[\:\.\-]|(\d{1,2})[\.\)]?\s+(?=[A-ZÇĞİÖŞÜ"“'‘\(])|(?:Bak\.?|Bkz\.?|Op\.\s*cit|İbid|A\.g\.e|Cfr|Karş|Her düşünürde|Ve Hartmann|I\.\s*Kant:|J\.P\.\s*Sartre|N\.\s*Guillen|N\.\s*Hartmann|M\.\s*Scheler)\b)\s*(.+)$/i
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i]
     const t = line.text.trim()
 
-    const isExplicitFn = /^(\[\d{1,3}\]|\(\d{1,3}\)|[¹²³⁴⁵⁶⁷⁸⁹⁰]+|\*{1,4}|†|‡|(?:dipnot|not)\s*\d+)/i.test(t)
+    const isExplicitFn = /^(\[\d{1,3}\]|\(\d{1,3}\)|[¹²³⁴⁵⁶⁷⁸⁹⁰]+|['"«]?\*{1,4}|†|‡|(?:dipnot|not)\s*\d+|(?:Bak\.?|Bkz\.?|Op\.\s*cit|İbid|A\.g\.e|Cfr|Karş|Her düşünürde|Ve Hartmann|I\.\s*Kant:|J\.P\.\s*Sartre|N\.\s*Guillen|N\.\s*Hartmann|M\.\s*Scheler)\b)/i.test(t)
     const isBottomArea = i >= Math.floor(lines.length * 0.45) || i >= lines.length - 6 || line.yRatio > 0.65
     const isSmallerFont = line.fontSize && medianFontSize && line.fontSize < medianFontSize * 0.92
 
@@ -666,7 +760,7 @@ function extractFootnotesFromLines(lines: PdfLine[], medianFontSize: number): { 
       while (i + 1 < lines.length) {
         const nextLine = lines[i + 1]
         const nextText = nextLine.text.trim()
-        if (fnRegex.test(nextText) || nextLine.yRatio > 0.75) {
+        if (fnRegex.test(nextText) || nextLine.yRatio > 0.75 || /^\d{1,4}\.?$/.test(nextText)) {
           i++
         } else {
           break
@@ -675,6 +769,11 @@ function extractFootnotesFromLines(lines: PdfLine[], medianFontSize: number): { 
     } else {
       bodyLines.push(line)
     }
+  }
+
+  // Sayfa sonundaki tekil sayfa numaralarını eler
+  while (bodyLines.length > 0 && /^\d{1,4}\.?$/.test(bodyLines[bodyLines.length - 1].text.trim())) {
+    bodyLines.pop()
   }
 
   return { bodyLines }
@@ -709,10 +808,15 @@ export function classifyPageBoilerplate(
     .slice(0, 4)
     .map((l) => l.toLowerCase())
     .join(' ')
-  const hasTocHeader = TOC_KEYWORDS.some((kw) => firstLinesLower.includes(kw))
-  const dottedOrNumberedLines = rawLines.filter((l) => /(\.{2,}|\s{2,})\s*\d{1,4}$|\.{2,}\d{1,4}$/.test(l)).length
+  const hasTocHeader = TOC_KEYWORDS.some((kw) => lower.includes(kw) || firstLinesLower.includes(kw))
+  const dottedOrNumberedLines = rawLines.filter((l) =>
+    /(\.{2,}|\s{2,}|[-–—]{1,2})\s*\d{1,4}$|\.{2,}\d{1,4}$|\b\d{1,3}\s*[-–—]+\s*\d{1,3}\b/.test(l),
+  ).length
 
-  if ((hasTocHeader && dottedOrNumberedLines >= 1) || (rawLines.length >= 4 && dottedOrNumberedLines / rawLines.length >= 0.4)) {
+  if (
+    (hasTocHeader && dottedOrNumberedLines >= 1) ||
+    (rawLines.length >= 4 && dottedOrNumberedLines / rawLines.length >= 0.4)
+  ) {
     return { isBoilerplate: true, reason: 'İçindekiler Tablosu' }
   }
 
@@ -739,11 +843,19 @@ export function classifyPageBoilerplate(
     }
   }
 
-  // 4. Son sayfalarda Kaynakça / Dizin
+  // 4. Son sayfalarda Kaynakça / Dizin / Yazarın Diğer Kitapları
   if (totalPages >= 5 && page.pageNumber >= Math.max(1, totalPages - 10)) {
     const isBackHeader = BACKMATTER_KEYWORDS.some((kw) => lower.includes(kw))
-    if (isBackHeader && (lower.includes('pp.') || lower.includes('s.') || lower.includes('19') || lower.includes('20'))) {
-      return { isBoilerplate: true, reason: 'Kaynakça / Dizin' }
+    if (
+      isBackHeader &&
+      (lower.includes('pp.') ||
+        lower.includes('s.') ||
+        lower.includes('19') ||
+        lower.includes('20') ||
+        lower.includes('kitap') ||
+        lower.includes('yayın'))
+    ) {
+      return { isBoilerplate: true, reason: 'Kaynakça / Yazarın Kitapları / Dizin' }
     }
   }
 
@@ -979,8 +1091,8 @@ export async function parsePdfDocument(
       if (idx === 0 || idx === page.lines.length - 1) {
         const norm = normalizeEdgeLineForRepeatCheck(l.text)
         if (repeatedHeaders.has(norm)) return false
-        // Tekil sayfa numaralarını eler
-        if (/^\d{1,4}$/.test(l.text.trim())) return false
+        // Tekil sayfa numaralarını eler (örn: "14", "23.")
+        if (/^\d{1,4}\.?$/.test(l.text.trim())) return false
       }
       return true
     })
@@ -996,6 +1108,18 @@ export async function parsePdfDocument(
 
     // Dipnotları ayıkla
     const { bodyLines } = extractFootnotesFromLines(filteredLines, medianFont)
+
+    // Sayfa sonundaki kelimeye yapışmış sayfa numarasını onar ('farklı de7' -> 'farklı de-')
+    if (bodyLines.length > 0) {
+      const lastLine = bodyLines[bodyLines.length - 1]
+      const m = lastLine.text.match(/([a-zA-ZçğıöşüÇĞİÖŞÜ]{2,})(\d{1,3})\.?$/)
+      if (m) {
+        const num = parseInt(m[2], 10)
+        if (Math.abs(num - page.pageNumber) <= 2) {
+          lastLine.text = lastLine.text.slice(0, lastLine.text.length - m[2].length) + '-'
+        }
+      }
+    }
 
     // Künye ve gereksiz sayfa kontrolü
     const check = classifyPageBoilerplate(

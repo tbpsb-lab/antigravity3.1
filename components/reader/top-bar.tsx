@@ -12,9 +12,10 @@ type TopBarProps = {
   onOpenText: () => void
   hidden: boolean
   fontControl: ReactNode
+  docTitle?: string
 }
 
-export function TopBar({ ref, theme, onThemeChange, onOpenText, hidden, fontControl }: TopBarProps) {
+export function TopBar({ ref, theme, onThemeChange, onOpenText, hidden, fontControl, docTitle }: TopBarProps) {
   return (
     <header
       ref={ref}
@@ -33,8 +34,10 @@ export function TopBar({ ref, theme, onThemeChange, onOpenText, hidden, fontCont
           >
             <span className="size-2 rounded-full bg-pivot pivot-glow" />
           </span>
-          <div className="leading-tight max-[359px]:sr-only">
-            <p className="text-sm font-semibold tracking-tight">Odak</p>
+          <div className="leading-tight max-[359px]:sr-only max-w-[140px] min-[400px]:max-w-[200px] sm:max-w-xs md:max-w-sm truncate">
+            <p className="text-sm font-semibold tracking-tight truncate" title={docTitle || 'Odak'}>
+              {docTitle || 'Odak'}
+            </p>
             <p className="hidden text-xs text-muted-foreground sm:block">Hızlı okuma penceresi</p>
           </div>
         </div>

@@ -28,8 +28,8 @@ export const FONT_FACES: { id: FontFace; label: string; sample: string; family?:
   },
 ]
 
-export const FONT_SCALE_MIN = 0.6
-export const FONT_SCALE_MAX = 1.4
+export const FONT_SCALE_MIN = 0.5
+export const FONT_SCALE_MAX = 1.6
 export const FONT_SCALE_STEP = 0.1
 
 type FontSettingsProps = {

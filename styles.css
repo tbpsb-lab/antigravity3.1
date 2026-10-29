@@ -1,0 +1,1049 @@
+/* ==========================================================================
+   HızlıOku Pro — hizlioku-v1.3 Tasarım Sistemi (Design System Port)
+   Tamamen İstemci Taraflı (Client-Side), Sıfır Bağımlılık, Modern OKLCH Renkleri
+   ========================================================================== */
+
+/* Google Fonts: Inter (Sans), Literata / Merriweather (Serif), JetBrains Mono (Mono) */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,600;1,7..72,400&family=Merriweather:ital,wght@0,400;0,700;1,400&display=swap');
+
+/* ==========================================================================
+   TEMA DEĞİŞKENLERİ: SEÇENEK A (iOS), B (LINEAR), C (KINDLE)
+   ========================================================================== */
+
+/* Seçenek A (Varsayılan) — Apple / iOS Minimalizmi (Buzlu Cam, Yumuşak Gölgeler) */
+:root,
+[data-theme='ios'],
+[data-theme='apple'] {
+  color-scheme: light;
+  --theme-id: 'ios';
+  --app-bg:
+    radial-gradient(1200px 600px at 15% -10%, oklch(0.93 0.04 250 / 0.9), transparent 60%),
+    radial-gradient(900px 500px at 110% 110%, oklch(0.94 0.03 20 / 0.8), transparent 60%),
+    oklch(0.975 0.004 260);
+  --background: oklch(0.975 0.004 260);
+  --foreground: oklch(0.2 0.01 260);
+  --muted-foreground: oklch(0.55 0.01 260);
+  --primary: oklch(0.6 0.2 255);
+  --primary-foreground: oklch(1 0 0);
+  --pivot: oklch(0.63 0.22 27);
+  --pivot-glow: none;
+  --border: oklch(0.2 0.01 260 / 0.08);
+  --ring: oklch(0.6 0.2 255 / 0.6);
+  --panel: oklch(1 0 0 / 0.65);
+  --panel-border: oklch(1 0 0 / 0.8);
+  --panel-shadow: 0 1px 1px oklch(0 0 0 / 0.03), 0 8px 28px -6px oklch(0.3 0.02 260 / 0.14);
+  --panel-blur: 28px;
+  --panel-radius: 26px;
+  --control: oklch(0.2 0.01 260 / 0.05);
+  --control-hover: oklch(0.2 0.01 260 / 0.09);
+  --control-radius: 999px;
+  --primary-shadow: 0 6px 18px -4px oklch(0.6 0.2 255 / 0.45);
+  --guide: oklch(0.2 0.01 260 / 0.14);
+  --ui-font: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+  --reader-font: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+  --mono-font: 'JetBrains Mono', monospace;
+  --reader-weight: 600;
+  --reader-tracking: -0.02em;
+  --card-bg: oklch(1 0 0 / 0.72);
+}
+
+/* Seçenek B — Linear / Raycast Estetiği (Koyu OLED Siyahı, Neon Vurgular) */
+[data-theme='linear'] {
+  color-scheme: dark;
+  --theme-id: 'linear';
+  --app-bg:
+    radial-gradient(700px 320px at 50% -8%, oklch(0.55 0.22 285 / 0.22), transparent 70%),
+    oklch(0 0 0);
+  --background: oklch(0 0 0);
+  --foreground: oklch(0.96 0.005 285);
+  --muted-foreground: oklch(0.62 0.01 285);
+  --primary: oklch(0.72 0.19 285);
+  --primary-foreground: oklch(0.12 0.02 285);
+  --pivot: oklch(0.85 0.2 145);
+  --pivot-glow: 0 0 18px oklch(0.85 0.2 145 / 0.55);
+  --border: oklch(1 0 0 / 0.08);
+  --ring: oklch(0.72 0.19 285 / 0.8);
+  --panel: oklch(0.14 0.005 285 / 0.75);
+  --panel-border: oklch(1 0 0 / 0.1);
+  --panel-shadow: inset 0 1px 0 oklch(1 0 0 / 0.05), 0 20px 40px -20px oklch(0 0 0 / 0.9);
+  --panel-blur: 14px;
+  --panel-radius: 12px;
+  --control: oklch(1 0 0 / 0.05);
+  --control-hover: oklch(1 0 0 / 0.1);
+  --control-radius: 8px;
+  --primary-shadow: 0 0 0 1px oklch(0.72 0.19 285 / 0.6), 0 0 24px -2px oklch(0.72 0.19 285 / 0.55);
+  --guide: oklch(0.85 0.2 145 / 0.4);
+  --ui-font: 'Inter', -apple-system, sans-serif;
+  --reader-font: 'Inter', -apple-system, sans-serif;
+  --mono-font: 'JetBrains Mono', monospace;
+  --reader-weight: 500;
+  --reader-tracking: -0.03em;
+  --card-bg: oklch(0.12 0.005 285 / 0.9);
+}
+
+/* Seçenek C — Kindle / E-Kitap Dokusu (Göz Dinlendiren Sepia Kağıt) */
+[data-theme='kindle'] {
+  color-scheme: light;
+  --theme-id: 'kindle';
+  --app-bg:
+    radial-gradient(1200px 800px at 50% 40%, transparent 55%, oklch(0.78 0.04 75 / 0.35)),
+    oklch(0.94 0.025 85);
+  --background: oklch(0.94 0.025 85);
+  --foreground: oklch(0.3 0.03 60);
+  --muted-foreground: oklch(0.52 0.035 65);
+  --primary: oklch(0.42 0.07 50);
+  --primary-foreground: oklch(0.96 0.02 85);
+  --pivot: oklch(0.5 0.13 40);
+  --pivot-glow: none;
+  --border: oklch(0.3 0.03 60 / 0.14);
+  --ring: oklch(0.42 0.07 50 / 0.6);
+  --panel: oklch(0.955 0.022 85 / 0.94);
+  --panel-border: oklch(0.3 0.03 60 / 0.16);
+  --panel-shadow: 0 1px 0 oklch(1 0 0 / 0.5) inset, 0 2px 10px -6px oklch(0.3 0.03 60 / 0.25);
+  --panel-blur: 0px;
+  --panel-radius: 8px;
+  --control: transparent;
+  --control-hover: oklch(0.3 0.03 60 / 0.07);
+  --control-radius: 6px;
+  --primary-shadow: none;
+  --guide: oklch(0.3 0.03 60 / 0.22);
+  --ui-font: 'Literata', 'Merriweather', Georgia, serif;
+  --reader-font: 'Literata', 'Merriweather', Georgia, serif;
+  --mono-font: 'Literata', Georgia, serif;
+  --reader-weight: 400;
+  --reader-tracking: 0;
+  --card-bg: oklch(0.96 0.02 85);
+}
+
+/* ==========================================================================
+   TEMEL SIFIRLAMA VE YAPI
+   ========================================================================== */
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  min-height: 100dvh;
+  background: var(--app-bg);
+  background-attachment: fixed;
+  color: var(--foreground);
+  font-family: var(--ui-font);
+  overflow: hidden;
+  user-select: none;
+  transition: background 0.3s ease, color 0.3s ease;
+}
+
+/* Ana Uygulama Kapsayıcısı */
+.app-viewport {
+  position: relative;
+  width: 100vw;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+  padding: 0 16px;
+}
+
+/* ==========================================================================
+   ORTAK BİLEŞEN SINIFLARI (.panel, .ctl, .ctl-primary vb.)
+   ========================================================================== */
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  box-shadow: var(--panel-shadow);
+  border-radius: var(--panel-radius);
+  backdrop-filter: blur(var(--panel-blur)) saturate(1.6);
+  -webkit-backdrop-filter: blur(var(--panel-blur)) saturate(1.6);
+  transition: all 0.25s ease;
+}
+
+.panel.panel-solid {
+  background: color-mix(in oklab, var(--panel) 40%, var(--background));
+}
+
+.ctl {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--foreground);
+  background: var(--control);
+  border-radius: var(--control-radius);
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.18s ease, transform 0.15s ease, box-shadow 0.18s ease, opacity 0.18s ease;
+  user-select: none;
+  font-family: inherit;
+  white-space: nowrap;
+}
+
+.ctl:hover {
+  background: var(--control-hover);
+}
+
+.ctl:active {
+  transform: scale(0.94);
+}
+
+.ctl:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.ctl-primary {
+  background: var(--primary) !important;
+  color: var(--primary-foreground) !important;
+  box-shadow: var(--primary-shadow);
+}
+
+.ctl-primary:hover {
+  filter: brightness(1.08);
+}
+
+.pivot-glow {
+  text-shadow: var(--pivot-glow);
+}
+
+/* ==========================================================================
+   1. YÜZEN ÜST ÇUBUK (FLOATING TOP BAR)
+   ========================================================================== */
+
+.top-bar-floating {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 30;
+  padding: max(0.75rem, env(safe-area-inset-top)) 1rem 0;
+  transition: all 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@media (min-width: 640px) {
+  .top-bar-floating {
+    padding: 1.25rem 1.5rem 0;
+  }
+}
+
+.top-bar-container {
+  max-width: 1024px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.brand-badge {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.brand-pivot-icon {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: calc(var(--panel-radius) * 0.5);
+}
+
+.pivot-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background-color: var(--pivot);
+  box-shadow: var(--pivot-glow);
+}
+
+.brand-text-group {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+
+.brand-title {
+  font-size: 0.88rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.brand-subtitle {
+  font-size: 0.72rem;
+  color: var(--muted-foreground);
+}
+
+.top-actions-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* A / B / C Tema Seçici Hap Butonlar */
+.theme-selector-panel {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+}
+
+.theme-tab-btn {
+  height: 32px;
+  padding: 0 10px;
+  font-size: 0.76rem;
+  font-weight: 500;
+  gap: 6px;
+  color: var(--muted-foreground);
+  background: transparent;
+}
+
+.theme-tab-btn .theme-key {
+  font-family: var(--mono-font);
+  opacity: 0.75;
+}
+
+.theme-tab-btn.active {
+  background: var(--primary);
+  color: var(--primary-foreground);
+  box-shadow: var(--primary-shadow);
+  font-weight: 600;
+}
+
+/* Üst Butonlar */
+.icon-action-btn {
+  width: 38px;
+  height: 38px;
+}
+
+/* ==========================================================================
+   2. ORTA SAHNE & RSVP PENCERESİ (RSVP DISPLAY)
+   ========================================================================== */
+
+.stage-center {
+  width: 100%;
+  max-width: 840px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  position: relative;
+  z-index: 10;
+}
+
+.rsvp-card-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.rsvp-card {
+  position: relative;
+  width: 100%;
+  padding: 2.75rem 1.5rem;
+  overflow: hidden;
+  text-align: left;
+  outline: none;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+@media (min-width: 640px) {
+  .rsvp-card {
+    padding: 3.75rem 2rem;
+  }
+}
+
+/* Odak Çizgileri (Top & Bottom Guide Reticles) */
+.guide-tick-top,
+.guide-tick-bottom {
+  position: absolute;
+  left: 50%;
+  width: 1.5px;
+  height: 14px;
+  background-color: var(--guide);
+  transform: translateX(-50%);
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+.guide-tick-top {
+  top: 10px;
+}
+
+.guide-tick-bottom {
+  bottom: 10px;
+}
+
+@media (min-width: 640px) {
+  .guide-tick-top {
+    top: 14px;
+    height: 16px;
+  }
+  .guide-tick-bottom {
+    bottom: 14px;
+    height: 16px;
+  }
+}
+
+/* RSVP Kelime / Pivot Düzeni */
+.reader-word-display {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: baseline;
+  white-space: pre;
+  width: 100%;
+  font-family: var(--reader-font);
+  font-weight: var(--reader-weight);
+  letter-spacing: var(--reader-tracking);
+  line-height: 1.3;
+  font-size: clamp(1.85rem, 5.4cqi, 3.6rem);
+  transition: font-size 0.15s ease-out;
+}
+
+.word-before {
+  min-width: 0;
+  text-align: right;
+  overflow: visible;
+}
+
+.word-pivot {
+  flex-shrink: 0;
+  padding: 0 0.02em;
+  color: var(--pivot);
+  text-shadow: var(--pivot-glow);
+  font-weight: 800;
+}
+
+.word-after {
+  min-width: 0;
+  text-align: left;
+  overflow: visible;
+}
+
+/* Başlık ve Dipnot Modları */
+.rsvp-card.mode-heading {
+  border-color: var(--primary);
+  box-shadow: 0 0 24px color-mix(in oklch, var(--primary) 30%, transparent), var(--panel-shadow);
+}
+
+.rsvp-card.mode-footnote {
+  border-color: var(--pivot);
+  box-shadow: 0 0 24px color-mix(in oklch, var(--pivot) 30%, transparent), var(--panel-shadow);
+}
+
+/* Üst Köşe Bilgisi (Sayfa ve WPM) */
+.corner-badge-left {
+  position: absolute;
+  left: 1.25rem;
+  top: 0.85rem;
+  font-size: 0.72rem;
+  color: var(--muted-foreground);
+  font-family: var(--mono-font);
+  pointer-events: none;
+}
+
+.corner-badge-right {
+  position: absolute;
+  right: 1.25rem;
+  top: 0.85rem;
+  font-size: 0.72rem;
+  color: var(--muted-foreground);
+  font-family: var(--mono-font);
+  pointer-events: none;
+  transition: opacity 0.4s ease;
+}
+
+/* Dipnot Canlı Bilgi Şeridi */
+.live-footnote-banner {
+  position: absolute;
+  bottom: 12px;
+  left: 20px;
+  right: 20px;
+  padding: 6px 12px;
+  border-radius: var(--control-radius);
+  background: color-mix(in oklch, var(--pivot) 12%, var(--panel));
+  border: 1px solid color-mix(in oklch, var(--pivot) 35%, transparent);
+  font-size: 0.78rem;
+  color: var(--foreground);
+  text-align: center;
+  pointer-events: none;
+}
+
+/* Dokunmatik Ekran Bölgeleri (Sol: Geri, Orta: Play/Pause, Sağ: İleri) */
+.touch-trigger-zones {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: 1fr 2.5fr 1fr;
+  z-index: 5;
+}
+
+.touch-col {
+  height: 100%;
+  cursor: pointer;
+}
+
+/* ==========================================================================
+   3. BAĞLAM GÖRÜNÜMÜ (CONTEXT PEEK)
+   ========================================================================== */
+
+.context-peek-container {
+  width: 100%;
+  transition: all 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.context-peek-title {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--muted-foreground);
+  margin-bottom: 4px;
+  padding: 0 4px;
+}
+
+.context-peek-text {
+  font-size: 0.92rem;
+  line-height: 1.6;
+  color: var(--muted-foreground);
+  padding: 0 4px;
+  max-height: 85px;
+  overflow-y: auto;
+  user-select: text;
+}
+
+.peek-word-btn {
+  display: inline-block;
+  padding: 1px 4px;
+  margin: 0 1px;
+  border-radius: 4px;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font-family: inherit;
+  font-size: inherit;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.peek-word-btn:hover {
+  color: var(--foreground);
+  background: var(--control-hover);
+}
+
+.peek-word-btn.active-peek-word {
+  background: color-mix(in oklch, var(--pivot) 18%, transparent);
+  color: var(--foreground);
+  font-weight: 600;
+}
+
+/* ==========================================================================
+   4. YÜZEN ALT KONTROL DOCK'U (CONTROL DOCK)
+   ========================================================================== */
+
+.control-dock-floating {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 30;
+  padding: 0 1rem max(0.75rem, env(safe-area-inset-bottom));
+  transition: all 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@media (min-width: 640px) {
+  .control-dock-floating {
+    padding: 0 1.5rem 1.5rem;
+  }
+}
+
+.control-dock-panel {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+@media (min-width: 640px) {
+  .control-dock-panel {
+    padding: 14px 18px;
+    gap: 12px;
+  }
+}
+
+/* Scrubber (İlerleme Çubuğu) */
+.scrubber-group {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.scrubber {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 24px;
+  background: transparent;
+  cursor: pointer;
+  touch-action: none;
+}
+
+.scrubber::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 999px;
+  background: linear-gradient(
+    to right,
+    var(--primary) 0 var(--progress, 0%),
+    var(--control-hover) var(--progress, 0%) 100%
+  );
+}
+
+.scrubber::-moz-range-track {
+  height: 4px;
+  border-radius: 999px;
+  background: var(--control-hover);
+}
+
+.scrubber::-moz-range-progress {
+  height: 4px;
+  border-radius: 999px;
+  background: var(--primary);
+}
+
+.scrubber::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  margin-top: -7px;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: var(--foreground);
+  border: 3px solid var(--background);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+  transition: transform 0.15s ease;
+}
+
+.scrubber::-webkit-slider-thumb:hover {
+  transform: scale(1.15);
+}
+
+.scrubber::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: var(--foreground);
+  border: 3px solid var(--background);
+}
+
+.scrubber-meta-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 2px;
+  font-family: var(--mono-font);
+  font-size: 11px;
+  color: var(--muted-foreground);
+}
+
+/* Alt Butonlar Tablosu (WPM Stepper, Hero OKU/DUR, Step Skip) */
+.dock-buttons-row {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Hız Stepper Grubu */
+.wpm-stepper-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  justify-self: start;
+}
+
+.btn-stepper {
+  width: 36px;
+  height: 36px;
+}
+
+.wpm-output-display {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 44px;
+  line-height: 1;
+}
+
+.wpm-number {
+  font-family: var(--mono-font);
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+.wpm-unit {
+  font-size: 9px;
+  color: var(--muted-foreground);
+  margin-top: 3px;
+}
+
+/* Hero OKU/DUR Butonu */
+.btn-hero-play {
+  height: 52px;
+  padding: 0 24px;
+  gap: 8px;
+  font-size: 0.98rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  min-width: 130px;
+}
+
+/* Kelime Atlama Butonları */
+.seek-stepper-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  justify-self: end;
+}
+
+/* Klavye Kısayolları İpucu Metni */
+.dock-shortcut-hint {
+  text-align: center;
+  font-size: 0.72rem;
+  color: var(--muted-foreground);
+  margin-top: 4px;
+}
+
+.dock-shortcut-hint kbd {
+  font-family: var(--mono-font);
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: var(--control);
+  border: 1px solid var(--border);
+}
+
+/* ==========================================================================
+   5. ZEN MODU: OKURKEN ÜST VE ALT PANELLERİN KAYBOLMASI
+   ========================================================================== */
+
+body.is-zen-reading .top-bar-floating {
+  opacity: 0;
+  transform: translateY(-1.5rem);
+  pointer-events: none;
+}
+
+body.is-zen-reading .control-dock-floating {
+  opacity: 0;
+  transform: translateY(2rem);
+  pointer-events: none;
+}
+
+body.is-zen-reading .context-peek-container {
+  opacity: 0;
+  transform: translateY(0.5rem);
+  pointer-events: none;
+}
+
+body.is-zen-reading .corner-badge-right {
+  opacity: 0;
+}
+
+/* ==========================================================================
+   6. YENİ MODERN AÇILIR ÇEKMECE / MODAL (SHEET MODAL)
+   ========================================================================== */
+
+.sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@media (min-width: 640px) {
+  .sheet-backdrop {
+    align-items: center;
+    padding: 1.5rem;
+  }
+}
+
+.sheet-backdrop.active {
+  opacity: 1;
+  visibility: visible;
+}
+
+.sheet-card {
+  position: relative;
+  width: 100%;
+  max-width: 680px;
+  max-height: 90dvh;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 1.25rem 1.25rem max(1.5rem, env(safe-area-inset-bottom));
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+  box-shadow: 0 24px 60px -12px rgba(0, 0, 0, 0.5);
+  transform: translateY(100%);
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@media (min-width: 640px) {
+  .sheet-card {
+    border-radius: var(--panel-radius);
+    padding: 1.5rem;
+    transform: scale(0.95) translateY(10px);
+  }
+}
+
+.sheet-backdrop.active .sheet-card {
+  transform: translateY(0);
+}
+
+@media (min-width: 640px) {
+  .sheet-backdrop.active .sheet-card {
+    transform: scale(1) translateY(0);
+  }
+}
+
+.sheet-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.sheet-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.sheet-subtitle {
+  font-size: 0.78rem;
+  color: var(--muted-foreground);
+  margin-top: 2px;
+}
+
+/* Sheet Sekmeleri (URL, PDF, Metin, Ayraçlar, Ayarlar) */
+.sheet-tabs-nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  overflow-x: auto;
+  padding: 3px;
+  background: var(--control);
+  border-radius: var(--control-radius);
+}
+
+.sheet-tab-btn {
+  padding: 6px 12px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--muted-foreground);
+  background: transparent;
+  border-radius: var(--control-radius);
+  white-space: nowrap;
+}
+
+.sheet-tab-btn.active {
+  background: var(--panel);
+  color: var(--foreground);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+}
+
+.sheet-body {
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding-right: 4px;
+}
+
+/* URL Giriş Alanı */
+.url-form-box {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.url-input-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+@media (min-width: 580px) {
+  .url-input-wrap {
+    flex-direction: row;
+  }
+}
+
+.text-input-field {
+  flex: 1;
+  height: 42px;
+  padding: 0 14px;
+  border-radius: calc(var(--control-radius) * 0.9);
+  border: 1px solid var(--border);
+  background: var(--background);
+  color: var(--foreground);
+  font-family: inherit;
+  font-size: 0.88rem;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.text-input-field:focus {
+  border-color: var(--ring);
+  box-shadow: 0 0 0 2px var(--ring);
+}
+
+/* PDF Sürükle-Bırak Alanı */
+.dropzone-box {
+  border: 2px dashed var(--border);
+  border-radius: calc(var(--panel-radius) * 0.8);
+  padding: 24px 16px;
+  text-align: center;
+  cursor: pointer;
+  background: var(--control);
+  transition: all 0.2s ease;
+}
+
+.dropzone-box:hover,
+.dropzone-box.dragover {
+  border-color: var(--primary);
+  background: color-mix(in oklch, var(--primary) 8%, var(--control));
+}
+
+.dropzone-title {
+  font-weight: 700;
+  font-size: 0.92rem;
+  color: var(--foreground);
+  margin-top: 6px;
+}
+
+.dropzone-sub {
+  font-size: 0.76rem;
+  color: var(--muted-foreground);
+  margin-top: 4px;
+}
+
+/* Metin Alanı */
+.textarea-sheet {
+  width: 100%;
+  min-height: 140px;
+  padding: 12px 14px;
+  border-radius: calc(var(--control-radius) * 0.9);
+  border: 1px solid var(--border);
+  background: var(--background);
+  color: var(--foreground);
+  font-family: inherit;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  resize: vertical;
+  outline: none;
+}
+
+.textarea-sheet:focus {
+  border-color: var(--ring);
+}
+
+/* Ayraçlar ve Hafıza Listesi */
+.card-list-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.compact-list-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 14px;
+  background: var(--control);
+  border-radius: var(--control-radius);
+  border: 1px solid var(--border);
+}
+
+.item-info-meta {
+  min-width: 0;
+  flex: 1;
+}
+
+.item-title-text {
+  font-size: 0.86rem;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.item-sub-text {
+  font-size: 0.74rem;
+  color: var(--muted-foreground);
+}
+
+/* ==========================================================================
+   7. TELEFON YATAY (LANDSCAPE) ERGONOMİSİ
+   ========================================================================== */
+
+@media (orientation: landscape) and (max-height: 540px) {
+  .top-bar-floating {
+    padding-top: max(0.4rem, env(safe-area-inset-top));
+  }
+
+  .brand-subtitle,
+  .dock-shortcut-hint {
+    display: none;
+  }
+
+  .rsvp-card {
+    padding: 1.5rem 2rem;
+  }
+
+  .reader-word-display {
+    font-size: clamp(1.4rem, 7.5vh, 2.5rem);
+  }
+
+  .control-dock-floating {
+    padding-bottom: max(0.4rem, env(safe-area-inset-bottom));
+  }
+
+  .control-dock-panel {
+    flex-direction: row;
+    align-items: center;
+    max-width: 760px;
+    padding: 6px 14px;
+  }
+
+  .scrubber-group {
+    flex: 1;
+  }
+
+  .scrubber-meta-row {
+    display: none;
+  }
+
+  .btn-hero-play {
+    height: 40px;
+    padding: 0 16px;
+    min-width: 90px;
+  }
+}

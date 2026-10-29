@@ -9,6 +9,7 @@ import {
   THEMES,
   WPM_STEP,
   type ThemeId,
+  splitAtPivot,
   tokenize,
   wordDelay,
 } from '@/lib/rsvp'
@@ -27,12 +28,21 @@ export function ReaderApp() {
   const [headerRef, headerHeight] = useElementHeight<HTMLElement>()
   const [dockRef, dockHeight] = useElementHeight<HTMLElement>()
   const [text, setText] = useState(SAMPLE_TEXT)
+  const [docTitle, setDocTitle] = useState('Odak')
   const [index, setIndex] = useState(0)
   const [wpm, setWpm] = useState(300)
   const [playing, setPlaying] = useState(false)
   const [sheetOpen, setSheetOpen] = useState(false)
 
   const words = useMemo(() => tokenize(text), [text])
+  const maxSide = useMemo(
+    () =>
+      words.reduce((max, w) => {
+        const [before, , after] = splitAtPivot(w)
+        return Math.max(max, before.length, after.length)
+      }, 6),
+    [words],
+  )
   const lastIndex = Math.max(0, words.length - 1)
   const zen = playing
 
@@ -111,8 +121,9 @@ export function ReaderApp() {
     return () => window.removeEventListener('keydown', handler)
   }, [])
 
-  const applyText = (next: string) => {
+  const applyText = (next: string, title?: string) => {
     setText(next)
+    if (title) setDocTitle(title)
     setIndex(0)
     setPlaying(false)
     setSheetOpen(false)
@@ -127,6 +138,7 @@ export function ReaderApp() {
     >
       <TopBar
         ref={headerRef}
+        docTitle={docTitle}
         fontControl={
           <FontSettings
             face={fontFace}
@@ -151,13 +163,14 @@ export function ReaderApp() {
           paddingBottom: zen ? 0 : dockHeight,
         }}
       >
-        <div className="relative flex max-h-full w-full max-w-2xl flex-col py-3">
+        <div className="relative flex max-h-full w-full max-w-4xl lg:max-w-5xl xl:max-w-6xl flex-col py-3 transition-[max-width] duration-300">
           <RsvpDisplay
             word={words[index] ?? ''}
             playing={playing}
             onToggle={togglePlay}
             wpm={wpm}
             fontScale={fontScale}
+            maxSide={maxSide}
             fontFamily={FONT_FACES.find((f) => f.id === fontFace)?.family}
           />
           <ContextPeek

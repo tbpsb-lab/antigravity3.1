@@ -3,10 +3,10 @@
  *
  * Çok katmanlı yedekli strateji (Multi-Strategy Pipeline):
  * 1. Video ID'sini her formatta (watch, youtu.be, shorts, embed, m.youtube) yakalar.
- * 2. noembed.com üzerinden videonun resmi başlığını anında ve güvenle çeker.
- * 3. YouTube altyazı akışlarını (captionTracks, timedtext, mobile Innertube veya Invidious) sorgular.
- * 4. Altyazıdaki zaman kodlarını, [Müzik], (Alkış) gibi ses efektlerini temizleyip
- *    RSVP hızlı okuyucuya hazır akıcı paragraflar üretir.
+ * 2. noembed.com üzerinden videonun resmi başlığını doğrudan çeker.
+ * 3. Çoklu CORS uyumlu Piped ve Invidious API sağlayıcıları üzerinden altyazı akışlarını sorgular.
+ * 4. WEBVTT, TTML, XML ve JSON3 formatlarını kusursuz şekilde çözümler.
+ * 5. Müzik notaları (♪, ♫), [Müzik], (Alkış) ve tekrarlanan rolling altyazı satırlarını ayıklar.
  */
 
 export type ExtractedYouTube = {
@@ -26,6 +26,7 @@ export function extractYouTubeId(url: string): string | null {
 }
 
 function decodeHtmlEntities(str: string): string {
+  if (!str) return ''
   if (typeof document === 'undefined') {
     return str
       .replace(/&amp;/g, '&')
@@ -33,6 +34,7 @@ function decodeHtmlEntities(str: string): string {
       .replace(/&gt;/g, '>')
       .replace(/&quot;/g, '"')
       .replace(/&#39;/g, "'")
+      .replace(/&nbsp;/g, ' ')
   }
   const txt = document.createElement('textarea')
   txt.innerHTML = str
@@ -58,59 +60,143 @@ async function fetchVideoTitle(videoId: string): Promise<string> {
 }
 
 /**
- * XML veya JSON timedtext formatından temiz konuşma cümleleri üretir.
+ * WEBVTT, TTML, XML veya JSON3 formatındaki transkript verisini temiz metne çevirir.
  */
-function parseTranscriptData(rawContent: string): string {
-  const cleanPhrases: string[] = []
+export function parseTranscriptData(rawContent: string): string {
+  if (!rawContent || !rawContent.trim()) return ''
 
-  // 1. JSON3 formatı kontrolü
-  if (rawContent.trim().startsWith('{')) {
+  const raw = rawContent.trim()
+  const cleanPhrases: string[] = []
+  const seenRecent: string[] = []
+
+  const addPhrase = (phrase: string) => {
+    let t = decodeHtmlEntities(phrase)
+    // Ses efektlerini ve müzik işaretlerini temizle
+    t = t
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/\[[^\]]+\]/g, ' ')
+      .replace(/\([^\)]+\)/g, ' ')
+      .replace(/[♪♫#\\]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+
+    if (!t || t.length < 1) return
+
+    // Rolling caption mükerrer satırları filtrele
+    const lower = t.toLowerCase()
+    if (seenRecent.includes(lower)) return
+    seenRecent.push(lower)
+    if (seenRecent.length > 5) seenRecent.shift()
+
+    cleanPhrases.push(t)
+  }
+
+  // 1. FORMAT: JSON3 (YouTube Innertube Player formatı)
+  if (raw.startsWith('{')) {
     try {
-      const data = JSON.parse(rawContent)
+      const data = JSON.parse(raw)
       const events = data.events || []
       for (const ev of events) {
         if (ev.segs && Array.isArray(ev.segs)) {
           for (const seg of ev.segs) {
-            let t = (seg.utf8 || '').trim()
-            t = t.replace(/\[[^\]]+\]/g, '').replace(/\([^\)]+\)/g, '').trim()
-            if (t && t !== '\n') {
-              cleanPhrases.push(t)
+            const segText = seg.utf8 || ''
+            if (segText && segText !== '\n') {
+              addPhrase(segText)
             }
           }
         }
       }
+      if (cleanPhrases.length > 0) {
+        return formatPhrasesIntoParagraphs(cleanPhrases)
+      }
     } catch {}
   }
 
-  // 2. XML formatı kontrolü (DOMParser veya RegExp)
-  if (cleanPhrases.length === 0) {
-    if (typeof DOMParser !== 'undefined') {
-      try {
-        const parser = new DOMParser()
-        const xmlDoc = parser.parseFromString(rawContent, 'text/xml')
-        const nodes = xmlDoc.querySelectorAll('text, s, p')
-        nodes.forEach((node) => {
-          let text = decodeHtmlEntities(node.textContent || '')
-          text = text.replace(/\[[^\]]+\]/g, '').replace(/\([^\)]+\)/g, '').trim()
-          if (text) cleanPhrases.push(text)
-        })
-      } catch {}
+  // 2. FORMAT: WEBVTT (.vtt formatı)
+  if (raw.includes('WEBVTT') || /-->/.test(raw)) {
+    const lines = raw.split(/\r?\n/)
+    for (const line of lines) {
+      const l = line.trim()
+      if (!l) continue
+      if (
+        l.startsWith('WEBVTT') ||
+        l.startsWith('Kind:') ||
+        l.startsWith('Language:') ||
+        l.startsWith('NOTE') ||
+        l.startsWith('Region:') ||
+        l.startsWith('Style:')
+      ) {
+        continue
+      }
+      // Zaman damgalarını atla (Örn: "00:00:01.360 --> 00:00:03.040")
+      if (/\d{1,2}:\d{2}(?::\d{2})?[.,]\d{3}\s*-->\s*\d{1,2}:\d{2}(?::\d{2})?[.,]\d{3}/.test(l)) {
+        continue
+      }
+      // Cue numaralarını atla (Yalnızca rakamlardan oluşan satırlar)
+      if (/^\d+$/.test(l)) {
+        continue
+      }
+      addPhrase(l)
+    }
+    if (cleanPhrases.length > 0) {
+      return formatPhrasesIntoParagraphs(cleanPhrases)
     }
   }
 
-  // 3. Regex Fallback (XML taglarını doğrudan eşle)
-  if (cleanPhrases.length === 0) {
-    const matches = rawContent.matchAll(/<text[^>]*>([^<]+)<\/text>/gi)
-    for (const m of matches) {
-      let t = decodeHtmlEntities(m[1])
-      t = t.replace(/\[[^\]]+\]/g, '').replace(/\([^\)]+\)/g, '').trim()
-      if (t) cleanPhrases.push(t)
-    }
+  // 3. FORMAT: XML / TTML (<p>, <text>, <s> etiketleri)
+  if (typeof DOMParser !== 'undefined') {
+    try {
+      const parser = new DOMParser()
+      const xmlDoc = parser.parseFromString(raw, 'text/xml')
+      const nodes = xmlDoc.querySelectorAll('p, text, s')
+      nodes.forEach((node) => {
+        addPhrase(node.textContent || '')
+      })
+      if (cleanPhrases.length > 0) {
+        return formatPhrasesIntoParagraphs(cleanPhrases)
+      }
+    } catch {}
   }
 
-  return cleanPhrases.join(' ').replace(/\s+/g, ' ').trim()
+  // 4. FORMAT: Regex Fallback (XML etiketlerini doğrudan yakala)
+  const xmlMatches = raw.matchAll(/<(?:text|p|s)[^>]*>(.*?)<\/(?:text|p|s)>/gi)
+  for (const m of xmlMatches) {
+    addPhrase(m[1])
+  }
+
+  return formatPhrasesIntoParagraphs(cleanPhrases)
 }
 
+/**
+ * Ayrıştırılan konuşma cümlelerini doğal, akıcı paragraflar haline getirir.
+ */
+function formatPhrasesIntoParagraphs(phrases: string[]): string {
+  if (!phrases.length) return ''
+  const full = phrases.join(' ').replace(/\s+/g, ' ').trim()
+
+  // Cümle sonlarına göre (nokta, ünlem, soru işareti) 3-4 cümlede bir paragraf oluştur
+  const sentences = full.match(/[^.!?]+[.!?]+["”’»)]*|\S+$/g) || [full]
+  const paragraphs: string[] = []
+  let currentGroup: string[] = []
+
+  for (const sentence of sentences) {
+    currentGroup.push(sentence.trim())
+    if (currentGroup.length >= 4 || currentGroup.join(' ').split(/\s+/).length >= 60) {
+      paragraphs.push(currentGroup.join(' '))
+      currentGroup = []
+    }
+  }
+
+  if (currentGroup.length > 0) {
+    paragraphs.push(currentGroup.join(' '))
+  }
+
+  return paragraphs.join('\n\n')
+}
+
+/**
+ * YouTube videosunun konuşma transkriptini çeker.
+ */
 export async function fetchYouTubeTranscript(
   url: string,
   onProgress?: (message: string) => void,
@@ -120,159 +206,139 @@ export async function fetchYouTubeTranscript(
     throw new Error('Geçersiz YouTube linki. Lütfen "youtube.com/watch?v=..." veya "youtu.be/..." formatında bir link girin.')
   }
 
-  onProgress?.('Video başlığı sorgulanıyor...')
+  onProgress?.('Video bilgileri alınıyor...')
   const videoTitle = await fetchVideoTitle(videoId)
 
   onProgress?.('Konuşma metni (altyazı) taranıyor...')
 
   let transcriptText = ''
 
-  // STRATEJİ 1: Innertube Android Client Sorgusu
-  // YouTube Android istemcisi Web PoToken zorunluluğundan muaftır
-  try {
-    const payload = {
-      context: {
-        client: {
-          clientName: 'ANDROID',
-          clientVersion: '20.10.38',
-          hl: 'tr',
-          gl: 'TR',
-        },
-      },
-      videoId,
-    }
+  // STRATEJİ 1: CORS Uyumlu Piped API Sağlayıcıları
+  // YouTube transkriptlerini TTML/XML formatında doğrudan ve yüksek hızda sunar
+  const pipedEndpoints = [
+    'https://api.piped.private.coffee',
+    'https://pipedapi.ducks.party',
+  ]
 
-    const proxyEndpoints = [
-      `https://corsproxy.io/?url=${encodeURIComponent('https://www.youtube.com/youtubei/v1/player')}`,
-      `https://api.allorigins.win/raw?url=${encodeURIComponent('https://www.youtube.com/youtubei/v1/player')}`,
-    ]
+  for (const host of pipedEndpoints) {
+    try {
+      onProgress?.('Altyazı havuzu sorgulanıyor...')
+      const res = await fetch(`${host}/streams/${videoId}`, {
+        headers: { Accept: 'application/json' },
+        signal: AbortSignal.timeout(5000),
+      })
+      if (!res.ok) continue
+      const data = await res.json()
+      const subs = data?.subtitles
+      if (Array.isArray(subs) && subs.length > 0) {
+        // Türkçe altyazıyı önceliklendir (tr veya tr-TR)
+        const trSub = subs.find((s: any) => s.code === 'tr' || s.code === 'tr-TR')
+        const enSub = subs.find((s: any) => s.code === 'en' || s.code === 'en-US')
+        const chosen = trSub || enSub || subs[0]
 
-    for (const ep of proxyEndpoints) {
-      try {
-        const res = await fetch(ep, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'User-Agent': 'com.google.android.youtube/20.10.38 (Linux; U; Android 14)',
-          },
-          body: JSON.stringify(payload),
-          signal: AbortSignal.timeout(6000),
-        })
-
-        if (res.ok) {
-          const data = await res.json()
-          const tracks = data?.captions?.playerCaptionsTracklistRenderer?.captionTracks
-          if (Array.isArray(tracks) && tracks.length > 0) {
-            const trTrack = tracks.find((t: any) => t.languageCode === 'tr')
-            const enTrack = tracks.find((t: any) => t.languageCode === 'en')
-            const chosen = trTrack || enTrack || tracks[0]
-            if (chosen && chosen.baseUrl) {
-              onProgress?.('Altyazı satırları indiriliyor...')
-              const subRes = await fetch(chosen.baseUrl, { signal: AbortSignal.timeout(6000) })
-              if (subRes.ok) {
-                const subBody = await subRes.text()
-                transcriptText = parseTranscriptData(subBody)
-                if (transcriptText.length > 40) break
-              }
+        if (chosen && chosen.url) {
+          onProgress?.(`Konuşma metni indiriliyor (${chosen.name || chosen.code})...`)
+          const subRes = await fetch(chosen.url, { signal: AbortSignal.timeout(5000) })
+          if (subRes.ok) {
+            const body = await subRes.text()
+            transcriptText = parseTranscriptData(body)
+            if (transcriptText.split(/\s+/).filter(Boolean).length >= 15) {
+              break
             }
           }
         }
-      } catch {}
-    }
-  } catch {}
-
-  // STRATEJİ 2: YouTube Watch Page HTML Scraper (CORS Proxy ile)
-  if (!transcriptText || transcriptText.length < 40) {
-    onProgress?.('Yedek altyazı sunucusu taranıyor...')
-    const watchUrl = `https://www.youtube.com/watch?v=${videoId}`
-    const htmlProxies = [
-      `https://api.allorigins.win/raw?url=${encodeURIComponent(watchUrl)}`,
-      `https://corsproxy.io/?url=${encodeURIComponent(watchUrl)}`,
-    ]
-
-    for (const proxy of htmlProxies) {
-      try {
-        const res = await fetch(proxy, { signal: AbortSignal.timeout(6000) })
-        if (!res.ok) continue
-        const html = await res.text()
-        const idx = html.indexOf('captionTracks')
-        if (idx !== -1) {
-          const start = html.indexOf('[', idx)
-          let depth = 0
-          let end = -1
-          for (let i = start; i < Math.min(start + 30000, html.length); i++) {
-            if (html[i] === '[') depth++
-            else if (html[i] === ']') {
-              depth--
-              if (depth === 0) {
-                end = i + 1
-                break
-              }
-            }
-          }
-          if (end !== -1) {
-            const tracks = JSON.parse(html.substring(start, end))
-            if (Array.isArray(tracks) && tracks.length > 0) {
-              const trTrack = tracks.find((t: any) => t.languageCode === 'tr')
-              const enTrack = tracks.find((t: any) => t.languageCode === 'en')
-              const chosen = trTrack || enTrack || tracks[0]
-              if (chosen && chosen.baseUrl) {
-                const subRes = await fetch(chosen.baseUrl, { signal: AbortSignal.timeout(6000) })
-                if (subRes.ok) {
-                  const subBody = await subRes.text()
-                  transcriptText = parseTranscriptData(subBody)
-                  if (transcriptText.length > 40) break
-                }
-              }
-            }
-          }
-        }
-      } catch {}
-    }
+      }
+    } catch {}
   }
 
-  // STRATEJİ 3: Açık Invidious / Piped Altyazı Sunucuları
-  if (!transcriptText || transcriptText.length < 40) {
-    onProgress?.('Genel altyazı havuzu taranıyor...')
-    const invidiousHosts = [
-      'https://inv.nadeko.net',
-      'https://invidious.nerdvpn.de',
-      'https://vid.priv.au',
-      'https://yt.artemislena.eu',
-    ]
-
-    for (const host of invidiousHosts) {
-      try {
-        const res = await fetch(`${host}/api/v1/captions/${videoId}`, {
-          signal: AbortSignal.timeout(4000),
-        })
-        if (!res.ok) continue
-        const data = await res.json()
-        const caps = data?.captions
+  // STRATEJİ 2: CORS Uyumlu Invidious API Sağlayıcısı
+  if (!transcriptText || transcriptText.split(/\s+/).filter(Boolean).length < 15) {
+    try {
+      onProgress?.('Yedek altyazı motoru taranıyor...')
+      const invRes = await fetch(`https://yt.chocolatemoo53.com/api/v1/captions/${videoId}`, {
+        signal: AbortSignal.timeout(4500),
+      })
+      if (invRes.ok) {
+        const invData = await invRes.json()
+        const caps = invData?.captions
         if (Array.isArray(caps) && caps.length > 0) {
-          const trCap = caps.find((c: any) => c.languageCode === 'tr')
+          const trCap = caps.find((c: any) => c.languageCode === 'tr' || c.languageCode === 'tr-TR')
           const enCap = caps.find((c: any) => c.languageCode === 'en')
           const chosen = trCap || enCap || caps[0]
+
           if (chosen && chosen.url) {
-            const capRes = await fetch(`${host}${chosen.url}`, { signal: AbortSignal.timeout(4000) })
-            if (capRes.ok) {
-              const capText = await capRes.text()
-              transcriptText = parseTranscriptData(capText)
-              if (transcriptText.length > 40) break
+            onProgress?.(`Konuşma metni indiriliyor (${chosen.label || chosen.languageCode})...`)
+            const subRes = await fetch(`https://yt.chocolatemoo53.com${chosen.url}`, {
+              signal: AbortSignal.timeout(4500),
+            })
+            if (subRes.ok) {
+              const body = await subRes.text()
+              transcriptText = parseTranscriptData(body)
             }
           }
         }
-      } catch {}
-    }
+      }
+    } catch {}
   }
 
-  if (!transcriptText || transcriptText.length < 30) {
-    throw new Error(
-      `"${videoTitle}" videosunda otomatik veya yüklenmiş konuşma transkripti bulunamadı ya da YouTube bot koruması (PO token) erişimi kilitledi.\n\nİpucu: YouTube'da videonun altındaki "... -> Transkripti Göster" kısmından konuşmaları kopyalayarak 'Metin' sekmesine yapıştırabilir ve anında okuyabilirsiniz.`,
-    )
+  // STRATEJİ 3: YouTube Innertube Android Client (CORS Proxy ile)
+  if (!transcriptText || transcriptText.split(/\s+/).filter(Boolean).length < 15) {
+    try {
+      const payload = {
+        context: {
+          client: {
+            clientName: 'ANDROID',
+            clientVersion: '20.10.38',
+            hl: 'tr',
+            gl: 'TR',
+          },
+        },
+        videoId,
+      }
+
+      // Android Innertube sorgusu
+      const playerUrl = 'https://www.youtube.com/youtubei/v1/player'
+      const proxyUrl = `https://corsproxy.io/?url=${encodeURIComponent(playerUrl)}`
+
+      const res = await fetch(proxyUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'User-Agent': 'com.google.android.youtube/20.10.38',
+        },
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(6000),
+      })
+
+      if (res.ok) {
+        const data = await res.json()
+        const tracks = data?.captions?.playerCaptionsTracklistRenderer?.captionTracks
+        if (Array.isArray(tracks) && tracks.length > 0) {
+          const trTrack = tracks.find((t: any) => t.languageCode === 'tr')
+          const enTrack = tracks.find((t: any) => t.languageCode === 'en')
+          const chosen = trTrack || enTrack || tracks[0]
+
+          if (chosen && chosen.baseUrl) {
+            // timedtext indirmesi için proxy üzerinden fetch
+            const subProxyUrl = `https://corsproxy.io/?url=${encodeURIComponent(chosen.baseUrl)}`
+            const subRes = await fetch(subProxyUrl, { signal: AbortSignal.timeout(6000) })
+            if (subRes.ok) {
+              const subBody = await subRes.text()
+              transcriptText = parseTranscriptData(subBody)
+            }
+          }
+        }
+      }
+    } catch {}
   }
 
   const wordCount = transcriptText.split(/\s+/).filter(Boolean).length
+
+  if (!transcriptText || wordCount < 15) {
+    throw new Error(
+      `"${videoTitle}" videosunda konuşma transkripti bulunamadı ya da bu video için konuşanların otomatik altyazısı oluşturulmamış.\n\nPratik İpucu: YouTube'da videonun altındaki "... (Daha fazla) -> Transkripti Göster" butonuna basarak metni kopyalayabilir ve 'Metin' sekmesine yapıştırıp doğrudan okuyabilirsiniz.`,
+    )
+  }
 
   return {
     title: videoTitle,

@@ -1,11 +1,15 @@
 /**
  * Akıllı PDF, Kitap ve OCR Ayrıştırıcı (Smart PDF & Book Parser)
  *
- * Özellikler:
- * 1. %100 İstemci Taraflı PDF.js ve Tesseract.js entegrasyonu (Vercel SSR uyumlu dinamik yükleyici).
- * 2. Satır sonu hece bölme ve tire (-, \u00AD, \uFFFD) onarımı (De-hyphenation).
- * 3. Kitap ön sayfalarındaki basımevi künyesi (ISBN, Matbaa, Sertifika No), içindekiler ve arka kaynakçayı otomatik filtreleme.
- * 4. Taranmış (resimli) PDF'ler için otomatik Tesseract OCR fallback desteği.
+ * HizliOku Pro Heuristics Engine:
+ * 1. PDF.js metin parçalarını Y ve X koordinatlarına göre satırlara gruplar.
+ * 2. Glifler arası boşlukları (kerning/gap) hesaplayarak kelime içi yapay boşlukları engeller.
+ * 3. Üst simge dipnotları ([1], *, †) satır hizasında tespit eder ve gövde metninden ayrıştırır.
+ * 4. Satır içi ve sayfa sınırlarındaki tireleme (-), koşullu tire (\u00AD), bozuk UTF-8 (\uFFFD)
+ *    ve Türkçe ek kopmalarını (BROKEN_SUFFIX_SET) onarır (De-hyphenation).
+ * 5. Sayfa başlarında/sonlarında tekrar eden üst/alt bilgi (running headers/footers, sayfa no) satırlarını eler.
+ * 6. Künye (ISBN, sertifika no, yayınevi), içindekiler ve arka kaynakçayı otomatik sınıflandırıp atlar.
+ * 7. Taranmış (resimli) PDF sayfaları için Tesseract OCR motoruna otomatik geçiş yapar.
  */
 
 export type ExtractedBook = {
@@ -17,36 +21,270 @@ export type ExtractedBook = {
   isOcrUsed: boolean
 }
 
-// Künye / Telif / Yayıncı sayfalarını tespit eden anahtar kelimeler
+export type PdfLine = {
+  text: string
+  fontSize: number
+  yRatio: number
+  pageNumber: number
+  isHeading?: boolean
+}
+
+export type PreparedPage = {
+  pageNumber: number
+  lines: PdfLine[]
+  bodyLines: PdfLine[]
+  isBoilerplate: boolean
+  skipReason?: string
+}
+
+const SUPERSCRIPT_MAP: Record<string, string> = {
+  '¹': '1',
+  '²': '2',
+  '³': '3',
+  '⁴': '4',
+  '⁵': '5',
+  '⁶': '6',
+  '⁷': '7',
+  '⁸': '8',
+  '⁹': '9',
+  '⁰': '0',
+}
+
 const KUNYE_KEYWORDS = [
   'isbn',
   'issn',
   'yayınevi',
   'yayınları',
   'yayıncılık',
+  'okuyan us',
+  'basım',
+  'baskı',
+  'matbaa',
+  'matbaacılık',
+  'ofset',
   'sertifika no',
   'telif hakkı',
+  'tüm hakları',
+  'tıim hakları',
   'all rights reserved',
   'copyright',
   'kapak tasarımı',
   'sayfa düzeni',
-  'baskı ve cilt',
-  'matbaa',
-  'matbaacılık',
-  'ofset',
+  'yayın yönetmeni',
   'orijinal adı',
   'özgün adı',
+  'çeviren',
+  'çeviri:',
+  'editör',
+  'dağıtım',
   'kütüphane bilgi kartı',
+  'cataloging-in-publication',
   'printed in',
+  'tic. ltd',
   'san. ve tic',
-  'basım:',
-  'baskı:',
+  'e-posta:',
+  'www.',
+  '.com.tr',
 ]
 
 const TOC_KEYWORDS = ['içindekiler', 'table of contents', 'contents', 'bölümler']
-const BACKMATTER_KEYWORDS = ['kaynakça', 'bibliyografya', 'references', 'bibliography', 'dizin', 'index']
 
-// PDF.js kütüphanesini tarayıcıda dinamik yükle (Next.js SSR hatasını engeller)
+const BACKMATTER_KEYWORDS = [
+  'kaynakça',
+  'bibliyografya',
+  'kaynaklar',
+  'references',
+  'bibliography',
+  'dizin',
+  'index',
+  'notlar ve kaynaklar',
+]
+
+// Türkçe'de tek başına kelime olmayan, kerning/OCR hatasıyla kelimeden kopmuş ek parçaları
+const BROKEN_SUFFIX_SET = new Set([
+  'iyorsunuz',
+  'iyorum',
+  'iyorsun',
+  'iyoruz',
+  'iyorlar',
+  'ıyorsunuz',
+  'ıyorum',
+  'ıyorsun',
+  'ıyoruz',
+  'ıyorlar',
+  'uyorsunuz',
+  'uyorum',
+  'uyorsun',
+  'uyoruz',
+  'uyorlar',
+  'üyorsunuz',
+  'üyorum',
+  'üyorsun',
+  'üyoruz',
+  'üyorlar',
+  'acağım',
+  'eceğim',
+  'acaksın',
+  'eceksin',
+  'acaklar',
+  'ecekler',
+  'acağımız',
+  'eceğimiz',
+  'ışacağım',
+  'işeceğim',
+  'ışmış',
+  'işmiş',
+  'uşmuş',
+  'üşmüş',
+  'iştirmiş',
+  'ıştırmış',
+  'uşturmuş',
+  'üştürmüş',
+  'lmamış',
+  'lmemiş',
+  'lmış',
+  'lmiş',
+  'lmuş',
+  'lmüş',
+  'kmayı',
+  'kmeyi',
+  'kması',
+  'kmesi',
+  'kmak',
+  'kmek',
+  'ller',
+  'llar',
+  'lleri',
+  'lları',
+  'lir',
+  'lirim',
+  'lirsin',
+  'liriz',
+  'lirler',
+  'lirdi',
+  'lığı',
+  'liği',
+  'luğu',
+  'lüğü',
+  'lığım',
+  'liğim',
+  'lığın',
+  'liğin',
+  'lığına',
+  'liğine',
+  'lığında',
+  'liğinde',
+  'ığı',
+  'iği',
+  'uğu',
+  'üğü',
+  'ığım',
+  'işim',
+  'uğum',
+  'üğüm',
+  'ığın',
+  'iğin',
+  'uğun',
+  'üğün',
+  'ığını',
+  'iğini',
+  'uğunu',
+  'üğünü',
+  'ğım',
+  'ğim',
+  'ğum',
+  'ğüm',
+  'ğın',
+  'ğin',
+  'ğun',
+  'ğün',
+  'ğı',
+  'ği',
+  'ğu',
+  'ğü',
+  'ğını',
+  'ğini',
+  'ğunu',
+  'ğünü',
+  'ğımız',
+  'ğimiz',
+  'ğumuz',
+  'ğümüz',
+  'ım',
+  'im',
+  'um',
+  'üm',
+  'ımız',
+  'imiz',
+  'umuz',
+  'ümüz',
+  'ıyız',
+  'iyiz',
+  'uyuz',
+  'üyüz',
+  'ırım',
+  'irim',
+  'urum',
+  'ürüm',
+  'ında',
+  'inde',
+  'undan',
+  'ünden',
+  'ından',
+  'inden',
+  'ına',
+  'ine',
+  'ını',
+  'ini',
+  'unu',
+  'ünü',
+  'ının',
+  'inin',
+  'unun',
+  'ünün',
+  'ıkları',
+  'ikleri',
+  'ukları',
+  'ükleri',
+  'kları',
+  'kleri',
+  'mdan',
+  'mden',
+  'ndan',
+  'nden',
+  'ip',
+  'ıp',
+  'up',
+  'üp',
+  'ız',
+  'iz',
+  'uz',
+  'üz',
+])
+
+const TITLE_CASE_STOPWORDS = new Set([
+  've',
+  'ile',
+  'de',
+  'da',
+  'ki',
+  'bir',
+  'için',
+  'dair',
+  'üzerine',
+  'ya',
+  'veya',
+  'en',
+  'bu',
+  'o',
+  'ne',
+  'mı',
+  'mi',
+  'mu',
+  'mü',
+])
+
+// PDF.js kütüphanesini tarayıcıda dinamik yükle (Next.js SSR uyumlu)
 export async function loadPdfJs(): Promise<any> {
   if (typeof window === 'undefined') return null
   if ((window as any).pdfjsLib) return (window as any).pdfjsLib
@@ -69,7 +307,7 @@ export async function loadPdfJs(): Promise<any> {
   })
 }
 
-// Tesseract.js kütüphanesini tarayıcıda dinamik yükle (Yalnızca taranmış PDF gerekirse yüklenir)
+// Tesseract.js kütüphanesini tarayıcıda dinamik yükle
 export async function loadTesseract(): Promise<any> {
   if (typeof window === 'undefined') return null
   if ((window as any).Tesseract) return (window as any).Tesseract
@@ -89,62 +327,565 @@ export async function loadTesseract(): Promise<any> {
 }
 
 /**
- * Satır sonu ve sayfa sonundaki tireleme (hyphenation) hatalarını birleştirir.
- * Örn: "ge- \n lecek" -> "gelecek"
+ * Harfleri ayrı yazılmış başlıkları ("Ö n s ö z" -> "Önsöz") birleştirir
  */
-export function repairHyphenatedWords(rawText: string): string {
-  if (!rawText) return ''
-
-  return rawText
-    // Yumuşak tire, bozuk UTF-8 karakterleri
-    .replace(/\u00AD/g, '-')
-    .replace(/\uFFFD/g, '')
-    // Satır sonu tire birleştirme
-    .replace(/([a-zA-ZğüşıöçĞÜŞİÖÇ0-9])[-–—]\s*[\r\n]+\s*([a-zA-ZğüşıöçĞÜŞİÖÇ])/g, '$1$2')
-    // Sayfa geçişindeki tire birleştirme
-    .replace(/([a-zA-ZğüşıöçĞÜŞİÖÇ0-9])[-–—]\s*(--- Sayfa \d+ ---\s*)+([a-zA-ZğüşıöçĞÜŞİÖÇ])/g, '$1$3')
-    // Fazla boşlukları toparla
-    .replace(/[ \t]+/g, ' ')
+export function collapseSpacedLetters(str: string): string {
+  if (!str) return ''
+  let s = str
+  s = s.replace(
+    /(?<![a-zA-ZçğıöşüÇĞİÖŞÜ0-9])([a-zA-ZçğıöşüÇĞİÖŞÜ])\s+([a-zA-ZçğıöşüÇĞİÖŞÜ])\s+([a-zA-ZçğıöşüÇĞİÖŞÜ])(?:\s+([a-zA-ZçğıöşüÇĞİÖŞÜ]))?(?:\s+([a-zA-ZçğıöşüÇĞİÖŞÜ]))?(?:\s+([a-zA-ZçğıöşüÇĞİÖŞÜ]))?(?:\s+([a-zA-ZçğıöşüÇĞİÖŞÜ]))?(?:\s+([a-zA-ZçğıöşüÇĞİÖŞÜ]))?(?:\s+([a-zA-ZçğıöşüÇĞİÖŞÜ]))?(?:\s+([a-zA-ZçğıöşüÇĞİÖŞÜ]))?(?:\s+([a-zA-ZçğıöşüÇĞİÖŞÜ]))?(?![a-zA-ZçğıöşüÇĞİÖŞÜ0-9])/g,
+    (_, c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11) =>
+      [c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11].filter(Boolean).join(''),
+  )
+  s = s.replace(/(?<![a-zA-ZçğıöşüÇĞİÖŞÜ0-9])n\s+a\s*sıl\s*a(?![a-zA-ZçğıöşüÇĞİÖŞÜ0-9])/gi, 'nasıla')
+  return s
 }
 
 /**
- * Sayfanın basımevi künyesi veya kaynakça olup olmadığını analiz eder
+ * Satır içindeki görünmez koşullu tireleri (\u00AD), bozuk PDF tire karakterlerini (\uFFFD),
+ * kerning boşluklarını ve OCR hatalarını onarır.
  */
-function isBoilerplatePage(pageText: string, pageNum: number, totalPages: number): { skip: boolean; reason: string } {
-  const lower = pageText.toLowerCase()
-  const wordCount = pageText.split(/\s+/).filter(Boolean).length
+export function cleanIntraLineHyphens(rawLineText: string): string {
+  if (!rawLineText) return ''
+  let t = rawLineText
 
-  // Çok boş sayfalar (sayfa no hariç 3-4 kelime)
-  if (wordCount < 6) {
-    return { skip: true, reason: 'Boş veya kapak sayfası' }
-  }
+  // 1. Harfleri ayrı yazılmış kelimeleri birleştir
+  t = collapseSpacedLetters(t)
 
-  // İlk 7 sayfa içinde künye araması
-  if (pageNum <= Math.min(8, Math.ceil(totalPages * 0.2))) {
-    const kunyeScore = KUNYE_KEYWORDS.filter((k) => lower.includes(k)).length
-    if (kunyeScore >= 3 || (kunyeScore >= 2 && wordCount < 140)) {
-      return { skip: true, reason: 'Basımevi ve Telif Künyesi' }
-    }
+  // 2. Kelime ortasındaki görünmez soft-hyphen (\u00AD) birleştir
+  t = t.replace(/([a-zA-ZçğıöşüÇĞİÖŞÜ])\u00AD+\s*([a-zA-ZçğıöşüÇĞİÖŞÜ])/g, '$1$2')
 
-    const tocScore = TOC_KEYWORDS.filter((k) => lower.includes(k)).length
-    if (tocScore >= 1 && (lower.includes('....') || /\d+\s*$/.test(pageText))) {
-      return { skip: true, reason: 'İçindekiler Tablosu' }
-    }
-  }
+  // 3. Kelime ortasındaki PDF/OCR tire değişim karakterini (\uFFFD) analiz et
+  t = t.replace(
+    /([a-zA-ZçğıöşüÇĞİÖŞÜ]+)\uFFFD+\s*([a-zA-ZçğıöşüÇĞİÖŞÜ]+)/g,
+    (fullMatch, leftPart, rightPart, offset, fullStr) => {
+      const beforeSlice = fullStr.slice(0, offset)
+      const hasOpenParentheticalDash = /(?:^|\s)[\-\–\—][a-zA-ZçğıöşüÇĞİÖŞÜ]/.test(beforeSlice)
+      const isLowerToUpper = /[a-zçğıöşü]$/.test(leftPart) && /^[A-ZÇĞİÖŞÜ]/.test(rightPart)
+      if (hasOpenParentheticalDash || isLowerToUpper) {
+        return `${leftPart}– ${rightPart}`
+      }
+      return `${leftPart}${rightPart}`
+    },
+  )
 
-  // Son %10'luk kısımda kaynakça araması
-  if (pageNum >= Math.max(1, totalPages - 8)) {
-    const backScore = BACKMATTER_KEYWORDS.filter((k) => lower.includes(k)).length
-    if (backScore >= 1 && (lower.includes('19') || lower.includes('20') || lower.includes('pp.') || lower.includes('s.'))) {
-      return { skip: true, reason: 'Kaynakça / Dizin' }
-    }
-  }
+  // 4. Satır sonunda harf ile tire arasına girmiş boşluğu kaldır
+  t = t.replace(
+    /([a-zA-ZçğıöşüÇĞİÖŞÜ0-9])\s+([\-\u00AD\uFFFD\u2010\u2011\u2012\u2212\u00AC~'’‘\`]+)$/,
+    '$1$2',
+  )
 
-  return { skip: false, reason: 'Ana Metin' }
+  // 5. Noktalama işaretinden sonra kalan yalnız \uFFFD karakterlerini temizle
+  t = t.replace(/([^\wçğıöşüÇĞİÖŞÜ])\uFFFD+(?=\s|$)/g, '$1')
+
+  // 6. Kesme işareti etrafındaki boşlukları birleştir ("Türkiye ’ nin" -> "Türkiye’nin")
+  t = t.replace(
+    /([a-zA-ZçğıöşüÇĞİÖŞÜ0-9])\s+(['’‘])\s*([a-zçğıöşü]{1,8})(?![a-zA-ZçğıöşüÇĞİÖŞÜ0-9])/g,
+    '$1$2$3',
+  )
+
+  // 7. Font kerning hatasıyla kopmuş tek harfli Türkçe ekleri birleştir ("insanları n" -> "insanların")
+  t = t.replace(
+    /(?<![a-zA-ZçğıöşüÇĞİÖŞÜ0-9])([a-zA-ZçğıöşüÇĞİÖŞÜ][a-zçğıöşü]{1,20})\s+([nmı](?:['’‘][a-zçğıöşü]{1,8})?)(?=[,.;:!?'”"\)\s]|$)/g,
+    '$1$2',
+  )
+
+  // 8. BROKEN_SUFFIX_SET yardımıyla kelimeden kopmuş Türkçe ek parçalarını birleştir
+  t = t.replace(
+    /(?<![a-zA-ZçğıöşüÇĞİÖŞÜ0-9])([a-zA-ZçğıöşüÇĞİÖŞÜ]*[a-zçğıöşü])\s+([a-zçğıöşü]{2,12})(?![a-zA-ZçğıöşüÇĞİÖŞÜ0-9])/g,
+    (full, stem, suffix) => {
+      if (BROKEN_SUFFIX_SET.has(suffix)) {
+        return stem + suffix
+      }
+      return full
+    },
+  )
+
+  // 9. Türkçe OCR "rı" -> "n" ligatür bozulmalarını onar
+  t = t.replace(
+    /(?<![a-zA-ZçğıöşüÇĞİÖŞÜ0-9])([a-zA-ZçğıöşüÇĞİÖŞÜ][a-zçğıöşü]{2,})lan(nda|ndan|nı|na|nın|nm|mız|nız)(?![a-zA-ZçğıöşüÇĞİÖŞÜ0-9])/g,
+    (_, stem, tail) => `${stem}ları${tail === 'nm' ? 'nın' : tail}`,
+  )
+  t = t.replace(
+    /(?<![a-zA-ZçğıöşüÇĞİÖŞÜ0-9])([a-zA-ZçğıöşüÇĞİÖŞÜ][a-zçğıöşü]{2,})lann(?![a-zA-ZçğıöşüÇĞİÖŞÜ0-9])/g,
+    '$1ların',
+  )
+  t = t.replace(
+    /(?<![a-zA-ZçğıöşüÇĞİÖŞÜ0-9])(başka|on|bun|şun)lan(?![a-zA-ZçğıöşüÇĞİÖŞÜ0-9])/gi,
+    (_, p1) => `${p1}ları`,
+  )
+
+  // 10. OCR tırnak bozulmalarını düzelt
+  t = t.replace(/([a-zA-ZçğıöşüÇĞİÖŞÜ0-9]):'(?=\s|$)/g, '$1."')
+  t = t.replace(/([a-zA-ZçğıöşüÇĞİÖŞÜ0-9]);'(?=\s|$)/g, '$1,"')
+
+  return t.trim()
 }
 
 /**
- * PDF dosyasını (ArrayBuffer veya File) akıllıca ayrıştırır.
+ * İki satır veya sayfa sınırındaki kelime çiftini hece/tire bölmesi açısından birleştirir.
+ */
+function tryMergeWordPair(lastWord: string, nextWord: string, context: { hasOpenParentheticalDash?: boolean } = {}): string | null {
+  if (!lastWord || !nextWord) return null
+  const { hasOpenParentheticalDash = false } = context
+
+  // 1. Tire veya \uFFFD ile hece bölmesi ("anla-" + "şılmıyor")
+  const hyphenMatch = lastWord.match(
+    /^(\S*[a-zA-ZçğıöşüÇĞİÖŞÜ])([\-\u00AD\uFFFD\u2010\u2011\u2012\u2212\u00AC~]+)$/,
+  )
+  if (hyphenMatch && /^[a-zA-ZçğıöşüÇĞİÖŞÜ]/.test(nextWord)) {
+    const prefix = hyphenMatch[1]
+    const hyphenChar = hyphenMatch[2]
+
+    if (
+      hyphenChar.includes('\uFFFD') &&
+      (hasOpenParentheticalDash || (/[a-zçğıöşü]$/.test(prefix) && /^[A-ZÇĞİÖŞÜ]/.test(nextWord)))
+    ) {
+      return `${prefix}– ${nextWord}`
+    }
+
+    if (/^[a-zçğıöşü]/.test(nextWord)) {
+      return prefix + nextWord
+    }
+
+    const prefixLetters = prefix.replace(/[^a-zA-ZçğıöşüÇĞİÖŞÜ]/g, '')
+    const nextLetters = nextWord.replace(/[^a-zA-ZçğıöşüÇĞİÖŞÜ]/g, '')
+    if (
+      prefixLetters.length >= 2 &&
+      prefixLetters === prefixLetters.toUpperCase() &&
+      nextLetters.length >= 1 &&
+      nextLetters === nextLetters.toUpperCase()
+    ) {
+      return prefix + nextWord
+    }
+
+    return prefix + '–' + nextWord
+  }
+
+  // 2. Kesme işareti ile bölünen özel isim veya ek ("Türkiye’" + "nin")
+  const apostropheMatch = lastWord.match(/^(\S*[a-zA-ZçğıöşüÇĞİÖŞÜ0-9]['’‘\`])$/)
+  if (
+    apostropheMatch &&
+    /^[a-zçğıöşü]{1,10}(?:['"”’\.,;:\!\?\)\]\¹²³⁴⁵⁶⁷⁸⁹⁰\*†‡]|\[\d+\])*$/.test(nextWord)
+  ) {
+    return apostropheMatch[1] + nextWord
+  }
+
+  // 3. Tire düşmüş ama ikinci parça tek başına kelime olamayacak bir ekse
+  const cleanNext = nextWord.replace(/['"”’\.,;:\!\?\)\]]+$/, '')
+  if (/[a-zçğıöşü]$/.test(lastWord) && BROKEN_SUFFIX_SET.has(cleanNext)) {
+    return lastWord + nextWord
+  }
+
+  return null
+}
+
+/**
+ * Hem aynı sayfadaki alt alta satırlar arasında hem de sayfa geçişlerindeki
+ * bölünmüş kelimeleri tek parça olarak diker (De-hyphenation across lines & pages).
+ */
+export function mergeSplitWordsAcrossLinesAndPages(preparedPages: PreparedPage[]) {
+  const sequence: PdfLine[] = []
+  for (const page of preparedPages) {
+    if (page.isBoilerplate) continue
+    for (const lineObj of page.bodyLines) {
+      if (lineObj.text && lineObj.text.trim()) {
+        sequence.push(lineObj)
+      }
+    }
+  }
+
+  for (let i = 0; i < sequence.length - 1; i++) {
+    const lineA = sequence[i]
+    const lineB = sequence[i + 1]
+
+    if (lineA.isHeading || lineB.isHeading) continue
+
+    const wordsA = lineA.text.trim().split(/\s+/).filter(Boolean)
+    const wordsB = lineB.text.trim().split(/\s+/).filter(Boolean)
+    if (!wordsA.length || !wordsB.length) continue
+
+    const lastWordA = wordsA[wordsA.length - 1]
+    const firstWordB = wordsB[0]
+
+    const lineABeforeLast = wordsA.slice(0, -1).join(' ')
+    const hasOpenParentheticalDash = /(?:^|\s)[\-\–\—][a-zA-ZçğıöşüÇĞİÖŞÜ]/.test(lineABeforeLast)
+
+    const merged = tryMergeWordPair(lastWordA, firstWordB, { hasOpenParentheticalDash })
+    if (merged) {
+      if (merged.includes(' ')) {
+        const splitParts = merged.split(/\s+/)
+        wordsA[wordsA.length - 1] = splitParts[0]
+        wordsB[0] = splitParts.slice(1).join(' ')
+      } else {
+        wordsA[wordsA.length - 1] = merged
+        wordsB.shift()
+      }
+      lineA.text = wordsA.join(' ')
+      lineB.text = wordsB.join(' ')
+    }
+  }
+
+  for (const page of preparedPages) {
+    page.bodyLines = page.bodyLines.filter((l) => l.text && l.text.trim().length > 0)
+  }
+}
+
+function normalizeEdgeLineForRepeatCheck(lineText: string): string {
+  if (!lineText) return ''
+  return lineText
+    .trim()
+    .toLowerCase()
+    .replace(/\d+/g, '#')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+/**
+ * Birden fazla sayfada üstte veya altta tekrar eden kitap/yazar adı gibi running header satırlarını bulur.
+ */
+function findRepeatedHeaderFooterLines(pages: { pageNumber: number; lines: PdfLine[] }[]): Set<string> {
+  const counts = new Map<string, number>()
+  if (pages.length < 3) return new Set()
+
+  for (const p of pages) {
+    if (!p.lines.length) continue
+    const firstRaw = p.lines[0].text.trim()
+    const lastRaw = p.lines[p.lines.length - 1].text.trim()
+
+    const first = normalizeEdgeLineForRepeatCheck(firstRaw)
+    const last = normalizeEdgeLineForRepeatCheck(lastRaw)
+
+    if (first.length > 2 && first.length < 70 && !/[.!?]$/.test(firstRaw)) {
+      counts.set(first, (counts.get(first) || 0) + 1)
+    }
+    if (last !== first && last.length > 2 && last.length < 70 && !/[.!?]$/.test(lastRaw)) {
+      counts.set(last, (counts.get(last) || 0) + 1)
+    }
+  }
+
+  const repeated = new Set<string>()
+  for (const [text, count] of counts.entries()) {
+    if (count >= 3) repeated.add(text)
+  }
+  return repeated
+}
+
+/**
+ * Bir satırın bölüm veya konu başlığı olup olmadığını tespit eder.
+ */
+function isHeadingLine(lineObj: PdfLine, medianFontSize: number, lineIdx: number, allLines: PdfLine[]): boolean {
+  const t = lineObj.text.trim()
+  if (!t || t.length > 95) return false
+
+  const words = t.split(/\s+/)
+  if (words.length > 12) return false
+
+  // 1. Markdown başlığı (# Başlık)
+  if (/^#{1,4}\s+\S+/.test(t)) return true
+
+  // 2. Açık bölüm kelimeleri (BÖLÜM 1, 1. Bölüm, GİRİŞ, ÖNSÖZ, vb.)
+  if (
+    /^(?:(\d{1,2}|[IVXLC]{1,5}|birinci|ikinci|üçüncü|dördüncü|beşinci)[\.\-\s]+)?(bölüm|kısım|fasıl|chapter|part|section|giriş|önsöz|sunuş|sonsöz|sonuç|epilog|prolog)(?![a-zA-ZçğıöşüÇĞİÖŞÜ0-9])/i.test(
+      t,
+    ) &&
+    words.length <= 9 &&
+    !/[.!?]$/.test(t)
+  ) {
+    return true
+  }
+
+  // 3. Büyük font boyutu
+  if (lineObj.fontSize && medianFontSize && lineObj.fontSize >= medianFontSize * 1.18 && words.length <= 10) {
+    return true
+  }
+
+  // 4. Tamamı BÜYÜK HARF olan kısa satırlar
+  const lettersOnly = t.replace(/[^a-zA-ZçğıöşüÇĞİÖŞÜ]/g, '')
+  if (lettersOnly.length >= 4 && lettersOnly === lettersOnly.toUpperCase() && words.length <= 8 && !/[.,;:]$/.test(t)) {
+    return true
+  }
+
+  // 5. Roma rakamı veya numara ile başlayan kısa başlık ("I. Modern Bilimin Doğuşu")
+  if (/^([IVXLC]{1,5})\.\s+[A-ZÇĞİÖŞÜ]/.test(t) && words.length <= 8 && !/[.!?]$/.test(t)) {
+    return true
+  }
+
+  // 6. Sayfanın ilk satırındaki Title Case başlıklar
+  if (
+    lineIdx === 0 &&
+    words.length >= 1 &&
+    words.length <= 8 &&
+    t.length <= 58 &&
+    !/[.!?,;:\-\uFFFD\u00AD"“”]$/.test(t) &&
+    /^[A-ZÇĞİÖŞÜ]/.test(t)
+  ) {
+    const significantWords = words.filter(
+      (w) => !TITLE_CASE_STOPWORDS.has(w.toLowerCase().replace(/[^a-zçğıöşü]/g, '')),
+    )
+    const capitalizedCount = significantWords.filter((w) =>
+      /^[A-ZÇĞİÖŞÜ0-9]/.test(w.replace(/^['"“‘\(]+/, '')),
+    ).length
+
+    const nextLine = allLines[lineIdx + 1]
+    const nextStartsSentence = !nextLine || /^[A-ZÇĞİÖŞÜ"“‘'\-\–\—]/.test(nextLine.text.trim())
+
+    if (significantWords.length >= 1 && capitalizedCount === significantWords.length && nextStartsSentence) {
+      return true
+    }
+  }
+
+  return false
+}
+
+/**
+ * Sayfa altındaki dipnot tanımlarını ana gövde metninden ayıklar.
+ */
+function extractFootnotesFromLines(lines: PdfLine[], medianFontSize: number): { bodyLines: PdfLine[] } {
+  const bodyLines: PdfLine[] = []
+  const fnRegex =
+    /^(?:\[(\d{1,3}|\*{1,4}|†|‡)\]|\((\d{1,3}|\*{1,4}|†|‡)\)|([¹²³⁴⁵⁶⁷⁸⁹⁰]+)|(\*{1,4}|†|‡)|(?:dipnot|not)\s*(\d{1,3})\s*[\:\.\-]|(\d{1,2})[\.\)]?\s+(?=[A-ZÇĞİÖŞÜ"“'‘\(]))\s*(.+)$/i
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i]
+    const t = line.text.trim()
+
+    const isExplicitFn = /^(\[\d{1,3}\]|\(\d{1,3}\)|[¹²³⁴⁵⁶⁷⁸⁹⁰]+|\*{1,4}|†|‡|(?:dipnot|not)\s*\d+)/i.test(t)
+    const isBottomArea = i >= Math.floor(lines.length * 0.45) || i >= lines.length - 6 || line.yRatio > 0.65
+    const isSmallerFont = line.fontSize && medianFontSize && line.fontSize < medianFontSize * 0.92
+
+    const match = t.match(fnRegex)
+    if (match && (isExplicitFn || isBottomArea || isSmallerFont)) {
+      const fnContent = match[7]?.trim() || ''
+      // "1. Bölüm" gibi başlıkları dipnot sanma
+      if (match[6] && (/^(bölüm|kısım|chapter|part)\b/i.test(fnContent) || fnContent.split(/\s+/).length <= 3)) {
+        bodyLines.push(line)
+        continue
+      }
+      // Dipnot başlangıcı: sayfa sonuna kadar olan devam satırlarını da dipnot olarak atla
+      while (i + 1 < lines.length) {
+        const nextLine = lines[i + 1]
+        const nextText = nextLine.text.trim()
+        if (fnRegex.test(nextText) || nextLine.yRatio > 0.75) {
+          i++
+        } else {
+          break
+        }
+      }
+    } else {
+      bodyLines.push(line)
+    }
+  }
+
+  return { bodyLines }
+}
+
+/**
+ * Bir sayfanın künye, yazar bio, içindekiler veya kaynakça olup olmadığını analiz eder
+ */
+export function classifyPageBoilerplate(
+  page: { pageNumber: number; lines: PdfLine[] },
+  totalPages: number,
+  context: { mainContentStarted?: boolean } = {},
+): { isBoilerplate: boolean; reason: string } {
+  const { mainContentStarted = false } = context
+  const rawLines = page.lines.map((l) => collapseSpacedLetters(l.text.trim())).filter(Boolean)
+  const fullText = rawLines.join('\n')
+  const lower = fullText.toLowerCase()
+  const wordCount = fullText.split(/\s+/).filter(Boolean).length
+
+  if (wordCount === 0 || wordCount < 5) {
+    return { isBoilerplate: true, reason: 'Boş Sayfa' }
+  }
+
+  const topLinesText = rawLines.slice(0, 4).join(' ')
+  const hasPrefaceOrChapterStart =
+    /^(önsöz|sunuş|giriş|prolog|birinci\s+bölüm|1\.\s*bölüm|bölüm\s*1|kısım\s*1)(?![a-zA-ZçğıöşüÇĞİÖŞÜ0-9])/i.test(
+      rawLines[0] || '',
+    ) || /(?<![a-zA-ZçğıöşüÇĞİÖŞÜ0-9])(önsöz|sunuş)(?![a-zA-ZçğıöşüÇĞİÖŞÜ0-9])/i.test(topLinesText)
+
+  // 1. İçindekiler Tablosu
+  const firstLinesLower = rawLines
+    .slice(0, 4)
+    .map((l) => l.toLowerCase())
+    .join(' ')
+  const hasTocHeader = TOC_KEYWORDS.some((kw) => firstLinesLower.includes(kw))
+  const dottedOrNumberedLines = rawLines.filter((l) => /(\.{2,}|\s{2,})\s*\d{1,4}$|\.{2,}\d{1,4}$/.test(l)).length
+
+  if ((hasTocHeader && dottedOrNumberedLines >= 1) || (rawLines.length >= 4 && dottedOrNumberedLines / rawLines.length >= 0.4)) {
+    return { isBoilerplate: true, reason: 'İçindekiler Tablosu' }
+  }
+
+  // 2. Künye / Yayınevi ve Basım Bilgileri
+  if (page.pageNumber <= Math.min(20, Math.max(5, totalPages)) || (totalPages >= 5 && page.pageNumber >= totalPages - 2)) {
+    let kunyeHits = 0
+    for (const kw of KUNYE_KEYWORDS) {
+      if (lower.includes(kw)) kunyeHits++
+    }
+    if (fullText.includes('©')) kunyeHits++
+    if (/978[\-\s]?\d/.test(fullText)) kunyeHits += 2
+    if (/sertifika\s*no|baskı\s*ve\s*cilt|basım\s*yeri|t[üıi]m\s*haklar[ıi]/i.test(fullText)) kunyeHits += 2
+
+    if (kunyeHits >= 2 && wordCount < 380 && !hasPrefaceOrChapterStart) {
+      return { isBoilerplate: true, reason: 'Künye / Yayınevi ve Telif Bilgileri' }
+    }
+  }
+
+  // 3. Kitap başındaki ön sayfalar (Kapak, ithaf, epigraf, bio)
+  const isFrontZone = totalPages >= 5 && page.pageNumber <= Math.min(16, Math.floor(totalPages * 0.25))
+  if (isFrontZone && !mainContentStarted && !hasPrefaceOrChapterStart) {
+    if (wordCount < 60) {
+      return { isBoilerplate: true, reason: 'Ön Sayfa (Kapak / İthaf / Tanıtım)' }
+    }
+  }
+
+  // 4. Son sayfalarda Kaynakça / Dizin
+  if (totalPages >= 5 && page.pageNumber >= Math.max(1, totalPages - 10)) {
+    const isBackHeader = BACKMATTER_KEYWORDS.some((kw) => lower.includes(kw))
+    if (isBackHeader && (lower.includes('pp.') || lower.includes('s.') || lower.includes('19') || lower.includes('20'))) {
+      return { isBoilerplate: true, reason: 'Kaynakça / Dizin' }
+    }
+  }
+
+  return { isBoilerplate: false, reason: 'Ana Metin' }
+}
+
+/**
+ * PDF.js metin parçalarını Y ve X koordinatlarına göre sıralayıp satırlara gruplar.
+ * Glifler arası yatay boşluğu kontrol ederek "g e l e c e k" gibi harf ayrılmalarını engeller.
+ */
+function groupPdfItemsIntoLines(items: any[], pageHeight: number, pageNumber: number): PdfLine[] {
+  if (!items || !items.length) return []
+
+  const heights = items
+    .filter((it) => it.str && it.str.trim())
+    .map((it) => Math.abs(it.transform?.[3]) || it.height || 12)
+    .sort((a, b) => a - b)
+  const medianH = heights.length ? heights[Math.floor(heights.length / 2)] : 12
+
+  const validItems = items
+    .filter((it) => it.str && it.str.trim().length > 0)
+    .map((it) => {
+      const x = it.transform?.[4] || 0
+      const y = it.transform?.[5] || 0
+      const fontSize = Math.abs(it.transform?.[3]) || it.height || 12
+      return {
+        str: it.str,
+        x,
+        y,
+        width: it.width || 0,
+        fontSize,
+        yFromTop: pageHeight ? pageHeight - y : 0,
+      }
+    })
+
+  validItems.sort((a, b) => {
+    if (Math.abs(a.y - b.y) > 4) {
+      return b.y - a.y // Yukarıdan aşağıya
+    }
+    return a.x - b.x // Soldan sağa
+  })
+
+  const lines: PdfLine[] = []
+  let currentLine: { items: any[]; y: number; yFromTop: number; maxFontSize: number } | null = null
+
+  for (const item of validItems) {
+    if (!currentLine) {
+      currentLine = {
+        items: [item],
+        y: item.y,
+        yFromTop: item.yFromTop,
+        maxFontSize: item.fontSize,
+      }
+      continue
+    }
+
+    const yDiff = Math.abs(item.y - currentLine.y)
+    const isSuperscript =
+      item.fontSize < medianH * 0.85 &&
+      item.y > currentLine.y &&
+      item.y - currentLine.y <= medianH * 0.75 &&
+      /^\d{1,2}$|^\*{1,3}$|^†$/.test(item.str.trim())
+
+    if (yDiff <= Math.max(4, currentLine.maxFontSize * 0.45) || isSuperscript) {
+      if (isSuperscript) {
+        item.str = `[${item.str.trim()}]`
+      }
+      currentLine.items.push(item)
+      if (item.fontSize > currentLine.maxFontSize && !isSuperscript) {
+        currentLine.maxFontSize = item.fontSize
+      }
+    } else {
+      lines.push(finalizePdfLine(currentLine, pageHeight, pageNumber))
+      currentLine = {
+        items: [item],
+        y: item.y,
+        yFromTop: item.yFromTop,
+        maxFontSize: item.fontSize,
+      }
+    }
+  }
+
+  if (currentLine) {
+    lines.push(finalizePdfLine(currentLine, pageHeight, pageNumber))
+  }
+
+  return lines
+}
+
+function finalizePdfLine(
+  lineGroup: { items: any[]; maxFontSize: number; yFromTop: number },
+  pageHeight: number,
+  pageNumber: number,
+): PdfLine {
+  lineGroup.items.sort((a, b) => a.x - b.x)
+  let text = ''
+  const lineFontSize = lineGroup.maxFontSize || 12
+
+  for (let i = 0; i < lineGroup.items.length; i++) {
+    const curr = lineGroup.items[i]
+    if (i > 0) {
+      const prev = lineGroup.items[i - 1]
+      const isBracketFn = /^\[\d+\]$/.test(curr.str)
+      const isTrailingPunctOrHyphen = /^[\-\u00AD\uFFFD\u2010\u2011\u2012\u2013\u00AC'’”\)\]\.,;:\!\?]+$/.test(
+        curr.str.trim(),
+      )
+      const prevEndsWithJoiner = /['’‘“\(\[\-\u00AD\uFFFD\u2010\u2011]$/.test(prev.str.trim())
+
+      let hasHorizontalGap = true
+      if (prev.width && prev.width > 0) {
+        const gap = curr.x - (prev.x + prev.width)
+        const bothLowerLetters = /[a-zçğıöşü]$/.test(prev.str.trim()) && /^[a-zçğıöşü]/.test(curr.str.trim())
+        const threshold = bothLowerLetters ? lineFontSize * 0.22 : lineFontSize * 0.14
+        if (gap < threshold) {
+          hasHorizontalGap = false
+        }
+      }
+
+      if (
+        hasHorizontalGap &&
+        !isBracketFn &&
+        !isTrailingPunctOrHyphen &&
+        !prevEndsWithJoiner &&
+        !text.endsWith(' ') &&
+        !curr.str.startsWith(' ')
+      ) {
+        text += ' '
+      }
+    }
+    text += curr.str
+  }
+
+  return {
+    text: cleanIntraLineHyphens(text.replace(/\s+/g, ' ').trim()),
+    fontSize: lineGroup.maxFontSize,
+    yRatio: pageHeight ? lineGroup.yFromTop / pageHeight : 0.5,
+    pageNumber,
+  }
+}
+
+/**
+ * PDF dosyasını (ArrayBuffer veya File) akıllı heuristics motoruyla ayrıştırır.
  */
 export async function parsePdfDocument(
   source: ArrayBuffer | File,
@@ -169,24 +910,23 @@ export async function parsePdfDocument(
 
   let isOcrUsed = false
   let skippedPagesCount = 0
-  const extractedPages: { pageNum: number; text: string; skipped: boolean }[] = []
+  const rawPages: { pageNumber: number; lines: PdfLine[] }[] = []
 
   let tesseractWorker: any = null
 
   try {
     for (let i = 1; i <= numPages; i++) {
-      onProgress?.(`Sayfa ${i} / ${numPages} taranıyor...`)
+      onProgress?.(`Sayfa ${i} / ${numPages} analiz ediliyor...`)
 
       const page = await pdfDoc.getPage(i)
+      const viewport = page.getViewport({ scale: 1.0 })
       const textContent = await page.getTextContent()
 
-      let pageRawText = textContent.items
-        .map((item: any) => item.str || '')
-        .join(' ')
-        .trim()
+      let lines = groupPdfItemsIntoLines(textContent.items, viewport.height, i)
+      const charCount = lines.reduce((acc, l) => acc + l.text.replace(/\s+/g, '').length, 0)
 
-      // Eğer sayfa dijital metin içermiyorsa (Taranmış fotoğraf PDF)
-      if (pageRawText.split(/\s+/).filter(Boolean).length < 8) {
+      // Eğer sayfa dijital metin içermiyorsa (< 20 karakter) -> OCR uygula
+      if (charCount < 20) {
         onProgress?.(`Sayfa ${i} taranmış resim algılandı, OCR yapılıyor...`)
         isOcrUsed = true
 
@@ -195,27 +935,30 @@ export async function parsePdfDocument(
           tesseractWorker = await Tesseract.createWorker('tur+eng')
         }
 
-        const viewport = page.getViewport({ scale: 1.5 })
+        const ocrViewport = page.getViewport({ scale: 2.0 })
         const canvas = document.createElement('canvas')
-        canvas.width = viewport.width
-        canvas.height = viewport.height
+        canvas.width = ocrViewport.width
+        canvas.height = ocrViewport.height
         const ctx = canvas.getContext('2d')
 
         if (ctx) {
-          await page.render({ canvasContext: ctx, viewport }).promise
+          await page.render({ canvasContext: ctx, viewport: ocrViewport }).promise
           const ocrResult = await tesseractWorker.recognize(canvas)
-          pageRawText = (ocrResult.data && ocrResult.data.text) ? ocrResult.data.text : ''
+          const ocrText = (ocrResult.data && ocrResult.data.text) ? ocrResult.data.text : ''
+          lines = ocrText
+            .split('\n')
+            .map((l: string) => l.trim())
+            .filter(Boolean)
+            .map((lineText: string) => ({
+              text: cleanIntraLineHyphens(lineText),
+              fontSize: 12,
+              yRatio: 0.5,
+              pageNumber: i,
+            }))
         }
       }
 
-      // Künye ve gereksiz sayfa kontrolü
-      const check = isBoilerplatePage(pageRawText, i, numPages)
-      if (check.skip) {
-        skippedPagesCount++
-        extractedPages.push({ pageNum: i, text: '', skipped: true })
-      } else {
-        extractedPages.push({ pageNum: i, text: pageRawText, skipped: false })
-      }
+      rawPages.push({ pageNumber: i, lines })
     }
   } finally {
     if (tesseractWorker) {
@@ -223,13 +966,75 @@ export async function parsePdfDocument(
     }
   }
 
-  // Geçerli sayfaları birleştir
-  const validPagesText = extractedPages
-    .filter((p) => !p.skipped)
-    .map((p) => p.text)
-    .join('\n\n')
+  // 1. Sayfa üstü/altı tekrarlanan başlıkları tespit et
+  const repeatedHeaders = findRepeatedHeaderFooterLines(rawPages)
 
-  const cleanedText = repairHyphenatedWords(validPagesText).trim()
+  // 2. Sayfaları yapılandır, dipnotları ve gereksiz sayfaları temizle
+  const preparedPages: PreparedPage[] = []
+  let mainContentStarted = false
+
+  for (const page of rawPages) {
+    // Tekrarlanan üst/alt bilgi satırlarını filtrele
+    const filteredLines = page.lines.filter((l, idx) => {
+      if (idx === 0 || idx === page.lines.length - 1) {
+        const norm = normalizeEdgeLineForRepeatCheck(l.text)
+        if (repeatedHeaders.has(norm)) return false
+        // Tekil sayfa numaralarını eler
+        if (/^\d{1,4}$/.test(l.text.trim())) return false
+      }
+      return true
+    })
+
+    // Font medyanını hesapla
+    const fonts = filteredLines.map((l) => l.fontSize || 12).sort((a, b) => a - b)
+    const medianFont = fonts.length ? fonts[Math.floor(fonts.length / 2)] : 12
+
+    // Başlıkları işaretle
+    filteredLines.forEach((l, idx) => {
+      l.isHeading = isHeadingLine(l, medianFont, idx, filteredLines)
+    })
+
+    // Dipnotları ayıkla
+    const { bodyLines } = extractFootnotesFromLines(filteredLines, medianFont)
+
+    // Künye ve gereksiz sayfa kontrolü
+    const check = classifyPageBoilerplate(
+      { pageNumber: page.pageNumber, lines: bodyLines },
+      numPages,
+      { mainContentStarted },
+    )
+
+    if (!check.isBoilerplate) {
+      mainContentStarted = true
+    } else {
+      skippedPagesCount++
+    }
+
+    preparedPages.push({
+      pageNumber: page.pageNumber,
+      lines: filteredLines,
+      bodyLines,
+      isBoilerplate: check.isBoilerplate,
+      skipReason: check.reason,
+    })
+  }
+
+  // 3. Satırlar ve sayfalar arası hece/tire birleştirme (De-hyphenation)
+  mergeSplitWordsAcrossLinesAndPages(preparedPages)
+
+  // 4. Geçerli sayfaların satırlarını birleştirip temiz bir kitap metni oluştur
+  const resultBlocks: string[] = []
+
+  for (const page of preparedPages) {
+    if (page.isBoilerplate) continue
+
+    const pageLines = page.bodyLines.map((l) => (l.isHeading ? `# ${l.text.replace(/^#+\s*/, '')}` : l.text))
+    if (pageLines.length > 0) {
+      resultBlocks.push(pageLines.join('\n'))
+    }
+  }
+
+  const cleanedText = resultBlocks.join('\n\n').trim()
   const wordCount = cleanedText.split(/\s+/).filter(Boolean).length
 
   if (wordCount < 10) {

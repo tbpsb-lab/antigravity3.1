@@ -29,7 +29,12 @@ Başlangıçta dakikada iki yüz elli kelime yeterlidir. Rahatladıkça hızı y
 Unutmayın, amaç yalnızca hız değil, berraklıktır. Zihniniz sakin, gözünüz tek bir noktada ve metin akıp giderken, okumak yeniden keyifli bir sessizliğe dönüşür.`
 
 export function tokenize(text: string): string[] {
-  return text.trim().split(/\s+/).filter(Boolean)
+  return text
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .filter((w) => !/^#{1,6}$/.test(w))
+    .map((w) => w.replace(/^#{1,6}(?=\S)/, ''))
 }
 
 export function pivotIndex(word: string): number {
@@ -49,15 +54,105 @@ export function splitAtPivot(word: string): [string, string, string] {
 /**
  * Cümle ve başlık sınırlarına duyarlı akıllı kelime öbekleme (Chunking).
  * Cümle veya başlık bittiğinde sonraki cümlenin kelimeleri mevcut öbeğe karıştırılmaz.
+ * Başlık satırları (# ile başlayanlar) ayrı, bütünlüklü bir öbek olarak sunulur.
  */
 export function createChunks(
-  words: string[],
+  input: string | string[],
   chunkSize: number = 1,
   options: { enableFootnotes?: boolean } = {},
 ): ChunkItem[] {
-  if (!words || words.length === 0) return []
-
+  if (!input) return []
   const { enableFootnotes = true } = options
+
+  // Eğer metin string olarak verildiyse satır ve başlık duyarlı ayrıştırma uygula
+  if (typeof input === 'string') {
+    const lines = input.split(/\r?\n/)
+    const chunks: ChunkItem[] = []
+    let curWords: string[] = []
+    let curStart = 0
+    let globalWordIdx = 0
+    let inFootnote = false
+
+    const flush = (isSentenceEnd: boolean, isHeading: boolean = false, isFootnote: boolean = false) => {
+      if (curWords.length === 0) return
+      chunks.push({
+        text: curWords.join(' '),
+        words: [...curWords],
+        startIndex: curStart,
+        isSentenceEnd,
+        isHeading,
+        isFootnote,
+      })
+      curWords = []
+    }
+
+    for (const rawLine of lines) {
+      const line = rawLine.trim()
+      if (!line) {
+        if (curWords.length > 0) {
+          flush(true, false, inFootnote)
+        }
+        continue
+      }
+
+      const isHeading = /^#{1,6}\s+\S+/.test(line)
+
+      if (isHeading) {
+        if (curWords.length > 0) {
+          flush(true, false, inFootnote)
+        }
+        const cleanLine = line.replace(/^#{1,6}\s+/, '')
+        const hWords = cleanLine.split(/\s+/).filter(Boolean)
+        if (hWords.length > 0) {
+          const hStart = globalWordIdx
+          globalWordIdx += hWords.length
+          chunks.push({
+            text: hWords.join(' '),
+            words: hWords,
+            startIndex: hStart,
+            isSentenceEnd: true,
+            isHeading: true,
+            isFootnote: false,
+          })
+        }
+        continue
+      }
+
+      const lineWords = line.split(/\s+/).filter(Boolean)
+      for (let i = 0; i < lineWords.length; i++) {
+        const w = lineWords[i]
+        if (/^\[dipnot/i.test(w)) inFootnote = true
+
+        if (!enableFootnotes && inFootnote) {
+          if (w.includes(']')) inFootnote = false
+          continue
+        }
+
+        const wIdx = globalWordIdx++
+        if (curWords.length === 0) {
+          curStart = wIdx
+        }
+        curWords.push(w)
+
+        const isFootnoteEnd = inFootnote && w.includes(']')
+        const isSentenceEnd = /[.!?…]["”’»)]*$/.test(w) || isFootnoteEnd
+        if (isFootnoteEnd) inFootnote = false
+
+        if (curWords.length >= Math.max(1, chunkSize) || isSentenceEnd) {
+          flush(isSentenceEnd, false, inFootnote || /^\[dipnot/i.test(curWords[0]))
+        }
+      }
+    }
+
+    if (curWords.length > 0) {
+      flush(true, false, inFootnote)
+    }
+
+    return chunks
+  }
+
+  // Fallback: dizi girdisi için kelime bazlı ayrıştırma
+  const words = input
   const chunks: ChunkItem[] = []
   let currentWords: string[] = []
   let currentStartIndex = 0
@@ -118,11 +213,13 @@ export function createChunks(
       }
     }
 
-    currentWords.push(rawWord)
+    const cleanWord = startsHeading ? rawWord.replace(/^#+\s*/, '') : rawWord
+    if (cleanWord) {
+      currentWords.push(cleanWord)
+    }
 
     if (inFootnoteSpan && rawWord.includes(']')) {
       inFootnoteSpan = false
-      // Dipnot bloğu tamamlandı: hemen öbeği kapat ve normal metne devam et
       flush(true)
       continue
     }
@@ -135,11 +232,6 @@ export function createChunks(
     const nextStartsSpecial =
       i + 1 < words.length && (Boolean(words[i + 1]?.startsWith('#')) || /^\[dipnot/i.test(words[i + 1]))
 
-    // Öbeği tamamlama koşulları:
-    // 1. İstenen öbek boyutuna ulaşıldığında
-    // 2. Cümle bittiğinde (Start new chunk at end of sentences)
-    // 3. Başlık satırı tamamlandığında
-    // 4. Sonraki kelime yeni bir başlık veya dipnot ise
     if (
       currentWords.length >= Math.max(1, chunkSize) ||
       isSentenceEnd ||
@@ -169,9 +261,10 @@ export function chunkDelay(chunk: ChunkItem | string, wpm: number, chunkSize: nu
   // 1. Chunk boyutuna göre süre: Ortalama WPM sabit kalır, çoklu kelimede algılama payı verilir
   let duration = base * (wordCount > 1 ? Math.pow(wordCount, 0.72) : 1)
 
-  // 2. Başlık beklemesi (Başlıkları tanı ve biraz bekle: ~650ms - 850ms)
+  // 2. Başlık beklemesi ve nefes payı:
+  // "Bölüm Başlığı" metin rozeti yerine; başlık daha yavaş geçer (~3.5x) ve ardından nefes payı (+450ms) verilir (~1.25s)
   if (isHeading) {
-    return Math.max(duration * 2.8, 650)
+    return Math.max(duration * 3.5 + 450, 1250)
   }
 
   // 3. Dipnot başlangıç payı

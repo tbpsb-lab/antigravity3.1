@@ -14,6 +14,12 @@ import {
   createChunks,
   chunkDelay,
 } from '@/lib/rsvp'
+import {
+  saveReadingProgress,
+  loadReadingProgress,
+  loadLastActiveDoc,
+  findChunkIndexForWord,
+} from '@/lib/reading-progress'
 import { TopBar } from './top-bar'
 import { RsvpDisplay } from './rsvp-display'
 import { ContextPeek } from './context-peek'
@@ -29,6 +35,7 @@ export function ReaderApp() {
   const [chunkSize, setChunkSize] = useState<number>(1)
   const [readFootnotes, setReadFootnotes] = useState<boolean>(true)
   const [chunkBadge, setChunkBadge] = useState<string | null>(null)
+  const [resumeBadge, setResumeBadge] = useState<string | null>(null)
 
   const [headerRef, headerHeight] = useElementHeight<HTMLElement>()
   const [dockRef, dockHeight] = useElementHeight<HTMLElement>()
@@ -43,8 +50,8 @@ export function ReaderApp() {
 
   // Akıllı Cümle & Başlık Kırılımlı Chunking
   const chunks = useMemo(
-    () => createChunks(words, chunkSize, { enableFootnotes: readFootnotes }),
-    [words, chunkSize, readFootnotes],
+    () => createChunks(text, chunkSize, { enableFootnotes: readFootnotes }),
+    [text, chunkSize, readFootnotes],
   )
 
   const maxSide = useMemo(
@@ -151,12 +158,72 @@ export function ReaderApp() {
     return () => window.removeEventListener('keydown', handler)
   }, [])
 
+  // Tarayıcı ilk açıldığında veya yenilendiğinde son okunan dokümanı ve kalınan yeri hatırla
+  useEffect(() => {
+    const lastDoc = loadLastActiveDoc()
+    if (lastDoc && lastDoc.text) {
+      const saved = loadReadingProgress(lastDoc.title, lastDoc.text)
+      setText(lastDoc.text)
+      if (lastDoc.title) setDocTitle(lastDoc.title)
+      if (saved && (saved.wordIndex > 0 || saved.index > 0)) {
+        const initialChunks = createChunks(lastDoc.text, chunkSize, { enableFootnotes: readFootnotes })
+        const target = findChunkIndexForWord(initialChunks, saved.wordIndex ?? saved.index)
+        if (target > 0) {
+          setIndex(target)
+          setResumeBadge(
+            `Kaldığınız yerden devam ediliyor (%${saved.progressPercent || Math.round((target / Math.max(1, initialChunks.length)) * 100)})`,
+          )
+          const t = setTimeout(() => setResumeBadge(null), 3500)
+          return () => clearTimeout(t)
+        }
+      }
+    }
+  }, [])
+
+  // Akıllı Okuma Konumu Hafızası: Duraklatıldığında veya düzenli aralıklarla son konumu kaydet
+  useEffect(() => {
+    if (!text || chunks.length <= 1) return
+    const wordIdx = currentChunk?.startIndex ?? index
+
+    const timer = setTimeout(
+      () => {
+        saveReadingProgress(
+          docTitle,
+          text,
+          index,
+          wordIdx,
+          chunks.length,
+          words.length,
+          chunkSize,
+          wpm,
+        )
+      },
+      playing ? 2000 : 250,
+    )
+
+    return () => clearTimeout(timer)
+  }, [index, playing, docTitle, text, chunks.length, words.length, chunkSize, wpm, currentChunk])
+
   const applyText = (next: string, title?: string) => {
+    const nextTitle = title || docTitle
     setText(next)
     if (title) setDocTitle(title)
-    setIndex(0)
     setPlaying(false)
     setSheetOpen(false)
+
+    // Hafızadaki son okunan konumu otomatik hatırla ve geri yükle
+    const newChunks = createChunks(next, chunkSize, { enableFootnotes: readFootnotes })
+    const saved = loadReadingProgress(nextTitle, next)
+    if (saved && (saved.wordIndex > 0 || saved.index > 0) && newChunks.length > 0) {
+      const target = findChunkIndexForWord(newChunks, saved.wordIndex ?? saved.index)
+      setIndex(target)
+      setResumeBadge(
+        `Kaldığınız yerden devam ediliyor (%${saved.progressPercent || Math.round((target / Math.max(1, newChunks.length)) * 100)})`,
+      )
+      setTimeout(() => setResumeBadge(null), 3500)
+    } else {
+      setIndex(0)
+    }
   }
 
   const progress = chunks.length > 1 ? index / lastIndex : 0
@@ -257,11 +324,11 @@ export function ReaderApp() {
         />
       </div>
 
-      {/* Chunk Değişimi Anlık HUD Bildirim Rozeti */}
-      {chunkBadge && (
+      {/* Chunk Değişimi veya Kaldığı Yerden Devam Bildirim Rozeti */}
+      {(resumeBadge || chunkBadge) && (
         <div className="pointer-events-none fixed top-16 left-1/2 -translate-x-1/2 z-50 animate-in fade-in zoom-in-95 duration-200">
           <span className="panel px-3.5 py-1.5 text-xs font-mono font-medium text-foreground shadow-lg backdrop-blur-md rounded-full bg-background/90 border border-border/60">
-            {chunkBadge}
+            {resumeBadge || chunkBadge}
           </span>
         </div>
       )}

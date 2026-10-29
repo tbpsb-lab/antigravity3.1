@@ -100,19 +100,12 @@ export function RsvpDisplay({
           </>
         )}
 
-        {/* Başlık veya Dipnot Rozeti */}
-        {(isHeading || isFootnote) && (
-          <div className="absolute left-1/2 top-3.5 -translate-x-1/2 text-center pointer-events-none">
-            {isHeading && (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-0.5 text-[11px] font-mono font-medium uppercase tracking-wider text-primary">
-                Bölüm Başlığı
-              </span>
-            )}
-            {isFootnote && (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/15 px-2.5 py-0.5 text-[11px] font-mono font-medium text-amber-500 dark:text-amber-400">
-                Dipnot
-              </span>
-            )}
+        {/* Dipnot Rozeti (Bölüm Başlığı rozeti yerine başlık tipografik vurgu ile sunulur) */}
+        {isFootnote && (
+          <div className="pointer-events-none absolute left-1/2 top-3.5 -translate-x-1/2 text-center">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/15 px-2.5 py-0.5 font-mono text-[11px] font-medium text-amber-500 dark:text-amber-400">
+              Dipnot
+            </span>
           </div>
         )}
 
@@ -136,7 +129,7 @@ export function RsvpDisplay({
               style={wordStyle}
               className={cn(
                 'reader-word relative flex w-full items-baseline justify-center gap-x-[0.3em] py-[0.08em] leading-[1.3] text-center transition-[font-size] duration-100 ease-out [--word-base:clamp(1.75rem,5.2cqi,3.5rem)] landscape-short:[--word-base:clamp(1.4rem,8vh,2.5rem)]',
-                isHeading && 'font-bold tracking-tight text-foreground',
+                isHeading && 'font-extrabold tracking-tight text-primary drop-shadow-xs transition-all sm:scale-[1.03]',
                 isFootnote && 'italic text-amber-600/90 dark:text-amber-300/90',
               )}
             >

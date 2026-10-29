@@ -44,17 +44,27 @@ const PRE_ARTICLE_NOISE_PATTERNS = [
   /^(yazıları\s+büyüt|yazıları\s+küçült|standart\s+boyut)$/i,
 ]
 
-// Makale bitişini (Cutoff) belirleyen kalıplar (Görüldüğü an makale sona erer!)
-const POST_ARTICLE_CUTOFF_PATTERNS = [
-  // Yazar imzası / arşiv linki (Karakter kodlama bozukluklarına karşı esnek)
-  /t[üu]?m\s*yaz[ıi]lar[ıi]?/i,
-  /yazar[ıi]n\s+(di[ğg]?er|t[üu]?m)\s+yaz[ıi]lar[ıi]/i,
-  /yazar\s+hakk[ıi]nda/i,
-  /di[ğg]?er\s+yaz[ıi]lar[ıi]?\s*i[çc]in/i,
-  /yaz.*t[ıi]?kla/i,
-  /yazara\s+e-posta/i,
+// Makale bitişini (Cutoff) belirleyen kesin altbilgi / footer kalıpları
+// SADECE kısa satırlarda (line.length < 90) ve sonrasında gövde paragrafı kalmadığında tetiklenir!
+const TERMINAL_FOOTER_PATTERNS = [
+  /^(yazarın\s+)?tüm\s+yazıları\s*(için)?(\s*tıklayınız?)?$/i,
+  /^yazarın\s+diğer\s+yazıları$/i,
+  /^yazar\s+hakkında$/i,
+  /^diğer\s+yazıları\s*için$/i,
+  /^(telif\s+hakkı|tüm\s+hakları\s+saklıdır|all\s+rights\s+reserved|copyright\s*©)/i,
+  /^(yorumlar|okur\s+yorumları|yorum\s+yap|yorum\s+bırak)$/i,
+  /^(künye|bize\s+ulaşın|iletişim|gizlilik\s+politikası|çerez\s+politikası)$/i,
+]
 
-  // Sponsorlu reklam ağları (Outbrain, Taboola, RejuvaCare, Otto vb.)
+// Paragraf aralarına sıkışmış reklam, widget veya yönlendirmeler (Atlanır, makaleyi KESMEZ!)
+const INLINE_JUNK_PATTERNS = [
+  /^(haberi\s+görüntüle|haberin\s+devamı|devamı\s+için\s+tıkla|ilgili\s+haber)/i,
+  /^(bizi\s+google\s+news|google\s+news['’]?te\s+takip|abone\s+ol|yorum\s+yaz)/i,
+  /^(reklam|advertisement|sponsored|fotoğraf\s*:|kaynak\s*:)/i,
+  /^(whatsapp\s+kanal|bültenimize\s+abone|tıklayınız)/i,
+  /ilginizi\s+çekebilir/i,
+  /tavsiye\s+edilen\s+(haberler|içerikler)/i,
+  /önerilen\s+içerik/i,
   /\[?\s*sponsorlu(\s*içerik)?\s*\]?/i,
   /sponsorlusponsorlu/i,
   /ad\.rejuvacare/i,
@@ -63,38 +73,12 @@ const POST_ARTICLE_CUTOFF_PATTERNS = [
   /taboola/i,
   /advertorial/i,
   /tanıtım\s+yazısı/i,
-  /ilginizi\s+çekebilir/i,
-  /tavsiye\s+edilen\s+(haberler|içerikler)/i,
-  /önerilen\s+içerik/i,
-
-  // İlgili haberler listesi
   /benzer\s+haberler/i,
   /ilgili\s+haberler/i,
   /günün\s+manşetleri/i,
   /en\s+çok\s+okunanlar/i,
   /günün\s+içinden\s+haberler/i,
   /sıradaki\s+haber/i,
-
-  // Footer, künye, hukuki metinler
-  /yerel\s+seçim\s+sonuçları/i,
-  /seçim\s+sonuçları/i,
-  /sözcü\s+web\s+tv/i,
-  /kişisel\s+verileri\s+koruma/i,
-  /kvkk/i,
-  /gizlilik\s+politikası/i,
-  /çerez\s+politikası/i,
-  /telif\s+hakkı.*aittir/i,
-  /iktibas\s+edilemez/i,
-  /tüm\s+hakları\s+saklıdır/i,
-  /all\s+rights\s+reserved/i,
-]
-
-// Paragraf aralarına sıkışmış reklam veya yönlendirmeler
-const INLINE_JUNK_PATTERNS = [
-  /^(haberi\s+görüntüle|haberin\s+devamı|devamı\s+için\s+tıkla|ilgili\s+haber)/i,
-  /^(bizi\s+google\s+news|google\s+news['’]?te\s+takip|abone\s+ol|yorum\s+yaz)/i,
-  /^(reklam|advertisement|sponsored|fotoğraf\s*:|kaynak\s*:)/i,
-  /^(whatsapp\s+kanal|bültenimize\s+abone|tıklayınız)/i,
 ]
 
 // DOM ağacından peşinen silinecek elementler
@@ -398,16 +382,25 @@ export function cleanArticleMarkdown(rawMarkdown: string, pageUrl = ''): { title
     const lower = line.toLowerCase()
 
     // Bitiş (Cutoff) tetiklendi mi?
-    // 1. Yazar adı ve yazı kelimesi geçiyorsa (Örn: "Necati Doğru Tüm yazıları için tıklayın")
-    if (authorByline && lower.includes(authorByline.toLowerCase()) && lower.includes('yaz')) {
-      break
-    }
-    // 2. Sponsorlu içerik, outbrain, taboola, telif hakkı veya footer kalıpları
-    if (POST_ARTICLE_CUTOFF_PATTERNS.some((rx) => rx.test(lower))) {
-      break
+    // Kural: Eğer satır gerçek bir anlatı paragrafı ise (uzunluğu >= 85 karakter veya > 14 kelime), ASLA kesme!
+    const isShortLine = line.length < 85 && line.split(/\s+/).filter(Boolean).length <= 14
+
+    if (isShortLine) {
+      // 1. Yazar arşiv linki imzası (Örn: "Necati Doğru Tüm yazıları için tıklayın" veya "Yazarın tüm yazıları")
+      const isAuthorSignoff =
+        (authorByline && lower.includes(authorByline.toLowerCase()) && /t[üu]?m\s*yaz/i.test(lower)) ||
+        TERMINAL_FOOTER_PATTERNS.some((rx) => rx.test(lower.trim()))
+
+      if (isAuthorSignoff) {
+        // İleride hala gerçek gövde paragrafları (> 100 karakter) var mı?
+        const hasSubstantialRemaining = rawLines.slice(i + 1, i + 8).some((l) => l.length > 100)
+        if (!hasSubstantialRemaining) {
+          break
+        }
+      }
     }
 
-    // Paragraf içi reklam/gürültü/yönlendirme satırıysa atla
+    // Paragraf içi reklam/gürültü/yönlendirme satırıysa veya inline junk ise atla (KESME, ATLA!)
     if (isNoiseLine(line) || INLINE_JUNK_PATTERNS.some((rx) => rx.test(lower))) {
       continue
     }

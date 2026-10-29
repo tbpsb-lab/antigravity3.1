@@ -12,6 +12,7 @@ type ControlDockProps = {
   total: number
   wpm: number
   playing: boolean
+  chunkSize?: number
   onToggle: () => void
   onSeek: (index: number) => void
   onWpmChange: (delta: number) => void
@@ -24,6 +25,7 @@ export function ControlDock({
   total,
   wpm,
   playing,
+  chunkSize = 1,
   onToggle,
   onSeek,
   onWpmChange,
@@ -60,8 +62,9 @@ export function ControlDock({
           <div className="flex items-center justify-between px-0.5 font-mono text-[11px] tabular-nums text-muted-foreground landscape-short:hidden">
             <span>
               {total === 0 ? 0 : index + 1} / {total}
+              {chunkSize > 1 ? ` (${chunkSize}K öbek)` : ''}
             </span>
-            <span>{formatRemaining(total - index - 1, wpm)} kaldı</span>
+            <span>{formatRemaining(total - index - 1, wpm, chunkSize)} kaldı</span>
           </div>
         </div>
 
@@ -119,7 +122,7 @@ export function ControlDock({
               onClick={() => onSeek(index - 10)}
               disabled={index === 0}
               className="ctl size-9 disabled:opacity-40 sm:size-10 landscape-short:size-9"
-              aria-label="10 kelime geri"
+              aria-label="10 öbek geri"
               aria-keyshortcuts="Shift+ArrowLeft"
             >
               <ChevronLeft className="size-5" />
@@ -129,7 +132,7 @@ export function ControlDock({
               onClick={() => onSeek(index + 10)}
               disabled={index >= last}
               className="ctl size-9 disabled:opacity-40 sm:size-10 landscape-short:size-9"
-              aria-label="10 kelime ileri"
+              aria-label="10 öbek ileri"
               aria-keyshortcuts="Shift+ArrowRight"
             >
               <ChevronRight className="size-5" />
@@ -139,8 +142,8 @@ export function ControlDock({
       </div>
 
       <p className="mx-auto mt-3 hidden max-w-xl text-center text-xs text-muted-foreground lg:block landscape-short:hidden">
-        <kbd className="font-mono">Space</kbd> oku/dur · <kbd className="font-mono">← →</kbd> kelime ·{' '}
-        <kbd className="font-mono">↑ ↓</kbd> hız · <kbd className="font-mono">1 2 3</kbd> tema
+        <kbd className="font-mono">Space</kbd> oku/dur · <kbd className="font-mono">← →</kbd> gez ·{' '}
+        <kbd className="font-mono">↑ ↓</kbd> hız · <kbd className="font-mono">C</kbd> öbek ({chunkSize}K) · <kbd className="font-mono">1 2 3</kbd> tema
       </p>
     </footer>
   )

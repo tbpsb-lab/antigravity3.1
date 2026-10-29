@@ -2,6 +2,7 @@
 
 import { Minus, Plus, Type } from 'lucide-react'
 import { useEffect, useId, useRef, useState } from 'react'
+import type { CSSProperties } from 'react'
 import { cn } from '@/lib/utils'
 
 export type FontFace = 'theme' | 'sans' | 'serif' | 'mono'
@@ -37,9 +38,22 @@ type FontSettingsProps = {
   scale: number
   onFaceChange: (face: FontFace) => void
   onScaleChange: (scale: number) => void
+  chunkSize?: number
+  onChunkSizeChange?: (size: number) => void
+  readFootnotes?: boolean
+  onReadFootnotesChange?: (val: boolean) => void
 }
 
-export function FontSettings({ face, scale, onFaceChange, onScaleChange }: FontSettingsProps) {
+export function FontSettings({
+  face,
+  scale,
+  onFaceChange,
+  onScaleChange,
+  chunkSize = 1,
+  onChunkSizeChange,
+  readFootnotes = true,
+  onReadFootnotesChange,
+}: FontSettingsProps) {
   const [open, setOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
   const panelId = useId()
@@ -72,7 +86,7 @@ export function FontSettings({ face, scale, onFaceChange, onScaleChange }: FontS
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
         aria-controls={panelId}
-        aria-label="Yazı tipi ayarları"
+        aria-label="Görünüm ve okuma ayarları"
         className={cn('ctl panel size-10 landscape-short:size-9', open && 'ctl-primary')}
       >
         <Type className="size-4" />
@@ -81,13 +95,14 @@ export function FontSettings({ face, scale, onFaceChange, onScaleChange }: FontS
       <div
         id={panelId}
         role="dialog"
-        aria-label="Yazı tipi ayarları"
+        aria-label="Görünüm ve okuma ayarları"
         inert={!open}
         className={cn(
-          'panel panel-solid absolute -right-12 top-full z-50 mt-2 w-[min(16rem,calc(100vw-1.5rem))] origin-top-right p-3 sm:right-0 transition-all duration-200 ease-out',
+          'panel panel-solid absolute -right-12 top-full z-50 mt-2 w-[min(18rem,calc(100vw-1.5rem))] origin-top-right p-3.5 sm:right-0 transition-all duration-200 ease-out shadow-xl',
           open ? 'scale-100 opacity-100' : 'pointer-events-none scale-95 opacity-0',
         )}
       >
+        {/* Yazı Tipi Ailesi */}
         <p className="mb-2 px-0.5 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
           Yazı tipi
         </p>
@@ -118,6 +133,7 @@ export function FontSettings({ face, scale, onFaceChange, onScaleChange }: FontS
           })}
         </div>
 
+        {/* Yazı Boyutu */}
         <p className="mb-2 mt-4 px-0.5 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
           Boyut
         </p>
@@ -146,7 +162,7 @@ export function FontSettings({ face, scale, onFaceChange, onScaleChange }: FontS
             style={
               {
                 '--progress': `${((scale - FONT_SCALE_MIN) / (FONT_SCALE_MAX - FONT_SCALE_MIN)) * 100}%`,
-              } as React.CSSProperties
+              } as CSSProperties
             }
           />
           <button
@@ -159,9 +175,66 @@ export function FontSettings({ face, scale, onFaceChange, onScaleChange }: FontS
             <Plus className="size-4" />
           </button>
         </div>
-        <p className="mt-2 text-center font-mono text-[11px] tabular-nums text-muted-foreground">
+        <p className="mt-1.5 text-center font-mono text-[11px] tabular-nums text-muted-foreground">
           %{Math.round(scale * 100)}
         </p>
+
+        {/* Kelime Öbeği (Chunk Size) */}
+        {onChunkSizeChange && (
+          <>
+            <div className="mb-2 mt-4 flex items-center justify-between px-0.5 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+              <span>Kelime Öbeği (Chunk)</span>
+              <span className="font-mono text-[10px] text-muted-foreground/70 normal-case">(C tuşu)</span>
+            </div>
+            <div role="radiogroup" aria-label="Kelime öbeği boyutu" className="grid grid-cols-4 gap-1">
+              {[1, 2, 3, 4].map((size) => {
+                const active = chunkSize === size
+                return (
+                  <button
+                    key={size}
+                    type="button"
+                    role="radio"
+                    aria-checked={active}
+                    onClick={() => onChunkSizeChange(size)}
+                    className={cn(
+                      'ctl h-8 text-xs font-mono font-medium rounded-xl',
+                      active ? 'ctl-primary' : 'bg-transparent text-muted-foreground hover:text-foreground',
+                    )}
+                  >
+                    {size} {size === 1 ? 'kelime' : 'k'}
+                  </button>
+                )
+              })}
+            </div>
+          </>
+        )}
+
+        {/* Akıllı Dipnot Okuma */}
+        {onReadFootnotesChange && (
+          <div className="mt-4 pt-3 border-t border-border/40 flex items-center justify-between gap-2">
+            <div>
+              <p className="text-xs font-medium text-foreground">Metin İçi Dipnotlar</p>
+              <p className="text-[10px] text-muted-foreground">Yeri gelince oku ve cümleye dön</p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={readFootnotes}
+              onClick={() => onReadFootnotesChange(!readFootnotes)}
+              className={cn(
+                'relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none',
+                readFootnotes ? 'bg-primary' : 'bg-muted/60',
+              )}
+            >
+              <span
+                className={cn(
+                  'pointer-events-none inline-block size-4 transform rounded-full bg-background shadow-md ring-0 transition duration-200 ease-in-out',
+                  readFootnotes ? 'translate-x-4' : 'translate-x-0',
+                )}
+              />
+            </button>
+          </div>
+        )}
       </div>
     </div>
   )

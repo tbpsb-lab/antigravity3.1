@@ -29,10 +29,16 @@ export type PdfLine = {
   isHeading?: boolean
 }
 
+export type ExtractedFootnote = {
+  marker: string
+  text: string
+}
+
 export type PreparedPage = {
   pageNumber: number
   lines: PdfLine[]
   bodyLines: PdfLine[]
+  footnotes?: ExtractedFootnote[]
   isBoilerplate: boolean
   skipReason?: string
 }
@@ -735,8 +741,12 @@ function isHeadingLine(lineObj: PdfLine, medianFontSize: number, lineIdx: number
 /**
  * Sayfa altındaki dipnot tanımlarını ana gövde metninden ayıklar.
  */
-function extractFootnotesFromLines(lines: PdfLine[], medianFontSize: number): { bodyLines: PdfLine[] } {
+function extractFootnotesFromLines(
+  lines: PdfLine[],
+  medianFontSize: number,
+): { bodyLines: PdfLine[]; footnotes: ExtractedFootnote[] } {
   const bodyLines: PdfLine[] = []
+  const footnotes: ExtractedFootnote[] = []
   const fnRegex =
     /^(?:\[(\d{1,3}|\*{1,4}|†|‡)\]|\((\d{1,3}|\*{1,4}|†|‡)\)|([¹²³⁴⁵⁶⁷⁸⁹⁰]+)|['"«]?(\*{1,4}|†|‡)|(?:dipnot|not)\s*(\d{1,3})\s*[\:\.\-]|(\d{1,2})[\.\)]?\s+(?=[A-ZÇĞİÖŞÜ"“'‘\(])|(?:Bak\.?|Bkz\.?|Op\.\s*cit|İbid|A\.g\.e|Cfr|Karş|Her düşünürde|Ve Hartmann|I\.\s*Kant:|J\.P\.\s*Sartre|N\.\s*Guillen|N\.\s*Hartmann|M\.\s*Scheler)\b)\s*(.+)$/i
 
@@ -756,16 +766,29 @@ function extractFootnotesFromLines(lines: PdfLine[], medianFontSize: number): { 
         bodyLines.push(line)
         continue
       }
+
+      const marker = match[1] || match[2] || match[3] || match[4] || match[5] || match[6] || '*'
+      let fullFnText = fnContent
       // Dipnot başlangıcı: sayfa sonuna kadar olan devam satırlarını da dipnot olarak atla
       while (i + 1 < lines.length) {
         const nextLine = lines[i + 1]
         const nextText = nextLine.text.trim()
-        if (fnRegex.test(nextText) || nextLine.yRatio > 0.75 || /^\d{1,4}\.?$/.test(nextText)) {
+        if (/^\d{1,4}\.?$/.test(nextText)) {
+          i++
+        } else if (fnRegex.test(nextText)) {
+          break
+        } else if (nextLine.yRatio > 0.75) {
+          fullFnText += ' ' + nextText
           i++
         } else {
           break
         }
       }
+
+      footnotes.push({
+        marker,
+        text: cleanIntraLineHyphens(fullFnText.replace(/\s+/g, ' ').trim()),
+      })
     } else {
       bodyLines.push(line)
     }
@@ -776,11 +799,60 @@ function extractFootnotesFromLines(lines: PdfLine[], medianFontSize: number): { 
     bodyLines.pop()
   }
 
-  return { bodyLines }
+  return { bodyLines, footnotes }
 }
 
 /**
- * Bir sayfanın künye, yazar bio, içindekiler veya kaynakça olup olmadığını analiz eder
+ * Sayfadan ayıklanan dipnotları, gövde metnindeki çağrı işaretlerinin (*, **, [1]) hemen ardına akıllıca iliştirir.
+ * Bu sayede okuyucu metin akışında dipnota denk geldiğinde dipnotu okur ve cümleye kaldığı yerden devam eder.
+ */
+function inlineFootnotesIntoBodyLines(bodyLines: PdfLine[], footnotes?: ExtractedFootnote[]) {
+  if (!footnotes || !footnotes.length || !bodyLines.length) return
+
+  for (const fn of footnotes) {
+    if (!fn.text) continue
+    const cleanFnText = fn.text.replace(/^[\*\d\.\:\-\s]+/, '').trim()
+    if (!cleanFnText) continue
+
+    const marker = fn.marker.trim()
+    let attached = false
+
+    for (let lIdx = 0; lIdx < bodyLines.length; lIdx++) {
+      const l = bodyLines[lIdx]
+      const hasMarker =
+        marker.startsWith('*')
+          ? l.text.includes(marker)
+          : /^\d+$/.test(marker)
+            ? l.text.includes(`[${marker}]`) || l.text.includes(`(${marker})`) || l.text.includes(marker)
+            : l.text.includes(marker)
+
+      if (hasMarker) {
+        const words = l.text.split(/\s+/)
+        const wordIdx = words.findIndex((w) =>
+          marker.startsWith('*')
+            ? w.includes(marker)
+            : /^\d+$/.test(marker)
+              ? w.includes(`[${marker}]`) || w.includes(`(${marker})`)
+              : w.includes(marker),
+        )
+        if (wordIdx !== -1) {
+          words.splice(wordIdx + 1, 0, `[Dipnot: ${cleanFnText}]`)
+          l.text = words.join(' ')
+          attached = true
+          break
+        }
+      }
+    }
+
+    if (!attached) {
+      const lastLine = bodyLines[bodyLines.length - 1]
+      lastLine.text = `${lastLine.text} [Dipnot: ${cleanFnText}]`
+    }
+  }
+}
+
+/**
+ * Bir sayfanın künye, yazar bio, içindekiler, önsöz veya kaynakça olup olmadığını analiz eder
  */
 export function classifyPageBoilerplate(
   page: { pageNumber: number; lines: PdfLine[] },
@@ -790,25 +862,45 @@ export function classifyPageBoilerplate(
   const { mainContentStarted = false } = context
   const rawLines = page.lines.map((l) => collapseSpacedLetters(l.text.trim())).filter(Boolean)
   const fullText = rawLines.join('\n')
-  const lower = fullText.toLowerCase()
+  const lower = fullText.toLowerCase().replace(/\u0307/g, '')
   const wordCount = fullText.split(/\s+/).filter(Boolean).length
 
   if (wordCount === 0 || wordCount < 5) {
     return { isBoilerplate: true, reason: 'Boş Sayfa' }
   }
 
-  const topLinesText = rawLines.slice(0, 4).join(' ')
-  const hasPrefaceOrChapterStart =
-    /^(önsöz|sunuş|giriş|prolog|birinci\s+bölüm|1\.\s*bölüm|bölüm\s*1|kısım\s*1)(?![a-zA-ZçğıöşüÇĞİÖŞÜ0-9])/i.test(
-      rawLines[0] || '',
-    ) || /(?<![a-zA-ZçğıöşüÇĞİÖŞÜ0-9])(önsöz|sunuş)(?![a-zA-ZçğıöşüÇĞİÖŞÜ0-9])/i.test(topLinesText)
+  const topLinesText = rawLines.slice(0, 4).join(' ').toLowerCase().replace(/\u0307/g, '')
+  const isChapterStart =
+    /^(birinci\s+bölüm|1\.\s*bölüm|bölüm\s*1|kısım\s*1|probleme\s*giriş|1\s*[\-\.]\s*değer|giriş)(?![a-zA-ZçğıöşüÇĞİÖŞÜ0-9])/i.test(
+      rawLines[0]?.toLowerCase().replace(/\u0307/g, '') || '',
+    ) ||
+    /^(birinci\s+bölüm|1\.\s*bölüm|bölüm\s*1|kısım\s*1|probleme\s*giriş|1\s*[\-\.]\s*değer)/i.test(
+      topLinesText,
+    )
 
-  // 1. İçindekiler Tablosu
+  // 1. Önsöz / Sunuş Filtresi (Kitap başındaki önsöz sayfalarını otomatik atla)
+  if (page.pageNumber <= Math.min(25, Math.floor(totalPages * 0.25)) && !mainContentStarted) {
+    const isPreface =
+      /^(önsöz|sunuş|yazarın\s*önsözü|çevirenin\s*önsözü|takdim|foreword|preface)(?![a-zA-ZçğıöşüÇĞİÖŞÜ0-9])/i.test(
+        rawLines[0]?.toLowerCase().replace(/\u0307/g, '') || '',
+      ) ||
+      /(?<![a-zA-ZçğıöşüÇĞİÖŞÜ0-9])(önsöz|sunuş|yazarın\s*önsözü)(?![a-zA-ZçğıöşüÇĞİÖŞÜ0-9])/i.test(topLinesText) ||
+      (page.pageNumber <= 9 && (lower.includes('önsöz') || lower.includes('yönelmemin sebebi') || lower.includes('böyle bir problemi')))
+
+    if (isPreface && !isChapterStart) {
+      return { isBoilerplate: true, reason: 'Önsöz / Sunuş (Ön Bilgi)' }
+    }
+  }
+
+  // 2. İçindekiler Tablosu
   const firstLinesLower = rawLines
     .slice(0, 4)
-    .map((l) => l.toLowerCase())
+    .map((l) => l.toLowerCase().replace(/\u0307/g, ''))
     .join(' ')
-  const hasTocHeader = TOC_KEYWORDS.some((kw) => lower.includes(kw) || firstLinesLower.includes(kw))
+  const hasTocHeader = TOC_KEYWORDS.some((kw) => {
+    const cleanKw = kw.toLowerCase().replace(/\u0307/g, '')
+    return lower.includes(cleanKw) || firstLinesLower.includes(cleanKw)
+  })
   const dottedOrNumberedLines = rawLines.filter((l) =>
     /(\.{2,}|\s{2,}|[-–—]{1,2})\s*\d{1,4}$|\.{2,}\d{1,4}$|\b\d{1,3}\s*[-–—]+\s*\d{1,3}\b/.test(l),
   ).length
@@ -820,7 +912,7 @@ export function classifyPageBoilerplate(
     return { isBoilerplate: true, reason: 'İçindekiler Tablosu' }
   }
 
-  // 2. Künye / Yayınevi ve Basım Bilgileri
+  // 3. Künye / Yayınevi ve Basım Bilgileri
   if (page.pageNumber <= Math.min(20, Math.max(5, totalPages)) || (totalPages >= 5 && page.pageNumber >= totalPages - 2)) {
     let kunyeHits = 0
     for (const kw of KUNYE_KEYWORDS) {
@@ -830,22 +922,22 @@ export function classifyPageBoilerplate(
     if (/978[\-\s]?\d/.test(fullText)) kunyeHits += 2
     if (/sertifika\s*no|baskı\s*ve\s*cilt|basım\s*yeri|t[üıi]m\s*haklar[ıi]/i.test(fullText)) kunyeHits += 2
 
-    if (kunyeHits >= 2 && wordCount < 380 && !hasPrefaceOrChapterStart) {
+    if (kunyeHits >= 2 && wordCount < 380 && !isChapterStart) {
       return { isBoilerplate: true, reason: 'Künye / Yayınevi ve Telif Bilgileri' }
     }
   }
 
-  // 3. Kitap başındaki ön sayfalar (Kapak, ithaf, epigraf, bio)
+  // 4. Kitap başındaki ön sayfalar (Kapak, ithaf, epigraf, bio)
   const isFrontZone = totalPages >= 5 && page.pageNumber <= Math.min(16, Math.floor(totalPages * 0.25))
-  if (isFrontZone && !mainContentStarted && !hasPrefaceOrChapterStart) {
+  if (isFrontZone && !mainContentStarted && !isChapterStart) {
     if (wordCount < 60) {
       return { isBoilerplate: true, reason: 'Ön Sayfa (Kapak / İthaf / Tanıtım)' }
     }
   }
 
-  // 4. Son sayfalarda Kaynakça / Dizin / Yazarın Diğer Kitapları
+  // 5. Son sayfalarda Kaynakça / Dizin / Yazarın Diğer Kitapları
   if (totalPages >= 5 && page.pageNumber >= Math.max(1, totalPages - 10)) {
-    const isBackHeader = BACKMATTER_KEYWORDS.some((kw) => lower.includes(kw))
+    const isBackHeader = BACKMATTER_KEYWORDS.some((kw) => lower.includes(kw.toLowerCase().replace(/\u0307/g, '')))
     if (
       isBackHeader &&
       (lower.includes('pp.') ||
@@ -1107,7 +1199,7 @@ export async function parsePdfDocument(
     })
 
     // Dipnotları ayıkla
-    const { bodyLines } = extractFootnotesFromLines(filteredLines, medianFont)
+    const { bodyLines, footnotes } = extractFootnotesFromLines(filteredLines, medianFont)
 
     // Sayfa sonundaki kelimeye yapışmış sayfa numarasını onar ('farklı de7' -> 'farklı de-')
     if (bodyLines.length > 0) {
@@ -1138,6 +1230,7 @@ export async function parsePdfDocument(
       pageNumber: page.pageNumber,
       lines: filteredLines,
       bodyLines,
+      footnotes,
       isBoilerplate: check.isBoilerplate,
       skipReason: check.reason,
     })
@@ -1146,7 +1239,13 @@ export async function parsePdfDocument(
   // 3. Satırlar ve sayfalar arası hece/tire birleştirme (De-hyphenation)
   mergeSplitWordsAcrossLinesAndPages(preparedPages)
 
-  // 4. Geçerli sayfaların satırlarını birleştirip temiz bir kitap metni oluştur
+  // 4. Dipnotları gövde metnine akıllıca iliştir (Akıllı Metin İçi Dipnot Okuma)
+  for (const page of preparedPages) {
+    if (page.isBoilerplate) continue
+    inlineFootnotesIntoBodyLines(page.bodyLines, page.footnotes)
+  }
+
+  // 5. Geçerli sayfaların satırlarını birleştirip temiz bir kitap metni oluştur
   const resultBlocks: string[] = []
 
   for (const page of preparedPages) {

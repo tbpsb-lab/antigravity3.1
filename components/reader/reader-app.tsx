@@ -367,15 +367,7 @@ export function ReaderApp() {
         />
       )}
 
-      <p
-        className={cn(
-          'pointer-events-none fixed inset-x-0 bottom-6 z-20 text-center font-mono text-xs text-muted-foreground transition-opacity delay-700 duration-700',
-          zen ? 'opacity-60' : 'opacity-0 delay-0 duration-200',
-        )}
-      >
-        <span className="hidden md:inline">Duraklatmak için Space · Öbek için C</span>
-        <span className="md:hidden">Duraklatmak için dokunun</span>
-      </p>
+
 
       <TextSheet
         open={sheetOpen}

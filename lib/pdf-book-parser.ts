@@ -121,6 +121,42 @@ const BACKMATTER_KEYWORDS = [
   'yazarın yapıtları',
 ]
 
+const AUTHOR_BIO_KEYWORDS = [
+  'romanlarının yazarıdır',
+  'romanının yazarıdır',
+  'kitaplarının yazarıdır',
+  'yazar hakkında',
+  'biyografi',
+  'biyografisi',
+  'özgeçmiş',
+  'kitapları bugüne kadar',
+  'dile çevrilen',
+  'ödülü\'nü kazanmış',
+  'madalyası\'na aday',
+  'yazarın hayatı',
+  'yazarın yapıtları',
+]
+
+const PRAISE_KEYWORDS = [
+  'övgüler',
+  'hakkında ne dediler',
+  'hakkında söylenenler',
+  'praise for',
+  'acclaim for',
+  'sunday times',
+  'the guardian',
+  'daily telegraph',
+  'stylist',
+  'bbc radio',
+  'new york times',
+  'the times',
+  'booklist',
+  'harika bir hikaye',
+  'çok sürükleyici',
+  'dahi bir hikaye',
+  'duygudaşlığın profesörü',
+]
+
 // Türkçe'de tek başına kelime olmayan, kerning/OCR hatasıyla kelimeden kopmuş ek parçaları
 const BROKEN_SUFFIX_SET = new Set([
   'iyorsunuz',
@@ -852,47 +888,97 @@ function inlineFootnotesIntoBodyLines(bodyLines: PdfLine[], footnotes?: Extracte
 }
 
 /**
+ * Taranmış sayfalarda arka plan desenleri, çizimler veya yıldız/nokta gibi şekillerden
+ * kaynaklanan OCR halüsinasyonlarını (anlamsız rastgele harf yığını) tespit eder.
+ */
+export function isOcrGarbage(text: string): boolean {
+  if (!text) return false
+  const words = text
+    .split(/\s+/)
+    .map((w) => w.replace(/[^a-zA-ZçğıöşüÇĞİÖŞÜ0-9]/g, ''))
+    .filter(Boolean)
+  if (words.length < 15) return false
+
+  const totalWords = words.length
+  const shortWords = words.filter((w) => w.length <= 2).length
+  const singleCharWords = words.filter((w) => w.length === 1).length
+  const totalChars = words.reduce((acc, w) => acc + w.length, 0)
+  const avgWordLen = totalChars / totalWords
+
+  if (shortWords / totalWords >= 0.45 || singleCharWords / totalWords >= 0.25 || avgWordLen < 2.8) {
+    return true
+  }
+
+  return false
+}
+
+/**
  * Bir sayfanın künye, yazar bio, içindekiler, önsöz veya kaynakça olup olmadığını analiz eder
  */
 export function classifyPageBoilerplate(
   page: { pageNumber: number; lines: PdfLine[] },
   totalPages: number,
-  context: { mainContentStarted?: boolean } = {},
-): { isBoilerplate: boolean; reason: string } {
-  const { mainContentStarted = false } = context
+  context: { mainContentStarted?: boolean; inPreface?: boolean } = {},
+): { isBoilerplate: boolean; reason: string; inPreface?: boolean } {
+  let { mainContentStarted = false, inPreface = false } = context
   const rawLines = page.lines.map((l) => collapseSpacedLetters(l.text.trim())).filter(Boolean)
   const fullText = rawLines.join('\n')
   const lower = fullText.toLowerCase().replace(/\u0307/g, '')
-  const wordCount = fullText.split(/\s+/).filter(Boolean).length
+  const words = fullText.split(/\s+/).filter(Boolean)
+  const wordCount = words.length
 
-  if (wordCount === 0 || wordCount < 5) {
-    return { isBoilerplate: true, reason: 'Boş Sayfa' }
+  // 1. Tamamen boş sayfalar
+  if (wordCount === 0) {
+    return { isBoilerplate: true, reason: 'Boş Sayfa', inPreface: false }
+  }
+
+  // 2. OCR gürültüsü ve halüsinasyon kontrolü
+  if (isOcrGarbage(fullText)) {
+    return { isBoilerplate: true, reason: 'Görsel / OCR Gürültüsü', inPreface: false }
+  }
+
+  // 3. Ana metin başlamadan önce 1-4 kelimelik başlık/numara sayfaları
+  if (!mainContentStarted && wordCount < 5) {
+    return { isBoilerplate: true, reason: 'Ön Sayfa (Boş / Başlık)', inPreface }
+  }
+
+  // 4. Ana metin başladıktan sonra sadece tek bir sayı veya noktalama içeren sayfalar
+  if (mainContentStarted && wordCount <= 2 && /^\d{1,4}\.?$/.test(fullText.trim())) {
+    return { isBoilerplate: true, reason: 'Yalnız Sayfa Numarası', inPreface: false }
   }
 
   const topLinesText = rawLines.slice(0, 4).join(' ').toLowerCase().replace(/\u0307/g, '')
   const isChapterStart =
-    /^(birinci\s+bölüm|1\.\s*bölüm|bölüm\s*1|kısım\s*1|probleme\s*giriş|1\s*[\-\.]\s*değer|giriş)(?![a-zA-ZçğıöşüÇĞİÖŞÜ0-9])/i.test(
+    /^(birinci\s+bölüm|1\.\s*bölüm|bölüm\s*1|kısım\s*1|probleme\s*giriş|1\s*[\-\.]\s*değer|giriş|chapter\s*1)(?![a-zA-ZçğıöşüÇĞİÖŞÜ0-9])/i.test(
       rawLines[0]?.toLowerCase().replace(/\u0307/g, '') || '',
     ) ||
-    /^(birinci\s+bölüm|1\.\s*bölüm|bölüm\s*1|kısım\s*1|probleme\s*giriş|1\s*[\-\.]\s*değer)/i.test(
+    /^(birinci\s+bölüm|1\.\s*bölüm|bölüm\s*1|kısım\s*1|probleme\s*giriş|1\s*[\-\.]\s*değer|chapter\s*1)/i.test(
       topLinesText,
     )
 
-  // 1. Önsöz / Sunuş Filtresi (Kitap başındaki önsöz sayfalarını otomatik atla)
+  if (isChapterStart) {
+    inPreface = false
+  }
+
+  // 5. Önsöz / Sunuş Filtresi (Kitap başındaki önsöz ve devam sayfalarını otomatik atla)
   if (page.pageNumber <= Math.min(25, Math.floor(totalPages * 0.25)) && !mainContentStarted) {
-    const isPreface =
+    const isPrefaceStart =
       /^(önsöz|sunuş|yazarın\s*önsözü|çevirenin\s*önsözü|takdim|foreword|preface)(?![a-zA-ZçğıöşüÇĞİÖŞÜ0-9])/i.test(
         rawLines[0]?.toLowerCase().replace(/\u0307/g, '') || '',
       ) ||
       /(?<![a-zA-ZçğıöşüÇĞİÖŞÜ0-9])(önsöz|sunuş|yazarın\s*önsözü)(?![a-zA-ZçğıöşüÇĞİÖŞÜ0-9])/i.test(topLinesText) ||
       (page.pageNumber <= 9 && (lower.includes('önsöz') || lower.includes('yönelmemin sebebi') || lower.includes('böyle bir problemi')))
 
-    if (isPreface && !isChapterStart) {
-      return { isBoilerplate: true, reason: 'Önsöz / Sunuş (Ön Bilgi)' }
+    if (isPrefaceStart && !isChapterStart) {
+      inPreface = true
+    }
+
+    if (inPreface && !isChapterStart) {
+      return { isBoilerplate: true, reason: 'Önsöz / Sunuş (Ön Bilgi)', inPreface: true }
     }
   }
 
-  // 2. İçindekiler Tablosu
+  // 6. İçindekiler Tablosu
   const firstLinesLower = rawLines
     .slice(0, 4)
     .map((l) => l.toLowerCase().replace(/\u0307/g, ''))
@@ -909,10 +995,10 @@ export function classifyPageBoilerplate(
     (hasTocHeader && dottedOrNumberedLines >= 1) ||
     (rawLines.length >= 4 && dottedOrNumberedLines / rawLines.length >= 0.4)
   ) {
-    return { isBoilerplate: true, reason: 'İçindekiler Tablosu' }
+    return { isBoilerplate: true, reason: 'İçindekiler Tablosu', inPreface: false }
   }
 
-  // 3. Künye / Yayınevi ve Basım Bilgileri
+  // 7. Künye / Yayınevi ve Basım Bilgileri
   if (page.pageNumber <= Math.min(20, Math.max(5, totalPages)) || (totalPages >= 5 && page.pageNumber >= totalPages - 2)) {
     let kunyeHits = 0
     for (const kw of KUNYE_KEYWORDS) {
@@ -920,22 +1006,35 @@ export function classifyPageBoilerplate(
     }
     if (fullText.includes('©')) kunyeHits++
     if (/978[\-\s]?\d/.test(fullText)) kunyeHits += 2
-    if (/sertifika\s*no|baskı\s*ve\s*cilt|basım\s*yeri|t[üıi]m\s*haklar[ıi]/i.test(fullText)) kunyeHits += 2
+    if (/sertifika\s*no|baskı\s*ve\s*cilt|basım\s*yeri|özgün\s*(adı|ismi)|t[üıi]m\s*haklar[ıi]/i.test(fullText)) kunyeHits += 2
 
     if (kunyeHits >= 2 && wordCount < 380 && !isChapterStart) {
-      return { isBoilerplate: true, reason: 'Künye / Yayınevi ve Telif Bilgileri' }
+      return { isBoilerplate: true, reason: 'Künye / Yayınevi ve Telif Bilgileri', inPreface: false }
     }
   }
 
-  // 4. Kitap başındaki ön sayfalar (Kapak, ithaf, epigraf, bio)
-  const isFrontZone = totalPages >= 5 && page.pageNumber <= Math.min(16, Math.floor(totalPages * 0.25))
+  // 8. Kitap başındaki ön sayfalar (Kapak, yazar biyografisi, basın övgüleri, ithaf, epigraf)
+  const isFrontZone = totalPages >= 5 && page.pageNumber <= Math.min(25, Math.floor(totalPages * 0.25))
   if (isFrontZone && !mainContentStarted && !isChapterStart) {
-    if (wordCount < 60) {
-      return { isBoilerplate: true, reason: 'Ön Sayfa (Kapak / İthaf / Tanıtım)' }
+    // Yazar Biyografisi kontrolü
+    const bioHits = AUTHOR_BIO_KEYWORDS.filter((kw) => lower.includes(kw)).length
+    if (bioHits >= 1 || (lower.includes('@') && (lower.includes('roman') || lower.includes('kitap') || lower.includes('yazar')))) {
+      return { isBoilerplate: true, reason: 'Yazar Biyografisi', inPreface: false }
+    }
+
+    // Basın ve Okur Övgüleri
+    const praiseHits = PRAISE_KEYWORDS.filter((kw) => lower.includes(kw)).length
+    if (praiseHits >= 2 || (fullText.includes('"') && praiseHits >= 1 && wordCount < 300)) {
+      return { isBoilerplate: true, reason: 'Basın ve Okur Övgüleri', inPreface: false }
+    }
+
+    // Kısa ön sayfalar (Yarım başlık, ithaf, epigraf vb.)
+    if (wordCount < 65) {
+      return { isBoilerplate: true, reason: 'Ön Sayfa (Kapak / İthaf / Tanıtım)', inPreface: false }
     }
   }
 
-  // 5. Son sayfalarda Kaynakça / Dizin / Yazarın Diğer Kitapları
+  // 9. Son sayfalarda Kaynakça / Dizin / Yazarın Diğer Kitapları
   if (totalPages >= 5 && page.pageNumber >= Math.max(1, totalPages - 10)) {
     const isBackHeader = BACKMATTER_KEYWORDS.some((kw) => lower.includes(kw.toLowerCase().replace(/\u0307/g, '')))
     if (
@@ -947,11 +1046,11 @@ export function classifyPageBoilerplate(
         lower.includes('kitap') ||
         lower.includes('yayın'))
     ) {
-      return { isBoilerplate: true, reason: 'Kaynakça / Yazarın Kitapları / Dizin' }
+      return { isBoilerplate: true, reason: 'Kaynakça / Yazarın Kitapları / Dizin', inPreface: false }
     }
   }
 
-  return { isBoilerplate: false, reason: 'Ana Metin' }
+  return { isBoilerplate: false, reason: 'Ana Metin', inPreface: false }
 }
 
 /**
@@ -1089,6 +1188,36 @@ function finalizePdfLine(
 }
 
 /**
+ * PDF dosyasının dijital metin katmanı içerip içermediğini örneklemeyle tespit eder.
+ * Dijital kitaplarda boş veya illüstrasyon sayfalarında OCR çalıştırılmasını engelleyerek
+ * halüsinasyonların ve performans kayıplarının önüne geçer.
+ */
+async function detectIsDigitalPdf(pdfDoc: any, numPages: number): Promise<boolean> {
+  const sampleCount = Math.min(10, numPages)
+  const step = Math.max(1, Math.floor(numPages / sampleCount))
+  let pagesWithText = 0
+  let totalWords = 0
+
+  for (let i = 0; i < sampleCount; i++) {
+    const pageNum = Math.min(numPages, 1 + i * step)
+    try {
+      const page = await pdfDoc.getPage(pageNum)
+      const textContent = await page.getTextContent()
+      const text = textContent.items.map((it: any) => it.str || '').join(' ')
+      const words = text.split(/\s+/).filter(Boolean).length
+      if (words >= 15) {
+        pagesWithText++
+        totalWords += words
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  return pagesWithText >= 2 || totalWords > 100
+}
+
+/**
  * PDF dosyasını (ArrayBuffer veya File) akıllı heuristics motoruyla ayrıştırır.
  */
 export async function parsePdfDocument(
@@ -1112,6 +1241,9 @@ export async function parsePdfDocument(
   const pdfDoc = await loadingTask.promise
   const numPages = pdfDoc.numPages
 
+  onProgress?.('PDF metin katmanı analiz ediliyor...')
+  const isDigitalDocument = await detectIsDigitalPdf(pdfDoc, numPages)
+
   let isOcrUsed = false
   let skippedPagesCount = 0
   const rawPages: { pageNumber: number; lines: PdfLine[] }[] = []
@@ -1129,8 +1261,10 @@ export async function parsePdfDocument(
       let lines = groupPdfItemsIntoLines(textContent.items, viewport.height, i)
       const charCount = lines.reduce((acc, l) => acc + l.text.replace(/\s+/g, '').length, 0)
 
-      // Eğer sayfa dijital metin içermiyorsa (< 20 karakter) -> OCR uygula
-      if (charCount < 20) {
+      // Eğer sayfa dijital metin içermiyorsa (< 20 karakter):
+      // SADECE belge genel olarak taranmış (scanned) bir belge ise OCR uygula!
+      // Dijital kitaplarda boş, kapak resmi veya çizim sayfaları OCR'a sokulmaz (halüsinasyonu ve gecikmeyi önler).
+      if (charCount < 20 && !isDigitalDocument) {
         onProgress?.(`Sayfa ${i} taranmış resim algılandı, OCR yapılıyor...`)
         isOcrUsed = true
 
@@ -1149,17 +1283,23 @@ export async function parsePdfDocument(
           await page.render({ canvasContext: ctx, viewport: ocrViewport }).promise
           const ocrResult = await tesseractWorker.recognize(canvas)
           const ocrText = (ocrResult.data && ocrResult.data.text) ? ocrResult.data.text : ''
-          lines = ocrText
-            .split('\n')
-            .map((l: string) => l.trim())
-            .filter(Boolean)
-            .map((lineText: string) => ({
-              text: cleanIntraLineHyphens(lineText),
-              fontSize: 12,
-              yRatio: 0.5,
-              pageNumber: i,
-            }))
+          if (!isOcrGarbage(ocrText)) {
+            lines = ocrText
+              .split('\n')
+              .map((l: string) => l.trim())
+              .filter(Boolean)
+              .map((lineText: string) => ({
+                text: cleanIntraLineHyphens(lineText),
+                fontSize: 12,
+                yRatio: 0.5,
+                pageNumber: i,
+              }))
+          } else {
+            lines = []
+          }
         }
+      } else if (charCount < 20) {
+        lines = []
       }
 
       rawPages.push({ pageNumber: i, lines })
@@ -1176,6 +1316,7 @@ export async function parsePdfDocument(
   // 2. Sayfaları yapılandır, dipnotları ve gereksiz sayfaları temizle
   const preparedPages: PreparedPage[] = []
   let mainContentStarted = false
+  let inPreface = false
 
   for (const page of rawPages) {
     // Tekrarlanan üst/alt bilgi satırlarını filtrele
@@ -1217,8 +1358,9 @@ export async function parsePdfDocument(
     const check = classifyPageBoilerplate(
       { pageNumber: page.pageNumber, lines: bodyLines },
       numPages,
-      { mainContentStarted },
+      { mainContentStarted, inPreface },
     )
+    inPreface = check.inPreface ?? false
 
     if (!check.isBoilerplate) {
       mainContentStarted = true

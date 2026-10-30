@@ -103,18 +103,92 @@ export function tokenize(text: string): string[] {
   return splitGluedTokens(rawTokens)
 }
 
+export interface TurkishORPResult {
+  leftPart: string
+  focusChar: string
+  rightPart: string
+  orpIndex: number
+  cleanLength: number
+  leadingOffset: number
+}
+
+/**
+ * 1. KURAL: Noktalamadan Arındırılmış Türkçe ORP Algoritması (calculateTurkishORP)
+ *
+ * Türkçe'nin sondan eklemeli yapısına göre kelime kökünü merkeze alır:
+ * - Kelime başındaki ("('«[ vb.) ve sonundaki (.,!?;:")'»] vb.) noktalama işaretlerini uzunluk hesabından hariç tutar (cleanLength).
+ * - Baştaki noktalama sayısını leadingOffset olarak kaydeder.
+ * - cleanLength değerine göre 0-tabanlı coreOrpIndex tablosu:
+ *   * 1 harf -> 0
+ *   * 2 - 5 harf -> 1
+ *   * 6 - 9 harf -> 2
+ *   * 10 - 13 harf -> 3
+ *   * 14 ve üzeri harf -> 4 (Türkçe'de kök başta olduğu için asla 4'ten büyük indeks verilmez)
+ * - Gerçek ORP indeksi: const orpIndex = leadingOffset + coreOrpIndex
+ * - 3 parçaya ayırır: leftPart, focusChar, rightPart
+ */
+export function calculateTurkishORP(word: string): TurkishORPResult {
+  if (!word) {
+    return {
+      leftPart: '',
+      focusChar: '',
+      rightPart: '',
+      orpIndex: 0,
+      cleanLength: 0,
+      leadingOffset: 0,
+    }
+  }
+
+  // Başındaki noktalama işaretlerini tespit et: " ( ' « [ “ ‘ vb.
+  const leadMatch = word.match(/^[^\wçğıöşüÇĞİÖŞÜ0-9]+/)
+  const leadingPunct = leadMatch ? leadMatch[0] : ''
+  const leadingOffset = leadingPunct.length
+
+  // Sonundaki noktalama işaretlerini tespit et: .,!?;:")'»] ” ’ vb.
+  const trailMatch = word.match(/[^\wçğıöşüÇĞİÖŞÜ0-9]+$/)
+  const trailingPunct = trailMatch ? trailMatch[0] : ''
+  const trailingOffset = trailingPunct.length
+
+  // Noktalamalardan arındırılmış temiz kelime uzunluğu
+  const cleanLength = Math.max(0, word.length - leadingOffset - trailingOffset)
+
+  let coreOrpIndex = 0
+  if (cleanLength <= 1) {
+    coreOrpIndex = 0
+  } else if (cleanLength <= 5) {
+    coreOrpIndex = 1
+  } else if (cleanLength <= 9) {
+    coreOrpIndex = 2
+  } else if (cleanLength <= 13) {
+    coreOrpIndex = 3
+  } else {
+    coreOrpIndex = 4
+  }
+
+  const rawOrpIndex = cleanLength > 0 ? leadingOffset + coreOrpIndex : Math.floor((word.length - 1) / 2)
+  const orpIndex = Math.min(Math.max(0, rawOrpIndex), Math.max(0, word.length - 1))
+
+  const leftPart = word.slice(0, orpIndex)
+  const focusChar = word[orpIndex] || ''
+  const rightPart = word.slice(orpIndex + 1)
+
+  return {
+    leftPart,
+    focusChar,
+    rightPart,
+    orpIndex,
+    cleanLength,
+    leadingOffset,
+  }
+}
+
 export function pivotIndex(word: string): number {
-  const len = word.length
-  if (len <= 1) return 0
-  if (len <= 5) return 1
-  if (len <= 9) return 2
-  if (len <= 13) return 3
-  return 4
+  return calculateTurkishORP(word).orpIndex
 }
 
 export function splitAtPivot(word: string): [string, string, string] {
-  const i = pivotIndex(word)
-  return [word.slice(0, i), word.charAt(i), word.slice(i + 1)]
+  const { leftPart, focusChar, rightPart } = calculateTurkishORP(word)
+  return [leftPart, focusChar, rightPart]
 }
 
 /**

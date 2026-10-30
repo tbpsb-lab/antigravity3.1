@@ -31,7 +31,7 @@ import { useElementHeight } from '@/lib/use-element-height'
 
 export function ReaderApp() {
   const [theme, setTheme] = useState<ThemeId>('ios')
-  const [fontFace, setFontFace] = useState<FontFace>('theme')
+  const [fontFace, setFontFace] = useState<FontFace>('mono')
   const [fontScale, setFontScale] = useState(1)
   const [chunkSize, setChunkSize] = useState<number>(1)
   const [readFootnotes, setReadFootnotes] = useState<boolean>(true)

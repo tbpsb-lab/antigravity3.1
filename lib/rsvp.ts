@@ -544,3 +544,85 @@ export function formatRemaining(chunksLeft: number, wpm: number, chunkSize: numb
   const rest = seconds % 60
   return rest === 0 ? `${minutes} dk` : `${minutes} dk ${rest} sn`
 }
+
+/**
+ * Akıllı Cümle Başı Bulma Algoritması (Sentence-Boundary Rewind Engine)
+ *
+ * 1. Cümle Sınırı Tespiti (Sentence Boundary Detection):
+ *    Mevcut kelime indeksinden (currentIndex) geriye doğru taranır.
+ *    Cümle bitiren noktalama (. ! ? …) veya cümle sonu bayrağı taşıyan ilk öğe bulunur.
+ *    O bitiş noktasından hemen sonra gelen ilk öğe (boundary + 1), "mevcut cümlenin ilk kelimesidir".
+ *
+ * 2. Çok Yakın Durum Eşiği (Edge Case):
+ *    Eğer kullanıcı zaten cümlenin ilk kelimesindeyse veya başlangıca 3 kelimeden yakınsa
+ *    (distance < thresholdWords), bir önceki cümlenin ilk kelimesine (daha da öncesine) zıplanır.
+ *    Metnin en başındaysak (currentIndex === 0) veya daha öncesi yoksa, 0'da sabitlenir.
+ */
+export function findPreviousSentenceIndex(
+  chunks: (ChunkItem | string)[],
+  currentIndex: number,
+  thresholdWords: number = 3,
+): number {
+  if (!chunks || chunks.length === 0 || currentIndex <= 0) {
+    return 0
+  }
+
+  const isBoundary = (idx: number): boolean => {
+    if (idx < 0 || idx >= chunks.length) return false
+    const item = chunks[idx]
+    if (!item) return false
+    if (typeof item === 'object') {
+      if (item.isSentenceEnd || item.isParagraphEnd || item.isHeading) return true
+      return /[.!?…]["”’»)\u201D\u2019\]]*$/.test(item.text.trim())
+    }
+    return /[.!?…]["”’»)\u201D\u2019\]]*$/.test(String(item).trim())
+  }
+
+  // 1. Mevcut cümlenin bittiği önceki sınırı geriye doğru ara
+  let currentSentenceEndBefore = -1
+  for (let i = currentIndex - 1; i >= 0; i--) {
+    if (isBoundary(i)) {
+      currentSentenceEndBefore = i
+      break
+    }
+  }
+
+  const currentSentenceStart = currentSentenceEndBefore + 1
+
+  const getWordStart = (idx: number): number => {
+    if (idx < 0 || idx >= chunks.length) return idx
+    const item = chunks[idx]
+    if (item && typeof item === 'object' && typeof (item as ChunkItem).startIndex === 'number') {
+      return (item as ChunkItem).startIndex
+    }
+    return idx
+  }
+
+  const distanceWords = getWordStart(currentIndex) - getWordStart(currentSentenceStart)
+  const distanceChunks = currentIndex - currentSentenceStart
+  const distance = Math.max(distanceWords, distanceChunks)
+
+  // 2. Çok Yakın Durum Eşiği: 3 kelimeden yakınsak bir önceki cümlenin ilk kelimesine zıpla
+  if (distance < thresholdWords) {
+    if (currentSentenceStart <= 0) {
+      // Zaten ilk cümle içindeyiz, metin başına dön
+      return 0
+    }
+
+    // Bir önceki cümlenin bittiği sınırı ara (currentSentenceStart - 1'in de öncesi)
+    let prevSentenceEndBefore = -1
+    for (let i = currentSentenceStart - 2; i >= 0; i--) {
+      if (isBoundary(i)) {
+        prevSentenceEndBefore = i
+        break
+      }
+    }
+
+    const prevSentenceStart = prevSentenceEndBefore + 1
+    return Math.max(0, prevSentenceStart)
+  }
+
+  // 3. Cümle içinde yeterince ilerideyiz, mevcut cümlenin başına zıpla
+  return Math.max(0, currentSentenceStart)
+}
+

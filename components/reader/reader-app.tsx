@@ -15,6 +15,7 @@ import {
   createChunks,
   calculateWordDelay,
   chunkDelay,
+  findPreviousSentenceIndex,
 } from '@/lib/rsvp'
 import {
   saveReadingProgress,
@@ -122,6 +123,38 @@ export function ReaderApp() {
     },
     [lastIndex],
   )
+
+  // 1 & 2. KURAL: Akıllı Cümle Başı Parlama (Pulse / Jump) Animasyonu
+  const [isPulsing, setIsPulsing] = useState(false)
+  const pulseTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const pulseRafRef = useRef<number | null>(null)
+
+  const triggerPulse = useCallback(() => {
+    if (pulseTimerRef.current) clearTimeout(pulseTimerRef.current)
+    if (pulseRafRef.current) cancelAnimationFrame(pulseRafRef.current)
+
+    // Hızlı ardışık geri sarmalarda animasyonun baştan oynamasını garantiye al
+    setIsPulsing(false)
+    pulseRafRef.current = requestAnimationFrame(() => {
+      setIsPulsing(true)
+      pulseTimerRef.current = setTimeout(() => {
+        setIsPulsing(false)
+      }, 400) // 400ms parlama animasyonu
+    })
+  }, [])
+
+  // 1, 2 & 3. KURAL: Akıllı Cümle Başı Geri Sarma (Sentence-Boundary Rewind)
+  // Sadece 1 kelime yerine tam önceki cümlenin ilk kelimesine zıplar.
+  // Kullanıcı zaten cümlenin başındaysa veya ilk 3 kelimesindeyse daha da önceki cümlenin başına zıplar.
+  const handleSmartRewind = useCallback(() => {
+    if (chunks.length === 0) return
+    rampStepRef.current = 0
+    const targetIndex = findPreviousSentenceIndex(chunks, index, 3)
+    setIndex(targetIndex)
+    triggerPulse()
+  }, [chunks, index, triggerPulse])
+
+  const jumpToPreviousSentence = handleSmartRewind
 
   // 1, 2 & 3. KURAL: Canlı WPM Toast HUD ve Zamanlayıcı Mantığı
   const [wpmToastVisible, setWpmToastVisible] = useState(false)
@@ -284,7 +317,11 @@ export function ReaderApp() {
         break
       case 'ArrowLeft':
         e.preventDefault()
-        seek(index - (e.shiftKey ? 10 : 1))
+        if (e.shiftKey) {
+          seek(index - 10)
+        } else {
+          handleSmartRewind()
+        }
         break
       case 'ArrowRight':
         e.preventDefault()
@@ -313,7 +350,11 @@ export function ReaderApp() {
   useEffect(() => {
     const handler = (e: KeyboardEvent) => onKeyDown(e)
     window.addEventListener('keydown', handler)
-    return () => window.removeEventListener('keydown', handler)
+    return () => {
+      window.removeEventListener('keydown', handler)
+      if (pulseTimerRef.current) clearTimeout(pulseTimerRef.current)
+      if (pulseRafRef.current) cancelAnimationFrame(pulseRafRef.current)
+    }
   }, [])
 
   // Tarayıcı ilk açıldığında veya yenilendiğinde son ayarları (tema, font, chunk vb.) ve okunan dokümanı sessizce hatırla
@@ -447,8 +488,9 @@ export function ReaderApp() {
             chunk={currentChunk}
             chunkSize={chunkSize}
             playing={playing}
+            isPulsing={isPulsing}
             onToggle={togglePlay}
-            onPrev={() => seek(index - 1)}
+            onPrev={handleSmartRewind}
             onNext={() => seek(index + 1)}
             onWpmChange={changeWpm}
             onWpmSet={setWpmDirect}
@@ -522,14 +564,14 @@ export function ReaderApp() {
           onTouchEnd={handleZenTouchEnd}
           className="fixed inset-0 z-20 flex select-none pointer-events-auto"
         >
-          {/* Sol %25: 1 kelime geri sar */}
+          {/* Sol %25: Akıllı cümle başı geri sar */}
           <button
             type="button"
-            aria-label="1 kelime geri sar"
+            aria-label="Önceki cümle başına sar"
             className="h-full w-1/4 cursor-pointer outline-none active:bg-foreground/[0.02]"
             onClick={(e) => {
               e.stopPropagation()
-              handleZenClick(() => seek(index - 1))
+              handleZenClick(handleSmartRewind)
             }}
           />
 

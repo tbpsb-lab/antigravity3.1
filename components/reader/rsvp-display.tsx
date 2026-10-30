@@ -15,6 +15,7 @@ type RsvpDisplayProps = {
   fontFamily?: string
   fontScale: number
   maxSide: number
+  isPulsing?: boolean
   onToggle: () => void
   onPrev?: () => void
   onNext?: () => void
@@ -31,6 +32,7 @@ export function RsvpDisplay({
   wpm,
   fontFamily,
   fontScale,
+  isPulsing = false,
   onToggle,
   onPrev,
   onNext,
@@ -168,7 +170,8 @@ export function RsvpDisplay({
         onTouchEnd={handleTouchEnd}
         onWheel={handleWheel}
         className={cn(
-          'group relative block w-full overflow-hidden px-4 py-11 text-left outline-none transition-all duration-500 sm:px-8 sm:py-15 [@media(max-height:640px)]:py-8 landscape-short:py-6 select-none',
+          'rsvp-stage group relative block w-full overflow-hidden px-4 py-11 text-left outline-none transition-all duration-500 sm:px-8 sm:py-15 [@media(max-height:640px)]:py-8 landscape-short:py-6 select-none',
+          isPulsing && 'pulse-jump',
           playing
             ? 'border-transparent bg-transparent shadow-none'
             : 'panel focus-visible:ring-2 focus-visible:ring-ring',
@@ -176,10 +179,10 @@ export function RsvpDisplay({
       >
         {/* 1. KURAL: 3 Görünmez Dokunma Bölgesi (Tap Zones) */}
         <div className="absolute inset-0 z-20 flex select-none pointer-events-auto">
-          {/* Sol %25: 1 kelime geri sar */}
+          {/* Sol %25: Akıllı Cümle Başı Geri Sarma */}
           <button
             type="button"
-            aria-label="1 kelime geri sar"
+            aria-label="Önceki cümle başına sar"
             className="h-full w-1/4 cursor-pointer outline-none active:bg-foreground/[0.03] transition-colors"
             onClick={(e) => {
               e.stopPropagation()

@@ -1047,3 +1047,44 @@ body.is-zen-reading .corner-badge-right {
     min-width: 90px;
   }
 }
+
+
+/* ==========================================================================
+   Akıllı Cümle Başı Geri Sarma (Sentence-Boundary Rewind) Parlama Animasyonu
+   ========================================================================== */
+@keyframes pulse-jump {
+  0% {
+    background-color: rgba(59, 130, 246, 0.22);
+    box-shadow: 0 0 35px -5px rgba(59, 130, 246, 0.35), inset 0 0 22px rgba(59, 130, 246, 0.18);
+    border-color: rgba(96, 165, 250, 0.45);
+    transform: scale(0.995);
+  }
+  50% {
+    background-color: rgba(59, 130, 246, 0.08);
+    box-shadow: 0 0 18px rgba(59, 130, 246, 0.16);
+    transform: scale(1.002);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: none;
+  }
+}
+
+.pulse-jump {
+  animation: pulse-jump 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+}
+
+.pulse-jump .reader-word {
+  animation: word-pulse-jump 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes word-pulse-jump {
+  0% {
+    transform: scale(1.05);
+    filter: brightness(1.25);
+  }
+  100% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
+}

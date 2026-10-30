@@ -4,6 +4,7 @@ import { useRef, type CSSProperties } from 'react'
 import { cn } from '@/lib/utils'
 import { calculateTurkishORP, WPM_STEP, type ChunkItem } from '@/lib/rsvp'
 import { useElementSize } from '@/lib/use-element-size'
+import { TapGuide } from './tap-guide'
 
 type RsvpDisplayProps = {
   word: string
@@ -208,6 +209,9 @@ export function RsvpDisplay({
             }}
           />
         </div>
+
+        {/* İlk Açılış İçin Yarı Saydam Dokunma Rehberi (Tap Guide Overlay) */}
+        <TapGuide />
 
         {/* Üst ve Alt Odak Çentikleri: Yalnızca tek kelime ORP modunda gösterilir */}
         {isSingleWordMode && (

@@ -1,6 +1,6 @@
 'use client'
 
-import { ChevronLeft, ChevronRight, Minus, Pause, Play, Plus } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Pause, Play } from 'lucide-react'
 import type { CSSProperties, Ref } from 'react'
 import { cn } from '@/lib/utils'
 import { MAX_WPM, MIN_WPM, WPM_STEP, formatRemaining } from '@/lib/rsvp'
@@ -70,35 +70,13 @@ export function ControlDock({
 
         <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-1.5 sm:gap-2 landscape-short:flex landscape-short:shrink-0">
           <div
-            className="flex items-center gap-1 justify-self-start"
-            role="group"
-            aria-label="Okuma hızı"
+            className="flex items-center gap-1.5 justify-self-start px-1 font-mono text-xs text-muted-foreground"
+            role="status"
+            aria-label={`Okuma hızı: ${wpm} kelime/dakika`}
           >
-            <button
-              type="button"
-              onClick={() => onWpmChange(-WPM_STEP)}
-              disabled={wpm <= MIN_WPM}
-              className="ctl size-9 disabled:opacity-40 sm:size-10 landscape-short:size-9"
-              aria-label="Hızı azalt"
-            >
-              <Minus className="size-4" />
-            </button>
-            <output
-              aria-live="polite"
-              className="flex w-11 flex-col items-center leading-none"
-            >
-              <span className="font-mono text-sm font-semibold tabular-nums">{wpm}</span>
-              <span className="mt-1 text-[10px] text-muted-foreground">k/dk</span>
-            </output>
-            <button
-              type="button"
-              onClick={() => onWpmChange(WPM_STEP)}
-              disabled={wpm >= MAX_WPM}
-              className="ctl size-9 disabled:opacity-40 sm:size-10 landscape-short:size-9"
-              aria-label="Hızı artır"
-            >
-              <Plus className="size-4" />
-            </button>
+            <span className="text-sm font-semibold tabular-nums text-foreground">{wpm}</span>
+            <span className="text-[11px]">k/dk</span>
+            <span className="text-[10px] opacity-60 hidden sm:inline">(↕ kaydır)</span>
           </div>
 
           <button
@@ -143,7 +121,7 @@ export function ControlDock({
 
       <p className="mx-auto mt-3 hidden max-w-xl text-center text-xs text-muted-foreground lg:block landscape-short:hidden">
         <kbd className="font-mono">Space</kbd> oku/dur · <kbd className="font-mono">← →</kbd> gez ·{' '}
-        <kbd className="font-mono">↑ ↓</kbd> hız · <kbd className="font-mono">C</kbd> öbek ({chunkSize}K) · <kbd className="font-mono">1 2 3</kbd> tema
+        <kbd className="font-mono">↕</kbd> kaydır (hız) · <kbd className="font-mono">C</kbd> öbek ({chunkSize}K) · <kbd className="font-mono">1 2 3</kbd> tema
       </p>
     </footer>
   )

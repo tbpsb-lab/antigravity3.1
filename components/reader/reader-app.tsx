@@ -122,10 +122,76 @@ export function ReaderApp() {
     [lastIndex],
   )
 
+  // 2. KURAL: Butonsuz Hız Kontrolü - WPM Toast HUD durumu ve zamanlayıcısı
+  const [wpmToastVisible, setWpmToastVisible] = useState(false)
+  const wpmToastTimerRef = useRef<NodeJS.Timeout | null>(null)
+
   const changeWpm = useCallback(
-    (delta: number) => setWpm((w) => Math.min(MAX_WPM, Math.max(MIN_WPM, w + delta))),
+    (delta: number) => {
+      setWpm((w) => Math.min(MAX_WPM, Math.max(MIN_WPM, w + delta)))
+      setWpmToastVisible(true)
+      if (wpmToastTimerRef.current) clearTimeout(wpmToastTimerRef.current)
+      wpmToastTimerRef.current = setTimeout(() => {
+        setWpmToastVisible(false)
+      }, 1000)
+    },
     [],
   )
+
+  // Zen / Okuma Sırasında Tam Ekran Dokunma ve Kaydırma Jestleri
+  const zenTouchRef = useRef<{
+    y: number
+    lastY: number
+    isSwiping: boolean
+  } | null>(null)
+  const zenSwipedRef = useRef(false)
+
+  const handleZenTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length !== 1) return
+    zenSwipedRef.current = false
+    const touch = e.touches[0]
+    zenTouchRef.current = {
+      y: touch.clientY,
+      lastY: touch.clientY,
+      isSwiping: false,
+    }
+  }
+
+  const handleZenTouchMove = (e: React.TouchEvent) => {
+    if (!zenTouchRef.current || e.touches.length !== 1) return
+    const touch = e.touches[0]
+    const deltaY = touch.clientY - zenTouchRef.current.y
+
+    if (!zenTouchRef.current.isSwiping && Math.abs(deltaY) > 12) {
+      zenTouchRef.current.isSwiping = true
+      zenSwipedRef.current = true
+    }
+
+    if (zenTouchRef.current.isSwiping) {
+      const stepDistance = 32
+      const diffFromLast = touch.clientY - zenTouchRef.current.lastY
+
+      if (diffFromLast <= -stepDistance) {
+        changeWpm(WPM_STEP)
+        zenTouchRef.current.lastY = touch.clientY
+      } else if (diffFromLast >= stepDistance) {
+        changeWpm(-WPM_STEP)
+        zenTouchRef.current.lastY = touch.clientY
+      }
+    }
+  }
+
+  const handleZenTouchEnd = () => {
+    zenTouchRef.current = null
+  }
+
+  const handleZenClick = (action: () => void) => {
+    if (zenSwipedRef.current) {
+      zenSwipedRef.current = false
+      return
+    }
+    action()
+  }
 
   // Chunk boyutu değiştiğinde mevcut kalınan kelimeden zıplama olmadan aynı konumu koru
   const handleChunkSizeChange = useCallback(
@@ -345,6 +411,9 @@ export function ReaderApp() {
             chunkSize={chunkSize}
             playing={playing}
             onToggle={togglePlay}
+            onPrev={() => seek(index - 1)}
+            onNext={() => seek(index + 1)}
+            onWpmChange={changeWpm}
             wpm={wpm}
             fontScale={fontScale}
             maxSide={maxSide}
@@ -384,36 +453,57 @@ export function ReaderApp() {
         onWpmChange={changeWpm}
       />
 
-      {/* İlerleme Çubuğu */}
-      <div
-        aria-hidden="true"
-        className={cn(
-          'pointer-events-none fixed inset-x-0 top-0 z-40 h-0.5 transition-opacity duration-500',
-          zen ? 'opacity-100' : 'opacity-0',
-        )}
-      >
-        <div
-          className="h-full bg-primary transition-[width] duration-200 ease-linear"
-          style={{ width: `${progress * 100}%` }}
-        />
-      </div>
-
-      {/* Chunk Değişimi veya Kaldığı Yerden Devam Bildirim Rozeti */}
-      {(resumeBadge || chunkBadge) && (
-        <div className="pointer-events-none fixed top-16 left-1/2 -translate-x-1/2 z-50 animate-in fade-in zoom-in-95 duration-200">
-          <span className="panel px-3.5 py-1.5 text-xs font-mono font-medium text-foreground shadow-lg backdrop-blur-md rounded-full bg-background/90 border border-border/60">
-            {resumeBadge || chunkBadge}
-          </span>
+      {/* 2. KURAL: Butonsuz Hız Kontrolü - WPM Toast HUD (1 saniye sonra zarifçe kaybolur) */}
+      {wpmToastVisible && (
+        <div className="pointer-events-none fixed top-6 left-1/2 -translate-x-1/2 z-50 animate-in fade-in zoom-in-95 duration-150">
+          <div className="flex items-center gap-2 rounded-full border border-border/50 bg-background/85 px-4 py-1.5 font-mono text-sm font-semibold tabular-nums text-foreground shadow-2xl backdrop-blur-md">
+            <span className="text-primary font-bold text-base">{wpm}</span>
+            <span className="text-xs font-normal text-muted-foreground">k/dk</span>
+          </div>
         </div>
       )}
 
+      {/* 3. KURAL: Sıfır Dağınıklık - Okuma Sırasında Tam Ekran Dokunma ve Jest Katmanı */}
       {zen && (
-        <button
-          type="button"
-          onClick={togglePlay}
-          className="fixed inset-0 z-20 cursor-default"
-          aria-label="Okumayı duraklat"
-        />
+        <div
+          onTouchStart={handleZenTouchStart}
+          onTouchMove={handleZenTouchMove}
+          onTouchEnd={handleZenTouchEnd}
+          className="fixed inset-0 z-20 flex select-none pointer-events-auto"
+        >
+          {/* Sol %25: 1 kelime geri sar */}
+          <button
+            type="button"
+            aria-label="1 kelime geri sar"
+            className="h-full w-1/4 cursor-pointer outline-none active:bg-foreground/[0.02]"
+            onClick={(e) => {
+              e.stopPropagation()
+              handleZenClick(() => seek(index - 1))
+            }}
+          />
+
+          {/* Orta %50: Durdur */}
+          <button
+            type="button"
+            aria-label="Okumayı duraklat"
+            className="h-full w-1/2 cursor-pointer outline-none active:bg-foreground/[0.02]"
+            onClick={(e) => {
+              e.stopPropagation()
+              handleZenClick(togglePlay)
+            }}
+          />
+
+          {/* Sağ %25: 1 kelime ileri sar */}
+          <button
+            type="button"
+            aria-label="1 kelime ileri sar"
+            className="h-full w-1/4 cursor-pointer outline-none active:bg-foreground/[0.02]"
+            onClick={(e) => {
+              e.stopPropagation()
+              handleZenClick(() => seek(index + 1))
+            }}
+          />
+        </div>
       )}
 
 

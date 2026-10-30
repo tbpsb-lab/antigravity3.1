@@ -1,8 +1,8 @@
 'use client'
 
-import type { CSSProperties } from 'react'
+import { useRef, type CSSProperties } from 'react'
 import { cn } from '@/lib/utils'
-import { calculateTurkishORP, type ChunkItem } from '@/lib/rsvp'
+import { calculateTurkishORP, WPM_STEP, type ChunkItem } from '@/lib/rsvp'
 import { useElementSize } from '@/lib/use-element-size'
 
 type RsvpDisplayProps = {
@@ -15,6 +15,9 @@ type RsvpDisplayProps = {
   fontScale: number
   maxSide: number
   onToggle: () => void
+  onPrev?: () => void
+  onNext?: () => void
+  onWpmChange?: (delta: number) => void
 }
 
 export function RsvpDisplay({
@@ -26,8 +29,74 @@ export function RsvpDisplay({
   fontFamily,
   fontScale,
   onToggle,
+  onPrev,
+  onNext,
+  onWpmChange,
 }: RsvpDisplayProps) {
-  const [containerRef, containerSize] = useElementSize<HTMLButtonElement>()
+  const [containerRef, containerSize] = useElementSize<HTMLDivElement>()
+
+  // 2. KURAL: Butonsuz / Jest Tabanlı Hız Kontrolü (Vertical Swipe)
+  const touchStartRef = useRef<{
+    y: number
+    lastY: number
+    isSwiping: boolean
+  } | null>(null)
+  const hasSwipedRef = useRef(false)
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length !== 1) return
+    hasSwipedRef.current = false
+    const touch = e.touches[0]
+    touchStartRef.current = {
+      y: touch.clientY,
+      lastY: touch.clientY,
+      isSwiping: false,
+    }
+  }
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!touchStartRef.current || e.touches.length !== 1) return
+    const touch = e.touches[0]
+    const deltaY = touch.clientY - touchStartRef.current.y
+
+    if (!touchStartRef.current.isSwiping && Math.abs(deltaY) > 12) {
+      touchStartRef.current.isSwiping = true
+      hasSwipedRef.current = true
+    }
+
+    if (touchStartRef.current.isSwiping && onWpmChange) {
+      const stepDistance = 32
+      const diffFromLast = touch.clientY - touchStartRef.current.lastY
+
+      if (diffFromLast <= -stepDistance) {
+        // Yukarı kaydırma (Swipe Up) -> WPM hızını artır
+        onWpmChange(WPM_STEP)
+        touchStartRef.current.lastY = touch.clientY
+      } else if (diffFromLast >= stepDistance) {
+        // Aşağı kaydırma (Swipe Down) -> WPM hızını azalt
+        onWpmChange(-WPM_STEP)
+        touchStartRef.current.lastY = touch.clientY
+      }
+    }
+  }
+
+  const handleTouchEnd = () => {
+    touchStartRef.current = null
+  }
+
+  const handleWheel = (e: React.WheelEvent) => {
+    if (onWpmChange && Math.abs(e.deltaY) > 15) {
+      onWpmChange(e.deltaY < 0 ? WPM_STEP : -WPM_STEP)
+    }
+  }
+
+  const handleChildClick = (action?: () => void) => {
+    if (hasSwipedRef.current) {
+      hasSwipedRef.current = false
+      return
+    }
+    action?.()
+  }
 
   const activeText = chunk ? chunk.text : word
   const isHeading = chunk?.isHeading || activeText.startsWith('#')
@@ -86,13 +155,55 @@ export function RsvpDisplay({
 
   return (
     <section aria-label="Okuma penceresi" className="relative w-full">
-      <button
+      <div
         ref={containerRef}
-        type="button"
-        onClick={onToggle}
-        aria-label={playing ? 'Duraklat' : 'Okumaya başla'}
-        className="panel group relative block w-full overflow-hidden px-4 py-11 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring sm:px-8 sm:py-15 [@media(max-height:640px)]:py-8 landscape-short:py-6"
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        onWheel={handleWheel}
+        className={cn(
+          'group relative block w-full overflow-hidden px-4 py-11 text-left outline-none transition-all duration-500 sm:px-8 sm:py-15 [@media(max-height:640px)]:py-8 landscape-short:py-6 select-none',
+          playing
+            ? 'border-transparent bg-transparent shadow-none'
+            : 'panel focus-visible:ring-2 focus-visible:ring-ring',
+        )}
       >
+        {/* 1. KURAL: 3 Görünmez Dokunma Bölgesi (Tap Zones) */}
+        <div className="absolute inset-0 z-20 flex select-none pointer-events-auto">
+          {/* Sol %25: 1 kelime geri sar */}
+          <button
+            type="button"
+            aria-label="1 kelime geri sar"
+            className="h-full w-1/4 cursor-pointer outline-none active:bg-foreground/[0.03] transition-colors"
+            onClick={(e) => {
+              e.stopPropagation()
+              handleChildClick(onPrev)
+            }}
+          />
+
+          {/* Orta %50: Oynat / Durdur */}
+          <button
+            type="button"
+            aria-label={playing ? 'Duraklat' : 'Okumaya başla'}
+            className="h-full w-1/2 cursor-pointer outline-none active:bg-foreground/[0.03] transition-colors"
+            onClick={(e) => {
+              e.stopPropagation()
+              handleChildClick(onToggle)
+            }}
+          />
+
+          {/* Sağ %25: 1 kelime ileri sar */}
+          <button
+            type="button"
+            aria-label="1 kelime ileri sar"
+            className="h-full w-1/4 cursor-pointer outline-none active:bg-foreground/[0.03] transition-colors"
+            onClick={(e) => {
+              e.stopPropagation()
+              handleChildClick(onNext)
+            }}
+          />
+        </div>
+
         {/* Üst ve Alt Odak Çentikleri: Yalnızca tek kelime ORP modunda gösterilir */}
         {isSingleWordMode && (
           <>
@@ -189,7 +300,7 @@ export function RsvpDisplay({
           )}
           <span>{wpm} k/dk</span>
         </div>
-      </button>
+      </div>
     </section>
   )
 }

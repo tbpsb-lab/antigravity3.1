@@ -18,6 +18,8 @@ type RsvpDisplayProps = {
   onPrev?: () => void
   onNext?: () => void
   onWpmChange?: (delta: number) => void
+  onWpmSet?: (newWpm: number) => void
+  onWpmDragEnd?: () => void
 }
 
 export function RsvpDisplay({
@@ -32,56 +34,60 @@ export function RsvpDisplay({
   onPrev,
   onNext,
   onWpmChange,
+  onWpmSet,
+  onWpmDragEnd,
 }: RsvpDisplayProps) {
   const [containerRef, containerSize] = useElementSize<HTMLDivElement>()
 
-  // 2. KURAL: Butonsuz / Jest Tabanlı Hız Kontrolü (Vertical Swipe)
-  const touchStartRef = useRef<{
-    y: number
-    lastY: number
+  // 1 & 2. KURAL: Piksel Eşiği (25px) ve Kademe (25 WPM) ile Canlı Hız Kontrolü
+  const touchStateRef = useRef<{
+    startY: number
+    startX: number
+    startWpm: number
     isSwiping: boolean
+    hasSwiped: boolean
   } | null>(null)
-  const hasSwipedRef = useRef(false)
 
   const handleTouchStart = (e: React.TouchEvent) => {
     if (e.touches.length !== 1) return
-    hasSwipedRef.current = false
     const touch = e.touches[0]
-    touchStartRef.current = {
-      y: touch.clientY,
-      lastY: touch.clientY,
+    touchStateRef.current = {
+      startY: touch.clientY,
+      startX: touch.clientX,
+      startWpm: wpm,
       isSwiping: false,
+      hasSwiped: false,
     }
   }
 
   const handleTouchMove = (e: React.TouchEvent) => {
-    if (!touchStartRef.current || e.touches.length !== 1) return
+    if (!touchStateRef.current || e.touches.length !== 1) return
     const touch = e.touches[0]
-    const deltaY = touch.clientY - touchStartRef.current.y
+    const deltaY = touch.clientY - touchStateRef.current.startY
+    const deltaX = touch.clientX - touchStateRef.current.startX
 
-    if (!touchStartRef.current.isSwiping && Math.abs(deltaY) > 12) {
-      touchStartRef.current.isSwiping = true
-      hasSwipedRef.current = true
+    if (!touchStateRef.current.isSwiping && Math.abs(deltaY) > 10 && Math.abs(deltaY) > Math.abs(deltaX)) {
+      touchStateRef.current.isSwiping = true
+      touchStateRef.current.hasSwiped = true
     }
 
-    if (touchStartRef.current.isSwiping && onWpmChange) {
-      const stepDistance = 32
-      const diffFromLast = touch.clientY - touchStartRef.current.lastY
-
-      if (diffFromLast <= -stepDistance) {
-        // Yukarı kaydırma (Swipe Up) -> WPM hızını artır
-        onWpmChange(WPM_STEP)
-        touchStartRef.current.lastY = touch.clientY
-      } else if (diffFromLast >= stepDistance) {
-        // Aşağı kaydırma (Swipe Down) -> WPM hızını azalt
-        onWpmChange(-WPM_STEP)
-        touchStartRef.current.lastY = touch.clientY
-      }
+    if (touchStateRef.current.isSwiping) {
+      // Dikey eksendeki her 25 piksel = 1 kademe (25 WPM)
+      const pixelDistance = -deltaY // Yukarı = pozitif
+      const steps = Math.trunc(pixelDistance / 25)
+      const targetWpm = touchStateRef.current.startWpm + steps * WPM_STEP
+      onWpmSet?.(targetWpm)
     }
   }
 
   const handleTouchEnd = () => {
-    touchStartRef.current = null
+    if (!touchStateRef.current) return
+    const wasSwiping = touchStateRef.current.hasSwiped
+    touchStateRef.current = null
+
+    if (wasSwiping) {
+      onWpmDragEnd?.()
+    }
   }
 
   const handleWheel = (e: React.WheelEvent) => {
@@ -91,8 +97,7 @@ export function RsvpDisplay({
   }
 
   const handleChildClick = (action?: () => void) => {
-    if (hasSwipedRef.current) {
-      hasSwipedRef.current = false
+    if (touchStateRef.current?.hasSwiped) {
       return
     }
     action?.()

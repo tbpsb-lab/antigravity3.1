@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from 'react'
+import { Gauge } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
   MAX_WPM,
@@ -122,72 +123,108 @@ export function ReaderApp() {
     [lastIndex],
   )
 
-  // 2. KURAL: Butonsuz Hız Kontrolü - WPM Toast HUD durumu ve zamanlayıcısı
+  // 1, 2 & 3. KURAL: Canlı WPM Toast HUD ve Zamanlayıcı Mantığı
   const [wpmToastVisible, setWpmToastVisible] = useState(false)
+  const [wpmToastFading, setWpmToastFading] = useState(false)
   const wpmToastTimerRef = useRef<NodeJS.Timeout | null>(null)
 
-  const changeWpm = useCallback(
-    (delta: number) => {
-      setWpm((w) => Math.min(MAX_WPM, Math.max(MIN_WPM, w + delta)))
-      setWpmToastVisible(true)
-      if (wpmToastTimerRef.current) clearTimeout(wpmToastTimerRef.current)
+  const showWpmToast = useCallback(() => {
+    if (wpmToastTimerRef.current) clearTimeout(wpmToastTimerRef.current)
+    setWpmToastFading(false)
+    setWpmToastVisible(true)
+  }, [])
+
+  const hideWpmToastWithFade = useCallback((delayMs = 1000) => {
+    if (wpmToastTimerRef.current) clearTimeout(wpmToastTimerRef.current)
+    wpmToastTimerRef.current = setTimeout(() => {
+      setWpmToastFading(true)
       wpmToastTimerRef.current = setTimeout(() => {
         setWpmToastVisible(false)
-      }, 1000)
+        setWpmToastFading(false)
+      }, 300) // 300ms yumuşak fade-out animasyonu
+    }, delayMs)
+  }, [])
+
+  // Canlı sürükleme (touch drag) sırasında WPM'i sınırları koruyarak anında güncelle
+  const setWpmDirect = useCallback(
+    (newWpm: number) => {
+      const clamped = Math.min(MAX_WPM, Math.max(MIN_WPM, newWpm))
+      setWpm(clamped)
+      showWpmToast()
     },
-    [],
+    [showWpmToast],
   )
 
-  // Zen / Okuma Sırasında Tam Ekran Dokunma ve Kaydırma Jestleri
-  const zenTouchRef = useRef<{
-    y: number
-    lastY: number
+  // Klavye ok tuşları ve mouse wheel için kademeli değişim
+  const changeWpm = useCallback(
+    (delta: number) => {
+      setWpm((prev) => Math.min(MAX_WPM, Math.max(MIN_WPM, prev + delta)))
+      showWpmToast()
+      hideWpmToastWithFade(1000)
+    },
+    [showWpmToast, hideWpmToastWithFade],
+  )
+
+  // Zen / Okuma Sırasında Tam Ekran Dokunma ve 25px Eşikli Kaydırma Jesti
+  const zenTouchStateRef = useRef<{
+    startY: number
+    startX: number
+    startWpm: number
     isSwiping: boolean
+    hasSwiped: boolean
   } | null>(null)
-  const zenSwipedRef = useRef(false)
 
   const handleZenTouchStart = (e: React.TouchEvent) => {
     if (e.touches.length !== 1) return
-    zenSwipedRef.current = false
     const touch = e.touches[0]
-    zenTouchRef.current = {
-      y: touch.clientY,
-      lastY: touch.clientY,
+    zenTouchStateRef.current = {
+      startY: touch.clientY,
+      startX: touch.clientX,
+      startWpm: wpm,
       isSwiping: false,
+      hasSwiped: false,
     }
   }
 
   const handleZenTouchMove = (e: React.TouchEvent) => {
-    if (!zenTouchRef.current || e.touches.length !== 1) return
+    if (!zenTouchStateRef.current || e.touches.length !== 1) return
     const touch = e.touches[0]
-    const deltaY = touch.clientY - zenTouchRef.current.y
+    const deltaY = touch.clientY - zenTouchStateRef.current.startY
+    const deltaX = touch.clientX - zenTouchStateRef.current.startX
 
-    if (!zenTouchRef.current.isSwiping && Math.abs(deltaY) > 12) {
-      zenTouchRef.current.isSwiping = true
-      zenSwipedRef.current = true
+    // İlk dikey hareket eşiği (10px)
+    if (!zenTouchStateRef.current.isSwiping && Math.abs(deltaY) > 10 && Math.abs(deltaY) > Math.abs(deltaX)) {
+      zenTouchStateRef.current.isSwiping = true
+      zenTouchStateRef.current.hasSwiped = true
     }
 
-    if (zenTouchRef.current.isSwiping) {
-      const stepDistance = 32
-      const diffFromLast = touch.clientY - zenTouchRef.current.lastY
+    if (zenTouchStateRef.current.isSwiping) {
+      // 1. KURAL: Parmağın dikey eksendeki her 25 pikseli (deltaY) = 1 kademe (25 WPM)
+      // Yukarı kaydırma (deltaY negatif) -> WPM artar
+      // Aşağı kaydırma (deltaY pozitif) -> WPM azalır
+      const pixelDistance = -deltaY
+      const steps = Math.trunc(pixelDistance / 25)
+      const targetWpm = zenTouchStateRef.current.startWpm + steps * WPM_STEP
 
-      if (diffFromLast <= -stepDistance) {
-        changeWpm(WPM_STEP)
-        zenTouchRef.current.lastY = touch.clientY
-      } else if (diffFromLast >= stepDistance) {
-        changeWpm(-WPM_STEP)
-        zenTouchRef.current.lastY = touch.clientY
-      }
+      // 2. KURAL: Hız sınırları (100 - 1000 WPM)
+      // 3. KURAL: Sürüklerken anlık canlı güncelleme
+      setWpmDirect(targetWpm)
     }
   }
 
   const handleZenTouchEnd = () => {
-    zenTouchRef.current = null
+    if (!zenTouchStateRef.current) return
+    const wasSwiping = zenTouchStateRef.current.hasSwiped
+    zenTouchStateRef.current = null
+
+    if (wasSwiping) {
+      // 3. KURAL: Parmağı çektiğinde 1 saniye sonra yumuşak fade-out
+      hideWpmToastWithFade(1000)
+    }
   }
 
   const handleZenClick = (action: () => void) => {
-    if (zenSwipedRef.current) {
-      zenSwipedRef.current = false
+    if (zenTouchStateRef.current?.hasSwiped) {
       return
     }
     action()
@@ -414,6 +451,8 @@ export function ReaderApp() {
             onPrev={() => seek(index - 1)}
             onNext={() => seek(index + 1)}
             onWpmChange={changeWpm}
+            onWpmSet={setWpmDirect}
+            onWpmDragEnd={() => hideWpmToastWithFade(1000)}
             wpm={wpm}
             fontScale={fontScale}
             maxSide={maxSide}
@@ -453,12 +492,24 @@ export function ReaderApp() {
         onWpmChange={changeWpm}
       />
 
-      {/* 2. KURAL: Butonsuz Hız Kontrolü - WPM Toast HUD (1 saniye sonra zarifçe kaybolur) */}
+      {/* 3. KURAL: Canlı WPM Toast HUD (Dikey kaydırma sırasında canlı, touchend sonrasında 1 sn fade-out) */}
       {wpmToastVisible && (
-        <div className="pointer-events-none fixed top-6 left-1/2 -translate-x-1/2 z-50 animate-in fade-in zoom-in-95 duration-150">
-          <div className="flex items-center gap-2 rounded-full border border-border/50 bg-background/85 px-4 py-1.5 font-mono text-sm font-semibold tabular-nums text-foreground shadow-2xl backdrop-blur-md">
-            <span className="text-primary font-bold text-base">{wpm}</span>
+        <div
+          className={cn(
+            'pointer-events-none fixed top-7 left-1/2 -translate-x-1/2 z-50 transition-all duration-300 ease-out select-none',
+            wpmToastFading ? 'opacity-0 scale-95 -translate-y-1' : 'opacity-100 scale-100 translate-y-0',
+          )}
+        >
+          <div className="flex items-center gap-2 rounded-full border border-border/60 bg-background/85 px-4 py-1.5 font-mono shadow-2xl backdrop-blur-md">
+            <Gauge className="size-3.5 text-primary" />
+            <span className="text-base font-bold tabular-nums text-foreground tracking-tight">{wpm}</span>
             <span className="text-xs font-normal text-muted-foreground">k/dk</span>
+            {wpm <= MIN_WPM && (
+              <span className="text-[10px] uppercase font-semibold text-amber-500/90 ml-0.5">Min</span>
+            )}
+            {wpm >= MAX_WPM && (
+              <span className="text-[10px] uppercase font-semibold text-amber-500/90 ml-0.5">Max</span>
+            )}
           </div>
         </div>
       )}

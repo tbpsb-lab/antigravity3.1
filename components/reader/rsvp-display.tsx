@@ -246,23 +246,23 @@ export function RsvpDisplay({
             <span
               aria-live="off"
               style={wordStyle}
-              className="reader-word relative grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-baseline whitespace-pre py-[0.08em] leading-[1.3] transition-[font-size] duration-100 ease-out [--word-base:clamp(1.75rem,5.2cqi,3.5rem)] landscape-short:[--word-base:clamp(1.4rem,8vh,2.5rem)] select-none font-mono"
+              className="reader-word relative grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-baseline whitespace-pre py-[0.08em] leading-[1.3] transition-[font-size] duration-100 ease-out [--word-base:clamp(1.75rem,5.2cqi,3.5rem)] landscape-short:[--word-base:clamp(1.4rem,8vh,2.5rem)] select-none tracking-normal"
             >
               {/* Sol parça: Sağa yaslı */}
-              <span className="min-w-0 text-right overflow-visible font-mono">
+              <span className="min-w-0 text-right overflow-visible">
                 {leftPart}
               </span>
 
               {/* Sabit Merkez Hücre: Kırmızı (#ef4444) Odak Harfi ve Üst/Alt Dikey Kılavuz Çizgileri (Reticle Ticks) */}
-              <span className="relative inline-block shrink-0 w-[1ch] text-center font-mono">
+              <span className="relative inline-block shrink-0 text-center">
                 {/* Üst Dikey Kılavuz Çizgisi (Top Reticle Tick) */}
                 <span
                   aria-hidden="true"
                   className="pointer-events-none absolute -top-[0.52em] left-1/2 h-[0.38em] w-[2px] -translate-x-1/2 rounded-full bg-[#ef4444]"
                 />
 
-                {/* Kırmızı Odak Harfi */}
-                <span className="text-[#ef4444] font-bold text-center inline-block w-full drop-shadow-[0_0_10px_rgba(239,68,68,0.4)]">
+                {/* Kırmızı Odak Harfi: Harf genişliğine tam oturan, taşma ve üst üste binmeyi önleyen doğal boyutlandırma */}
+                <span className="text-[#ef4444] font-bold text-center inline-block drop-shadow-[0_0_6px_rgba(239,68,68,0.35)]">
                   {focusChar || '\u00A0'}
                 </span>
 
@@ -274,7 +274,7 @@ export function RsvpDisplay({
               </span>
 
               {/* Sağ parça: Sola yaslı */}
-              <span className="min-w-0 text-left overflow-visible font-mono">
+              <span className="min-w-0 text-left overflow-visible">
                 {rightPart}
               </span>
             </span>

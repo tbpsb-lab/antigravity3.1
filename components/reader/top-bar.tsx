@@ -76,7 +76,8 @@ export function TopBar({ ref, theme, onThemeChange, onOpenText, hidden, fontCont
             type="button"
             onClick={onOpenText}
             className="ctl panel size-10 landscape-short:size-9"
-            aria-label="Metni düzenle"
+            aria-label="Okuma ve İçerik Merkezi"
+            title="Okuma ve İçerik Merkezi"
           >
             <FileText className="size-4" />
           </button>

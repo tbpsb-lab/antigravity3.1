@@ -26,6 +26,7 @@ function TextSheetBody({ initialText, onClose, onApply }: Omit<TextSheetProps, '
   // Kullanıcı tercihi: Sıralama: Metin, PDF, Site & Haber Linki, YouTube
   const [activeTab, setActiveTab] = useState<TabType>('text')
   const [draft, setDraft] = useState(initialText)
+  const [clipboardSnippet, setClipboardSnippet] = useState<{ text: string; wordCount: number } | null>(null)
   const [url, setUrl] = useState('')
   const [youtubeUrl, setYoutubeUrl] = useState('')
   const [loading, setLoading] = useState(false)
@@ -58,21 +59,33 @@ function TextSheetBody({ initialText, onClose, onApply }: Omit<TextSheetProps, '
         const ytId = extractYouTubeId(clip)
         if (ytId) {
           setYoutubeUrl(clip)
-          setActiveTab('youtube')
+          if (initialText === SAMPLE_TEXT) {
+            setActiveTab('youtube')
+          }
           return
         }
 
         // 2. Web / Haber Linki Algılama
         if (/^https?:\/\/[^\s]+$/i.test(clip) && !clip.includes('\n')) {
           setUrl(clip)
-          setActiveTab('url')
+          if (initialText === SAMPLE_TEXT) {
+            setActiveTab('url')
+          }
           return
         }
 
         // 3. Kopyalanmış Metin Algılama
         if (clip.length >= 10 && clip !== initialText && clip !== SAMPLE_TEXT) {
-          setDraft(clip)
-          setActiveTab('text')
+          const wordCount = tokenize(clip).length
+          if (initialText === SAMPLE_TEXT) {
+            // Henüz bir doküman yüklenmemişse doğrudan taslağa aktar
+            setDraft(clip)
+            setActiveTab('text')
+          } else {
+            // Halihazırda bir PDF veya doküman yüklüyse ASLA mevcut metni ezme!
+            // Kullanıcıya tek tıkla yapıştırma seçeneği sun
+            setClipboardSnippet({ text: clip, wordCount })
+          }
         }
       } catch {
         // Tarayıcı pano izni kısıtlıysa sessizce devam et
@@ -281,13 +294,29 @@ function TextSheetBody({ initialText, onClose, onApply }: Omit<TextSheetProps, '
               className="w-full resize-none rounded-2xl border border-border bg-background p-4 font-mono text-xs leading-relaxed text-foreground outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring sm:text-sm"
             />
             <div className="flex items-center justify-between gap-3">
-              <button
-                type="button"
-                onClick={() => setDraft(SAMPLE_TEXT)}
-                className="ctl h-8 rounded-lg px-2.5 text-xs text-muted-foreground"
-              >
-                Örnek Metin
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setDraft(SAMPLE_TEXT)}
+                  className="ctl h-8 rounded-lg px-2.5 text-xs text-muted-foreground"
+                >
+                  Örnek Metin
+                </button>
+                {clipboardSnippet && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDraft(clipboardSnippet.text)
+                      setClipboardSnippet(null)
+                    }}
+                    className="ctl h-8 rounded-lg px-2.5 text-xs text-primary bg-primary/10 hover:bg-primary/20 gap-1.5 transition-colors border border-primary/20"
+                    title="Panodaki kopyalanmış metni yapıştır"
+                  >
+                    <Sparkles className="size-3.5" />
+                    <span>Panodan Yapıştır ({clipboardSnippet.wordCount} kelime)</span>
+                  </button>
+                )}
+              </div>
               <div className="flex items-center gap-3">
                 <span className="font-mono text-xs tabular-nums text-muted-foreground">
                   {count} kelime

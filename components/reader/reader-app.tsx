@@ -20,6 +20,7 @@ import {
   loadLastActiveDoc,
   findChunkIndexForWord,
 } from '@/lib/reading-progress'
+import { loadReaderSettings, saveReaderSettings } from '@/lib/reader-settings'
 import { TopBar } from './top-bar'
 import { RsvpDisplay } from './rsvp-display'
 import { ContextPeek } from './context-peek'
@@ -183,27 +184,46 @@ export function ReaderApp() {
     return () => window.removeEventListener('keydown', handler)
   }, [])
 
-  // Tarayıcı ilk açıldığında veya yenilendiğinde son okunan dokümanı ve kalınan yeri hatırla
+  // Tarayıcı ilk açıldığında veya yenilendiğinde son ayarları (tema, font, chunk vb.) ve okunan dokümanı sessizce hatırla
   useEffect(() => {
+    // 1. Kullanıcı tercihlerini (tema, font tipi, font boyutu, chunk boyutu, wpm, dipnot) sessizce yükle (bildirim vermeden)
+    const settings = loadReaderSettings()
+    if (settings.theme) setTheme(settings.theme)
+    if (settings.fontFace) setFontFace(settings.fontFace)
+    if (typeof settings.fontScale === 'number') setFontScale(settings.fontScale)
+    if (typeof settings.chunkSize === 'number') setChunkSize(settings.chunkSize)
+    if (typeof settings.wpm === 'number') setWpm(settings.wpm)
+    if (typeof settings.readFootnotes === 'boolean') setReadFootnotes(settings.readFootnotes)
+
+    // 2. Son okunan dokümanı ve kalınan yeri hatırla
+    const activeChunkSize = settings.chunkSize ?? 1
+    const activeFootnotes = settings.readFootnotes ?? true
     const lastDoc = loadLastActiveDoc()
     if (lastDoc && lastDoc.text) {
       const saved = loadReadingProgress(lastDoc.title, lastDoc.text)
       setText(lastDoc.text)
       if (lastDoc.title) setDocTitle(lastDoc.title)
       if (saved && (saved.wordIndex > 0 || saved.index > 0)) {
-        const initialChunks = createChunks(lastDoc.text, chunkSize, { enableFootnotes: readFootnotes })
+        const initialChunks = createChunks(lastDoc.text, activeChunkSize, { enableFootnotes: activeFootnotes })
         const target = findChunkIndexForWord(initialChunks, saved.wordIndex ?? saved.index)
         if (target > 0) {
           setIndex(target)
-          setResumeBadge(
-            `Kaldığınız yerden devam ediliyor (%${saved.progressPercent || Math.round((target / Math.max(1, initialChunks.length)) * 100)})`,
-          )
-          const t = setTimeout(() => setResumeBadge(null), 3500)
-          return () => clearTimeout(t)
         }
       }
     }
   }, [])
+
+  // Kullanıcı tercihlerindeki her değişikliği sessizce localStorage'da sakla (herhangi bir bildirim vermeden)
+  useEffect(() => {
+    saveReaderSettings({
+      theme,
+      fontFace,
+      fontScale,
+      chunkSize,
+      wpm,
+      readFootnotes,
+    })
+  }, [theme, fontFace, fontScale, chunkSize, wpm, readFootnotes])
 
   // Akıllı Okuma Konumu Hafızası: Duraklatıldığında veya düzenli aralıklarla son konumu kaydet
   useEffect(() => {

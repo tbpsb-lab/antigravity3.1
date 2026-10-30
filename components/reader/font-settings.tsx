@@ -86,7 +86,8 @@ export function FontSettings({
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
         aria-controls={panelId}
-        aria-label="Görünüm ve okuma ayarları"
+        aria-label="Yazı Tipi ve Görünüm Ayarları"
+        title="Yazı Tipi ve Görünüm Ayarları"
         className={cn('ctl panel size-10 landscape-short:size-9', open && 'ctl-primary')}
       >
         <Type className="size-4" />

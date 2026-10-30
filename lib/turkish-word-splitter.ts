@@ -1,201 +1,161 @@
 /**
- * Türkçe Yapışık Kelime Ayırıcı ve Yazım Denetimi (Post-Processing Word Splitter)
+ * Türkçe Yapışık Kelime Ayırıcı, Sözlük ve Kök Bulucu (Turkish Stemmer & Word Splitter)
  *
- * PDF ayrıştırma ve tokenizasyon hattının (pipeline) en sonunda çalışır.
- * PDF içindeki boşluksuz kaydedilmiş birleşik kelimeleri hibrit mimariyle ayırır:
- * 1. Sadece Şüphelileri Denetle (>= 10 karakter, noktalama ve rakamlar korunur).
- * 2. Zarf-Fiil (-ıp, -erek, -ınca, -dığında vb.) ve çekim eki sınır tespiti.
- * 3. 14+ harfli kelimelerde Büyük Ünlü Uyumu kırılması ve sözlük/kök doğrulaması.
+ * Çevrimdışı (offline) 195.000+ kelimelik Türkçe sözlük (turkish_words.json),
+ * kademeli ek soyma (progressive stemming), ünsüz yumuşaması onarımı (softening reversal)
+ * ve kural tabanlı zarf-fiil / ünlü uyumu kırılması analizlerini birleştiren hibrit motor.
  */
+
+import turkishWordsData from './turkish_words.json'
+
+// 1. ADIM: Sözlük Kurulumu - O(1) arama için JavaScript Set nesnesi
+export const turkishDictSet: Set<string> = new Set(
+  (turkishWordsData as string[]).map((w) => w.toLowerCase()),
+)
 
 const KALIN_VOWELS = new Set(['a', 'ı', 'o', 'u', 'A', 'I', 'O', 'U'])
 const INCE_VOWELS = new Set(['e', 'i', 'ö', 'ü', 'E', 'İ', 'Ö', 'Ü'])
 const ALL_VOWELS = new Set(['a', 'e', 'ı', 'i', 'o', 'ö', 'u', 'ü', 'A', 'E', 'I', 'İ', 'O', 'Ö', 'U', 'Ü'])
 
-export const COMMON_TURKISH_ROOTS = new Set<string>([
-  // İsimler / Sıfatlar
-  'uygar', 'uygarlık', 'eğitim', 'insan', 'insanlar', 'çocuk', 'çocuklar', 'kadın', 'erkek',
-  'kitap', 'kitaplar', 'kütüphane', 'okul', 'sınıf', 'öğrenci', 'öğretmen', 'dünya', 'hayat',
-  'zaman', 'fikir', 'tarih', 'bilgi', 'soru', 'cevap', 'sorun', 'akıl', 'göz', 'yüz', 'el',
-  'baş', 'gün', 'gece', 'sabah', 'akşam', 'yıl', 'hava', 'su', 'yer', 'yol', 'şehir', 'ülke',
-  'devlet', 'millet', 'toplum', 'kültür', 'sanat', 'bilim', 'madde', 'kelime', 'cümle', 'metin',
-  'sayfa', 'bölüm', 'parça', 'taraf', 'nokta', 'durum', 'olay', 'sonuç', 'neden', 'sebep',
-  'alan', 'konu', 'biçim', 'anlam', 'derece', 'oran', 'sistem', 'yapı', 'özellik', 'ilişki',
-  'duygu', 'düşünce', 'davranış', 'hareket', 'başarı', 'kuvvet', 'güç', 'seviye', 'araç',
-  'büyük', 'küçük', 'uzun', 'kısa', 'geniş', 'dar', 'yüksek', 'alçak', 'yeni', 'eski',
-  'güzel', 'çirkin', 'iyi', 'kötü', 'doğru', 'yanlış', 'kolay', 'zor', 'açık', 'kapalı',
-  'sıcak', 'soğuk', 'temiz', 'kirli', 'ağır', 'hafif', 'önemli', 'farklı', 'aynı', 'başka',
-  'bütün', 'tüm', 'her', 'hiç', 'bir', 'iki', 'üç', 'dört', 'beş', 'on', 'yüz', 'bin',
-  'birçok', 'birkaç', 'birtakım', 'fazla', 'eksik', 'kendi', 'böyle', 'şöyle', 'öyle',
-  'şimdi', 'sonra', 'önce', 'erken', 'geç', 'artık', 'hemen', 'daima', 'bazen', 'asla',
-  'ancak', 'fakat', 'çünkü', 'belki', 'zaten', 'tabii', 'elbette', 'nasıl', 'neden', 'nerede',
-  'program', 'programla', 'programlama', 'değer', 'değerlendir', 'değerlendirme',
-  'sorum', 'sorumlu', 'sorumluluk', 'karşı', 'karşılaş', 'karşılaştır', 'karşılaştırma',
-  'fark', 'farkında', 'farkındalık', 'geliş', 'geliştir', 'geliştiril',
-  'özel', 'özelleş', 'özelleştir', 'özelleştiril', 'gerçek', 'gerçekleş', 'gerçekleştir',
-  'etki', 'etkile', 'etkilen', 'belirt', 'belirtil', 'çalış', 'çalışan',
-  // Fiil Kökleri
-  'bak', 'kaç', 'git', 'gid', 'gel', 'yap', 'et', 'ed', 'al', 'ver', 'çık', 'in',
-  'gör', 'bil', 'duy', 'anla', 'iste', 'ara', 'bul', 'oku', 'yaz', 'konuş', 'söyle',
-  'düşün', 'çalış', 'yaşa', 'başla', 'bitir', 'dur', 'kalk', 'otur', 'koş', 'yürü',
-  'sev', 'kork', 'bekle', 'bırak', 'koy', 'çek', 'aç', 'kapa', 'kal', 'dön', 'düş',
-  'gül', 'ağla', 'kazan', 'kaybet', 'öğren', 'öğret', 'tanı', 'anlat', 'göster', 'değiş',
-  'koru', 'ilerle', 'başla', 'öde', 'tara', 'ye', 'de'
-])
-
-export const VERB_STEMS = new Set<string>([
-  'bak', 'kaç', 'git', 'gid', 'gel', 'yap', 'et', 'ed', 'al', 'ver', 'çık', 'in',
-  'gör', 'bil', 'duy', 'anla', 'iste', 'ara', 'bul', 'oku', 'yaz', 'konuş', 'söyle',
-  'düşün', 'çalış', 'yaşa', 'başla', 'bitir', 'dur', 'kalk', 'otur', 'koş', 'yürü',
-  'sev', 'kork', 'bekle', 'bırak', 'koy', 'çek', 'aç', 'kapa', 'kal', 'dön', 'düş',
-  'gül', 'ağla', 'kazan', 'kaybet', 'öğren', 'öğret', 'tanı', 'anlat', 'göster', 'değiş',
-  'koru', 'ilerle', 'başla', 'öde', 'tara', 'ye', 'de'
-])
-
-export const COMMON_SUFFIXES = [
-  'da', 'de', 'ta', 'te', 'dan', 'den', 'tan', 'ten', 'nda', 'nde', 'ndan', 'nden',
-  'a', 'e', 'ya', 'ye', 'na', 'ne', 'ı', 'i', 'u', 'ü', 'yı', 'yi', 'yu', 'yü', 'nı', 'ni', 'nu', 'nü',
-  'ın', 'in', 'un', 'ün', 'nın', 'nin', 'nun', 'nün',
-  'lar', 'ler', 'ları', 'leri', 'larda', 'lerde', 'lardan', 'lerden', 'larına', 'lerine', 'ların', 'lerin',
-  'ım', 'im', 'um', 'üm', 'ın', 'in', 'un', 'ün', 'sı', 'si', 'su', 'sü',
-  'ımız', 'imiz', 'umuz', 'ümüz', 'ınız', 'iniz', 'unuz', 'ünüz',
-  'lık', 'lik', 'luk', 'lük', 'lığa', 'liğe', 'luğa', 'lüğe', 'lığı', 'liği', 'lüğü', 'lüğü',
-  'lı', 'li', 'lu', 'lü', 'sız', 'siz', 'suz', 'süz', 'sal', 'sel', 'salı', 'seli',
-  'la', 'le', 'yla', 'yle', 'ca', 'ce', 'ça', 'çe',
-  'mak', 'mek', 'ma', 'me', 'makta', 'mekte', 'maktan', 'mekten',
-  'dı', 'di', 'du', 'dü', 'tı', 'ti', 'tu', 'tü', 'dım', 'dim', 'dum', 'düm', 'dık', 'dik', 'duk', 'dük',
-  'dılar', 'diler', 'tılar', 'tiler',
-  'mış', 'miş', 'muş', 'müş', 'mıştı', 'mişti', 'muştu', 'müştü', 'mıştır', 'miştir', 'muştur', 'müştür',
-  'ar', 'er', 'ır', 'ir', 'ur', 'ür', 'ıyor', 'iyor', 'uyor', 'üyor',
-  'acak', 'ecek', 'acaktı', 'ecekti', 'acaktır', 'ecektir',
-  'an', 'en', 'ıcı', 'ici', 'ucu', 'ücü',
-  'ıp', 'ip', 'up', 'üp', 'yıp', 'yip', 'yup', 'yüp',
-  'arak', 'erek', 'yarak', 'yerek',
-  'ınca', 'ince', 'unca', 'ünce', 'yınca', 'yince', 'yunca', 'yünce',
-  'madan', 'meden', 'ken', 'yken',
-  'dığında', 'diğinde', 'duğunda', 'düğünde', 'tığında', 'tiğinde', 'tuğunda', 'tüğünde',
-  'dığımızda', 'diğimizde', 'duğumuzda', 'düğümüzde', 'tığımızda', 'tiğimizde',
-  'dığınızda', 'diğinizde', 'duğunuzda', 'düğünüzde', 'tığınızda', 'tiğinizde',
-  'dıklarında', 'diklerinde', 'duklarında', 'düklerinde', 'tıklarında', 'tiklerinde',
-  'dıkça', 'dikçe', 'dukça', 'dükçe', 'tıkça', 'tikçe', 'tukça', 'tükçe',
+// Kademeli ek soyma (stemming) için Türkçe çekim ve yapım ekleri listesi (uzundan kısaya)
+export const TURKISH_SUFFIXES = [
+  // 5-6 harfli birleşik ekler
+  'tığımızda', 'tiğimizde', 'tuğumuzda', 'tüğümüzde',
+  'dığımızda', 'diğimizde', 'duğumuzda', 'düğümüzde',
+  'tığınızda', 'tiğinizde', 'tuğunuzda', 'tüğünüzde',
+  'dığınızda', 'diğinizde', 'duğunuzda', 'düğünüzde',
+  'tıklarında', 'tiklerinde', 'tuklarında', 'tüklerinde',
+  'dıklarında', 'diklerinde', 'duklarında', 'düklerinde',
+  'tığında', 'tiğinde', 'tuğunda', 'tüğünde',
+  'dığında', 'diğinde', 'duğunda', 'düğünde',
+  'tirmektedir', 'tirmekteler', 'mektedir', 'maktadır',
+  'tirilmiş', 'tirilmişti', 'tirilmiştir',
+  'laştırılmış', 'leştirilmiş', 'laştırılma', 'leştirilme',
+  // 4 harfli ekler
+  'tıkça', 'tikçe', 'tukça', 'tükçe',
+  'dıkça', 'dikçe', 'dukça', 'dükçe',
+  'yarak', 'yerek', 'arak', 'erek',
+  'yınca', 'yince', 'yunca', 'yünce', 'ınca', 'ince', 'unca', 'ünce',
+  'madan', 'meden', 'yken', 'ken',
+  'maktan', 'mekten', 'makta', 'mekte',
+  'mışlar', 'mişler', 'muşlar', 'müşler',
+  'mıştır', 'miştir', 'muştur', 'müştür',
+  'mıştı', 'mişti', 'muştu', 'müştü',
+  'acaktır', 'ecektir', 'acaktı', 'ecekti',
+  'larımız', 'lerimiz', 'larında', 'lerinde', 'larından', 'lerinden',
+  'larına', 'lerine', 'larını', 'lerini', 'larının', 'lerinin',
+  'ımızın', 'imizin', 'umuzun', 'ümüzün',
+  'ımızda', 'imizde', 'umuzda', 'ümüzde',
+  'ımızdan', 'imizden', 'umuzdan', 'ümüzden',
+  'ımıza', 'imize', 'umuza', 'ümüze',
+  'ımızı', 'imizi', 'umuzu', 'ümüzü',
+  'saydı', 'seydi',
+  'laşma', 'leşma', 'laştı', 'leşti',
+  // 3 harfli ekler
+  'dan', 'den', 'tan', 'ten', 'nda', 'nde',
+  'lar', 'ler', 'nın', 'nin', 'nun', 'nün',
+  'mız', 'miz', 'muz', 'müz', 'nız', 'niz', 'nuz', 'nüz',
+  'lık', 'lik', 'luk', 'lük', 'lığ', 'liğ', 'luğ', 'lüğ',
+  'sız', 'siz', 'suz', 'süz',
+  'mak', 'mek',
+  'mış', 'miş', 'muş', 'müş',
+  'yor', 'ıyor', 'iyor', 'uyor', 'üyor',
+  'aca', 'ece', 'acak', 'ecek',
+  'dım', 'dim', 'dum', 'düm', 'tım', 'tim', 'tum', 'tüm',
+  'dık', 'dik', 'duk', 'dük', 'tık', 'tik', 'tuk', 'tük',
+  'dın', 'din', 'dun', 'dün', 'tın', 'tin', 'tun', 'tün',
   'dır', 'dir', 'dur', 'dür', 'tır', 'tir', 'tur', 'tür',
-  'meye', 'maya', 'mesi', 'ması', 'mesine', 'masına',
-  'tir', 'tirici', 'tiril', 'tirilmiş', 'tirilen', 'tirmektedir', 'mektedir', 'maktadır'
+  'ken', 'yıp', 'yip', 'yup', 'yüp',
+  'sal', 'sel',
+  'ıcı', 'ici', 'ucu', 'ücü',
+  // 2 harfli ekler
+  'da', 'de', 'ta', 'te',
+  'na', 'ne', 'ya', 'ye', 'yı', 'yi', 'yu', 'yü', 'nı', 'ni', 'nu', 'nü',
+  'ın', 'in', 'un', 'ün',
+  'ım', 'im', 'um', 'üm',
+  'sı', 'si', 'su', 'sü',
+  'ma', 'me', 'dı', 'di', 'du', 'dü', 'tı', 'ti', 'tu', 'tü',
+  'sa', 'se', 'ca', 'ce', 'ça', 'çe',
+  'la', 'le', 'ar', 'er', 'ır', 'ir', 'ur', 'ür',
+  'ıp', 'ip', 'up', 'üp',
+  'an', 'en', 'al', 'el', 'ul', 'ül',
+  'ış', 'iş', 'uş', 'üş', 'il', 'in',
+  'lı', 'li', 'lu', 'lü',
+  // 1 harfli ekler
+  'a', 'e', 'ı', 'i', 'u', 'ü'
 ]
 
-const GERUND_SUFFIX_PATTERNS = [
-  /(.+?)(dıklarında|diklerinde|duklarında|düklerinde|tıklarında|tiklerinde|dığınızda|diğinizde|duğunuzda|düğünüzde|tığınızda|tiğinizde|dığımızda|diğimizde|duğumuzda|düğümüzde|tığımızda|tiğimizde|dığında|diğinde|duğunda|düğünde|tığında|tiğinde|tuğunda|tüğünde)$/i,
-  /(.+?)(dıkça|dikçe|dukça|dükçe|tıkça|tikçe|tukça|tükçe)$/i,
-  /(.+?)(yarak|yerek|arak|erek)$/i,
-  /(.+?)(yınca|yince|yunca|yünce|ınca|ince|unca|ünce)$/i,
-  /(.+?)(madan|meden)$/i,
-  /(.+?)(yken|ken)$/i,
-  /(.+?)(yıp|yip|yup|yüp|ıp|ip|up|üp)$/i,
-  /(.+?)(mıştır|miştir|muştur|müştür|mıştı|mişti|muştu|müştü|acaktır|ecektir|saydı|seydi)$/i,
-  /(.+?)(dır|dir|dur|dür|tır|tir|tur|tür)$/i,
-  /(.+?)(mış|miş|muş|müş)$/i
-]
+const GERUND_REGEX = /(y?ıp|y?ip|y?up|y?üp|y?arak|y?erek|y?ınca|y?ince|y?unca|y?ünce|madan|meden|y?ken|ken|dığında|diğinde|duğunda|düğünde|tığında|tiğinde|tuğunda|tüğünde|dığımızda|diğimizde|duğumuzda|düğümüzde|tığımızda|tiğimizde|dıkça|dikçe|dukça|dükçe|tıkça|tikçe|tukça|tükçe)$/i
+const SUFFIX_ENDING_REGEX = /(dık|dik|duk|dük|tık|tik|tuk|tük|mış|miş|muş|müş|mıştı|mişti|muştu|müştü|mıştır|miştir|muştur|müştür|dır|dir|dur|dür|tır|tir|tur|tür|nın|nin|nun|nün|ın|in|un|ün|dan|den|tan|ten|da|de|ta|te|na|ne|ya|ye|a|e|yı|yi|yu|yü|ı|i|u|ü|la|le|yla|yle)$/i
 
 /**
- * Kelimenin bilinen tekil bir Türkçe kelime olup olmadığını doğrular
+ * 2. c) Türkçe ünsüz yumuşamasını (ünsüz değişimi) tersine çevirerek olası kök varyantlarını üretir:
+ * sonu 'ğ' ise 'k' yap ('uygarlığ' -> 'uygarlık')
+ * sonu 'b' ise 'p' yap ('kitab' -> 'kitap')
+ * sonu 'c' ise 'ç' yap ('ağac' -> 'ağaç')
+ * sonu 'd' ise 't' yap ('kanad' -> 'kanat')
  */
-export function isSingleKnownWord(w: string): boolean {
-  const lower = w.toLowerCase()
-  if (COMMON_TURKISH_ROOTS.has(lower)) return true
+export function getSofteningVariants(stem: string): string[] {
+  const variants = [stem]
+  if (stem.endsWith('ğ')) {
+    variants.push(stem.slice(0, -1) + 'k')
+  } else if (stem.endsWith('b')) {
+    variants.push(stem.slice(0, -1) + 'p')
+  } else if (stem.endsWith('c')) {
+    variants.push(stem.slice(0, -1) + 'ç')
+  } else if (stem.endsWith('d')) {
+    variants.push(stem.slice(0, -1) + 't')
+  }
+  return variants
+}
 
-  for (const root of COMMON_TURKISH_ROOTS) {
-    if (lower.startsWith(root)) {
-      const rest = lower.slice(root.length)
-      if (!rest) return true
-      if (COMMON_SUFFIXES.includes(rest)) return true
-      for (const suf1 of COMMON_SUFFIXES) {
-        if (rest.startsWith(suf1)) {
-          const rest2 = rest.slice(suf1.length)
-          if (!rest2 || COMMON_SUFFIXES.includes(rest2)) return true
-        }
-      }
+/**
+ * Bir kök adayının (ünsüz değişimi varyantları ile birlikte) sözlükte olup olmadığını denetler
+ */
+export function checkStemInDict(stem: string): boolean {
+  if (stem.length < 3) return false
+  const variants = getSofteningVariants(stem)
+  for (const v of variants) {
+    if (turkishDictSet.has(v)) {
+      return true
     }
   }
   return false
 }
 
 /**
- * Kelimenin geçerli bir Türkçe morfoloji veya köke sahip olup olmadığını denetler
+ * 2. ADIM: Türkçe Kök Doğrulayıcı (isValidTurkishWord)
+ * a) Kelime doğrudan turkishDictSet içinde varsa true döner.
+ * b) Yoksa sonundaki çekim/yapım eklerini kademeli olarak soyarak kalan kökü sözlükte arar.
+ * c) Ek soyarken ünsüz yumuşamasını tersine çevirerek arar.
  */
-export function isLikelyTurkishWord(word: string): boolean {
-  if (!word || word.length < 3) return false
+export function isValidTurkishWord(word: string): boolean {
+  if (!word || word.length < 2) return false
   const w = word.toLowerCase()
-  if (isSingleKnownWord(w)) return true
 
-  const vowels = [...w].filter((c) => ALL_VOWELS.has(c))
-  if (vowels.length === 0) return false
-  if (/^[ğ]/.test(w)) return false
-  if (/[bcdfghjklmnprstvyz]{4,}/i.test(w)) return false
-  if (/[aeıioöuü]{3,}/i.test(w)) return false
+  // a) Doğrudan sözlükte var mı?
+  if (turkishDictSet.has(w)) return true
 
-  return true
-}
+  // Yumuşama tersiyle doğrudan kontrol (örn: kitab -> kitap)
+  if (checkStemInDict(w)) return true
 
-/**
- * Kök ve ek arasındaki büyük ünlü uyumunu denetler
- */
-export function checkVowelHarmony(stem: string, suffix: string): boolean {
-  const stemVowels = [...stem.toLowerCase()].filter((c) => ALL_VOWELS.has(c))
-  if (!stemVowels.length) return false
-  const lastStemVowel = stemVowels[stemVowels.length - 1]
-  const isStemKalin = KALIN_VOWELS.has(lastStemVowel)
+  // b) Çekim/yapım eklerini kademeli olarak soy (Stemming)
+  for (const s1 of TURKISH_SUFFIXES) {
+    if (w.endsWith(s1) && w.length - s1.length >= 3) {
+      const stem1 = w.slice(0, w.length - s1.length)
+      if (checkStemInDict(stem1)) return true
 
-  const sufVowels = [...suffix.toLowerCase()].filter((c) => ALL_VOWELS.has(c))
-  if (!sufVowels.length) return true
-  const firstSufVowel = sufVowels[0]
-  const isSufKalin = KALIN_VOWELS.has(firstSufVowel)
+      // 2. kademe ek soyma (örn: yapılandır-ıl-ması -> yapılandır)
+      for (const s2 of TURKISH_SUFFIXES) {
+        if (stem1.endsWith(s2) && stem1.length - s2.length >= 3) {
+          const stem2 = stem1.slice(0, stem1.length - s2.length)
+          if (checkStemInDict(stem2)) return true
 
-  if (suffix.toLowerCase().endsWith('ken')) return true
-
-  return isStemKalin === isSufKalin
-}
-
-/**
- * 2. KURAL: Zarf-Fiil ve Çekim Eki Sınır Tespiti (Heuristic Splitter)
- * Kelimenin ortasında zarf-fiil veya bitiş eki geçiyorsa ve ardından en az 4 harfli
- * anlamlı bir kelime başlıyorsa buradan ikiye böler.
- */
-function splitByGerundAndEndings(word: string): [string, string] | null {
-  const w = word.toLowerCase()
-  if (w.length < 10) return null
-
-  for (const rx of GERUND_SUFFIX_PATTERNS) {
-    for (let splitIdx = 4; splitIdx <= w.length - 4; splitIdx++) {
-      const leftCandidate = w.slice(0, splitIdx)
-      const rightCandidate = w.slice(splitIdx)
-
-      const m = leftCandidate.match(rx)
-      if (m) {
-        const stem = m[1]
-        const suffix = m[2]
-
-        const isGerund =
-          /^(y?ıp|y?ip|y?up|y?üp|y?arak|y?erek|y?ınca|y?ince|y?unca|y?ünce|madan|meden|y?ken|dıkça|dikçe|dukça|dükçe|tıkça|tikçe|tukça|tükçe|dığında|diğinde|duğunda|düğünde|tığında|tiğinde|tuğunda|tüğünde|dığımızda|diğimizde|duğumuzda|düğümüzde|tığımızda|tiğimizde|dığınızda|diğinizde|duğunuzda|düğünüzde|tığınızda|tiğinizde|dıklarında|diklerinde|duklarında|düklerinde|tıklarında|tiklerinde)$/i.test(
-            suffix,
-          )
-
-        if (isGerund) {
-          const stemCore = stem.replace(/^(.*)(leş|laş|lendir|leşdir|tir|dır|dir|dur|dür|tır|tir|tur|tür)$/, '$1')
-          if (!VERB_STEMS.has(stem) && !VERB_STEMS.has(stemCore) && stem.length <= 3) {
-            continue
-          }
-        }
-
-        const stemVowels = [...stem].filter((c) => ALL_VOWELS.has(c))
-        if (stemVowels.length >= 1 && checkVowelHarmony(stem, suffix)) {
-          const rightIsSuffixOnly =
-            /^(mak|mek|ma|me|makta|mekte|maktan|mekten|lar|ler|dan|den|tan|ten|da|de|ta|te|a|e|ya|ye|ı|i|u|ü|ın|in|un|ün|ken|yken|miş|mış|muş|müş|tı|ti|tu|tü|dı|di|du|dü|dır|dir|tır|tir|ilmiş|ilmişti|ilmişler|ilen|ilmişlerdi|ilmek|ilmektedir)$/i.test(
-              rightCandidate,
-            )
-
-          if (!rightIsSuffixOnly && rightCandidate.length >= 4 && isLikelyTurkishWord(rightCandidate)) {
-            if (isLikelyTurkishWord(leftCandidate)) {
-              return [word.slice(0, splitIdx), word.slice(splitIdx)]
+          // 3. kademe ek soyma (uzun türetilmiş kelimeler için)
+          for (const s3 of TURKISH_SUFFIXES) {
+            if (stem2.endsWith(s3) && stem2.length - s3.length >= 3) {
+              const stem3 = stem2.slice(0, stem2.length - s3.length)
+              if (checkStemInDict(stem3)) return true
             }
           }
         }
@@ -203,111 +163,94 @@ function splitByGerundAndEndings(word: string): [string, string] | null {
     }
   }
 
-  return null
+  return false
 }
 
 /**
- * 3. KURAL: Büyük-Küçük Ünlü Uyumu Kırılması ve Sözlük Kontrolü (Word Segmentation)
- * 14+ harfli çok uzun kelimelerde ünlü uyumu sert bir şekilde kırılıyorsa hece sınırından böler.
+ * 3. ADIM: Sözlük Tabanlı Yapışık Kelime Bölücü (splitWithDictionary)
+ * - 9 harften uzun kelimelerde önce isValidTurkishWord kontrolü yapılır.
+ *   Kelime tek başına geçerliyse (örn. "yapılandırılması") ASLA bölünmez!
+ * - Geçerli değilse olası tüm bölünme noktalarından (i = 3 ... word.length - 3) ikiye ayrılır.
+ * - Hem sol hem sağ parça geçerliyse en uygun noktadan ikiye böler.
  */
-function splitByVowelHarmonyBreak(word: string): [string, string] | null {
-  const w = word.toLowerCase()
-  if (w.length < 14) return null
+export function splitWithDictionary(word: string): string[] {
+  if (!word || word.length < 10) return [word]
 
-  if (/iyor|ken|ki|daş|taş|leyin|mtırak|gil/.test(w)) return null
-
-  const vowels: Array<{ char: string; idx: number; isKalin: boolean }> = []
-  for (let i = 0; i < w.length; i++) {
-    if (ALL_VOWELS.has(w[i])) {
-      vowels.push({ char: w[i], idx: i, isKalin: KALIN_VOWELS.has(w[i]) })
-    }
-  }
-
-  if (vowels.length < 4) return null
-
-  for (let v = 1; v < vowels.length; v++) {
-    const vPrev = vowels[v - 1]
-    const vCurr = vowels[v]
-
-    if (vPrev.isKalin !== vCurr.isKalin) {
-      const consonants = w.slice(vPrev.idx + 1, vCurr.idx)
-      const splitCandidates: number[] = []
-
-      if (consonants.length === 0) {
-        splitCandidates.push(vCurr.idx)
-      } else if (consonants.length === 1) {
-        splitCandidates.push(vPrev.idx + 2)
-        splitCandidates.push(vPrev.idx + 1)
-      } else {
-        for (let c = 1; c <= consonants.length; c++) {
-          splitCandidates.push(vPrev.idx + 1 + c)
-        }
-      }
-
-      for (const splitIdx of splitCandidates) {
-        if (splitIdx >= 4 && splitIdx <= w.length - 4) {
-          const left = word.slice(0, splitIdx)
-          const right = word.slice(splitIdx)
-
-          const leftVowels = [...left].filter((c) => ALL_VOWELS.has(c.toLowerCase()))
-          const rightVowels = [...right].filter((c) => ALL_VOWELS.has(c.toLowerCase()))
-
-          if (leftVowels.length >= 1 && rightVowels.length >= 1) {
-            const rightIsSuffixOnly =
-              /^(mak|mek|ma|me|makta|mekte|maktan|mekten|lar|ler|dan|den|tan|ten|da|de|ta|te|a|e|ya|ye|ı|i|u|ü|ın|in|un|ün|ken|yken|miş|mış|muş|müş|tı|ti|tu|tü|dı|di|du|dü|dır|dir|tır|tir|ilmiş|ilmişti|ilmişler|ilen|ilmişlerdi|ilmek|ilmektedir)$/i.test(
-                right,
-              )
-            if (!rightIsSuffixOnly && isLikelyTurkishWord(left) && isLikelyTurkishWord(right)) {
-              return [left, right]
-            }
-          }
-        }
-      }
-    }
-  }
-
-  return null
-}
-
-/**
- * Tek bir token'ı yapışık kelime analizine tabi tutar ve gerekiyorsa parçalar
- */
-export function splitGluedTurkishWord(token: string): string[] {
-  if (!token || token.length < 10) return [token]
-
-  // Baş ve son noktalama işaretlerini ayır
-  const leadMatch = token.match(/^[^\wçğıöşüÇĞİÖŞÜ0-9]+/)
+  // Baş ve son noktalama işaretlerini ayıkla
+  const leadMatch = word.match(/^[^\wçğıöşüÇĞİÖŞÜ0-9]+/)
   const leadPunct = leadMatch ? leadMatch[0] : ''
-  const trailMatch = token.match(/[^\wçğıöşüÇĞİÖŞÜ0-9]+$/)
+  const trailMatch = word.match(/[^\wçğıöşüÇĞİÖŞÜ0-9]+$/)
   const trailPunct = trailMatch ? trailMatch[0] : ''
 
-  const core = token.slice(leadPunct.length, token.length - trailPunct.length)
-  // 1. KURAL: 10 karakterden kısa kelimelere dokunma
-  if (core.length < 10) return [token]
+  const core = word.slice(leadPunct.length, word.length - trailPunct.length)
+  if (core.length < 10) return [word]
+  if (/[\d\-]/.test(core)) return [word]
 
-  // Rakam, e-posta veya tire içeren kelimeleri koru
-  if (/[\d\-]/.test(core)) return [token]
+  const lowerCore = core.toLowerCase()
 
-  // Zaten bilinen tekil bir kelime ise bölme
-  if (isSingleKnownWord(core)) {
-    return [token]
+  // 1. Kural: Kelime zaten tek başına geçerli bir Türkçe kelimeyse ASLA BÖLME!
+  if (isValidTurkishWord(lowerCore)) {
+    return [word]
   }
 
-  // 2. KURAL: Zarf-fiil ve çekim eki sınır tespiti
-  let splitParts = splitByGerundAndEndings(core)
+  // 2. Kural: i = 3 ... core.length - 3 noktalarından ikiye ayır
+  const candidateMatches: Array<{
+    splitIdx: number
+    left: string
+    right: string
+    score: number
+  }> = []
 
-  // 3. KURAL: 14+ harfli kelimelerde Büyük Ünlü Uyumu kırılması
-  if (!splitParts && core.length >= 14) {
-    splitParts = splitByVowelHarmonyBreak(core)
+  for (let i = 3; i <= lowerCore.length - 3; i++) {
+    const leftPart = lowerCore.slice(0, i)
+    const rightPart = lowerCore.slice(i)
+
+    // Sağ parça 'ğ' ile başlayamaz
+    if (rightPart.startsWith('ğ')) continue
+
+    if (isValidTurkishWord(leftPart) && isValidTurkishWord(rightPart)) {
+      let score = 0
+
+      // Sol parça zarf-fiil ile bitiyorsa en yüksek öncelik
+      if (GERUND_REGEX.test(leftPart)) {
+        score += 500
+      } else if (SUFFIX_ENDING_REGEX.test(leftPart)) {
+        score += 100
+      }
+
+      // Kök uzunluklarının dengesi
+      score += Math.min(leftPart.length, rightPart.length)
+
+      candidateMatches.push({
+        splitIdx: i,
+        left: core.slice(0, i),
+        right: core.slice(i),
+        score,
+      })
+    }
   }
 
-  if (splitParts) {
-    const [w1, w2] = splitParts
-    const restSplit = splitGluedTurkishWord(w2)
-    return [`${leadPunct}${w1}`, ...restSplit.slice(0, -1), `${restSplit[restSplit.length - 1]}${trailPunct}`]
+  if (candidateMatches.length > 0) {
+    candidateMatches.sort((a, b) => b.score - a.score)
+    const best = candidateMatches[0]
+
+    // Sağ parça da yapışık bir parça içeriyorsa özyinelemeli olarak kontrol et
+    const restSplit = splitWithDictionary(best.right)
+    return [
+      `${leadPunct}${best.left}`,
+      ...restSplit.slice(0, -1),
+      `${restSplit[restSplit.length - 1]}${trailPunct}`,
+    ]
   }
 
-  return [token]
+  return [word]
+}
+
+/**
+ * Tek bir token'ı yapışık kelime süzgecinden geçirir (Sözlük + Stemmer)
+ */
+export function splitGluedTurkishWord(token: string): string[] {
+  return splitWithDictionary(token)
 }
 
 /**

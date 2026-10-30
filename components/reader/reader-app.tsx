@@ -207,6 +207,8 @@ export function ReaderApp() {
     hasSwiped: boolean
   } | null>(null)
 
+  const zenOverlayRef = useRef<HTMLDivElement | null>(null)
+
   const handleZenTouchStart = (e: React.TouchEvent) => {
     if (e.touches.length !== 1) return
     const touch = e.touches[0]
@@ -225,13 +227,16 @@ export function ReaderApp() {
     const deltaY = touch.clientY - zenTouchStateRef.current.startY
     const deltaX = touch.clientX - zenTouchStateRef.current.startX
 
-    // İlk dikey hareket eşiği (10px)
-    if (!zenTouchStateRef.current.isSwiping && Math.abs(deltaY) > 10 && Math.abs(deltaY) > Math.abs(deltaX)) {
+    // İlk dikey hareket eşiği (8px)
+    if (!zenTouchStateRef.current.isSwiping && Math.abs(deltaY) > 8 && Math.abs(deltaY) > Math.abs(deltaX)) {
       zenTouchStateRef.current.isSwiping = true
       zenTouchStateRef.current.hasSwiped = true
     }
 
     if (zenTouchStateRef.current.isSwiping) {
+      if (e.cancelable) {
+        e.preventDefault()
+      }
       // 1. KURAL: Parmağın dikey eksendeki her 25 pikseli (deltaY) = 1 kademe (25 WPM)
       // Yukarı kaydırma (deltaY negatif) -> WPM artar
       // Aşağı kaydırma (deltaY pozitif) -> WPM azalır
@@ -244,6 +249,40 @@ export function ReaderApp() {
       setWpmDirect(targetWpm)
     }
   }
+
+  // Mobil Chrome'da aşağı kaydırma (swipe down) sırasında tarayıcının pull-to-refresh
+  // yenileme animasyonunu %100 engelleyen native pasif-olmayan touchmove dinleyicisi
+  useEffect(() => {
+    const el = zenOverlayRef.current
+    if (!el) return
+
+    const onNativeTouchMove = (e: TouchEvent) => {
+      if (!zenTouchStateRef.current || e.touches.length !== 1) return
+      const touch = e.touches[0]
+      const deltaY = touch.clientY - zenTouchStateRef.current.startY
+      const deltaX = touch.clientX - zenTouchStateRef.current.startX
+
+      if (!zenTouchStateRef.current.isSwiping && Math.abs(deltaY) > 8 && Math.abs(deltaY) > Math.abs(deltaX)) {
+        zenTouchStateRef.current.isSwiping = true
+        zenTouchStateRef.current.hasSwiped = true
+      }
+
+      if (zenTouchStateRef.current.isSwiping) {
+        if (e.cancelable) {
+          e.preventDefault()
+        }
+        const pixelDistance = -deltaY
+        const steps = Math.trunc(pixelDistance / 25)
+        const targetWpm = zenTouchStateRef.current.startWpm + steps * WPM_STEP
+        setWpmDirect(targetWpm)
+      }
+    }
+
+    el.addEventListener('touchmove', onNativeTouchMove, { passive: false })
+    return () => {
+      el.removeEventListener('touchmove', onNativeTouchMove)
+    }
+  }, [setWpmDirect, zen])
 
   const handleZenTouchEnd = () => {
     if (!zenTouchStateRef.current) return
@@ -449,7 +488,7 @@ export function ReaderApp() {
   return (
     <div
       data-theme={theme}
-      className="app-bg relative h-dvh w-full touch-manipulation overflow-hidden font-sans text-foreground transition-colors duration-500 selection:bg-primary/25"
+      className="app-bg relative h-dvh w-full touch-none overscroll-none select-none overflow-hidden font-sans text-foreground transition-colors duration-500 selection:bg-primary/25"
     >
       <TopBar
         ref={headerRef}
@@ -559,16 +598,17 @@ export function ReaderApp() {
       {/* 3. KURAL: Sıfır Dağınıklık - Okuma Sırasında Tam Ekran Dokunma ve Jest Katmanı */}
       {zen && (
         <div
+          ref={zenOverlayRef}
           onTouchStart={handleZenTouchStart}
           onTouchMove={handleZenTouchMove}
           onTouchEnd={handleZenTouchEnd}
-          className="fixed inset-0 z-20 flex select-none pointer-events-auto"
+          className="fixed inset-0 z-20 flex select-none pointer-events-auto touch-none overscroll-none"
         >
           {/* Sol %25: Akıllı cümle başı geri sar */}
           <button
             type="button"
             aria-label="Önceki cümle başına sar"
-            className="h-full w-1/4 cursor-pointer outline-none active:bg-foreground/[0.02]"
+            className="h-full w-1/4 cursor-pointer outline-none active:bg-foreground/[0.02] touch-none"
             onClick={(e) => {
               e.stopPropagation()
               handleZenClick(handleSmartRewind)
@@ -579,7 +619,7 @@ export function ReaderApp() {
           <button
             type="button"
             aria-label="Okumayı duraklat"
-            className="h-full w-1/2 cursor-pointer outline-none active:bg-foreground/[0.02]"
+            className="h-full w-1/2 cursor-pointer outline-none active:bg-foreground/[0.02] touch-none"
             onClick={(e) => {
               e.stopPropagation()
               handleZenClick(togglePlay)
@@ -590,7 +630,7 @@ export function ReaderApp() {
           <button
             type="button"
             aria-label="1 kelime ileri sar"
-            className="h-full w-1/4 cursor-pointer outline-none active:bg-foreground/[0.02]"
+            className="h-full w-1/4 cursor-pointer outline-none active:bg-foreground/[0.02] touch-none"
             onClick={(e) => {
               e.stopPropagation()
               handleZenClick(() => seek(index + 1))

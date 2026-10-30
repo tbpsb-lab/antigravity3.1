@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, type CSSProperties } from 'react'
+import { useCallback, useEffect, useRef, type CSSProperties } from 'react'
 import { cn } from '@/lib/utils'
 import { calculateTurkishORP, WPM_STEP, type ChunkItem } from '@/lib/rsvp'
 import { useElementSize } from '@/lib/use-element-size'
@@ -41,6 +41,15 @@ export function RsvpDisplay({
   onWpmDragEnd,
 }: RsvpDisplayProps) {
   const [containerRef, containerSize] = useElementSize<HTMLDivElement>()
+  const stageNodeRef = useRef<HTMLDivElement | null>(null)
+
+  const setStageRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      stageNodeRef.current = node
+      containerRef(node)
+    },
+    [containerRef],
+  )
 
   // 1 & 2. KURAL: Piksel Eşiği (25px) ve Kademe (25 WPM) ile Canlı Hız Kontrolü
   const touchStateRef = useRef<{
@@ -69,12 +78,15 @@ export function RsvpDisplay({
     const deltaY = touch.clientY - touchStateRef.current.startY
     const deltaX = touch.clientX - touchStateRef.current.startX
 
-    if (!touchStateRef.current.isSwiping && Math.abs(deltaY) > 10 && Math.abs(deltaY) > Math.abs(deltaX)) {
+    if (!touchStateRef.current.isSwiping && Math.abs(deltaY) > 8 && Math.abs(deltaY) > Math.abs(deltaX)) {
       touchStateRef.current.isSwiping = true
       touchStateRef.current.hasSwiped = true
     }
 
     if (touchStateRef.current.isSwiping) {
+      if (e.cancelable) {
+        e.preventDefault()
+      }
       // Dikey eksendeki her 25 piksel = 1 kademe (25 WPM)
       const pixelDistance = -deltaY // Yukarı = pozitif
       const steps = Math.trunc(pixelDistance / 25)
@@ -82,6 +94,40 @@ export function RsvpDisplay({
       onWpmSet?.(targetWpm)
     }
   }
+
+  // Mobil Chrome'da aşağı kaydırma (swipe down) sırasında tarayıcının pull-to-refresh
+  // yenileme animasyonunu %100 engelleyen native pasif-olmayan touchmove dinleyicisi
+  useEffect(() => {
+    const el = stageNodeRef.current
+    if (!el) return
+
+    const onNativeTouchMove = (e: TouchEvent) => {
+      if (!touchStateRef.current || e.touches.length !== 1) return
+      const touch = e.touches[0]
+      const deltaY = touch.clientY - touchStateRef.current.startY
+      const deltaX = touch.clientX - touchStateRef.current.startX
+
+      if (!touchStateRef.current.isSwiping && Math.abs(deltaY) > 8 && Math.abs(deltaY) > Math.abs(deltaX)) {
+        touchStateRef.current.isSwiping = true
+        touchStateRef.current.hasSwiped = true
+      }
+
+      if (touchStateRef.current.isSwiping) {
+        if (e.cancelable) {
+          e.preventDefault()
+        }
+        const pixelDistance = -deltaY
+        const steps = Math.trunc(pixelDistance / 25)
+        const targetWpm = touchStateRef.current.startWpm + steps * WPM_STEP
+        onWpmSet?.(targetWpm)
+      }
+    }
+
+    el.addEventListener('touchmove', onNativeTouchMove, { passive: false })
+    return () => {
+      el.removeEventListener('touchmove', onNativeTouchMove)
+    }
+  }, [onWpmSet])
 
   const handleTouchEnd = () => {
     if (!touchStateRef.current) return
@@ -164,13 +210,13 @@ export function RsvpDisplay({
   return (
     <section aria-label="Okuma penceresi" className="relative w-full">
       <div
-        ref={containerRef}
+        ref={setStageRef}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
         onWheel={handleWheel}
         className={cn(
-          'rsvp-stage group relative block w-full overflow-hidden px-4 py-11 text-left outline-none transition-all duration-500 sm:px-8 sm:py-15 [@media(max-height:640px)]:py-8 landscape-short:py-6 select-none',
+          'rsvp-stage group relative block w-full overflow-hidden px-4 py-11 text-left outline-none transition-all duration-500 sm:px-8 sm:py-15 [@media(max-height:640px)]:py-8 landscape-short:py-6 select-none touch-none overscroll-none',
           isPulsing && 'pulse-jump',
           playing
             ? 'border-transparent bg-transparent shadow-none'
@@ -178,12 +224,12 @@ export function RsvpDisplay({
         )}
       >
         {/* 1. KURAL: 3 Görünmez Dokunma Bölgesi (Tap Zones) */}
-        <div className="absolute inset-0 z-20 flex select-none pointer-events-auto">
+        <div className="absolute inset-0 z-20 flex select-none pointer-events-auto touch-none overscroll-none">
           {/* Sol %25: Akıllı Cümle Başı Geri Sarma */}
           <button
             type="button"
             aria-label="Önceki cümle başına sar"
-            className="h-full w-1/4 cursor-pointer outline-none active:bg-foreground/[0.03] transition-colors"
+            className="h-full w-1/4 cursor-pointer outline-none active:bg-foreground/[0.03] transition-colors touch-none"
             onClick={(e) => {
               e.stopPropagation()
               handleChildClick(onPrev)
@@ -194,7 +240,7 @@ export function RsvpDisplay({
           <button
             type="button"
             aria-label={playing ? 'Duraklat' : 'Okumaya başla'}
-            className="h-full w-1/2 cursor-pointer outline-none active:bg-foreground/[0.03] transition-colors"
+            className="h-full w-1/2 cursor-pointer outline-none active:bg-foreground/[0.03] transition-colors touch-none"
             onClick={(e) => {
               e.stopPropagation()
               handleChildClick(onToggle)
@@ -205,7 +251,7 @@ export function RsvpDisplay({
           <button
             type="button"
             aria-label="1 kelime ileri sar"
-            className="h-full w-1/4 cursor-pointer outline-none active:bg-foreground/[0.03] transition-colors"
+            className="h-full w-1/4 cursor-pointer outline-none active:bg-foreground/[0.03] transition-colors touch-none"
             onClick={(e) => {
               e.stopPropagation()
               handleChildClick(onNext)

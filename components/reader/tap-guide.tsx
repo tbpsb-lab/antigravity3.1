@@ -70,7 +70,7 @@ export function TapGuide({ onDismiss }: TapGuideProps) {
         dismiss()
       }}
       className={cn(
-        'absolute inset-0 z-30 flex items-center justify-between overflow-hidden rounded-[inherit] bg-black/30 backdrop-blur-[4px] transition-all duration-500 ease-out select-none cursor-pointer',
+        'absolute inset-0 z-30 flex items-center justify-between overflow-hidden rounded-[inherit] bg-black/30 backdrop-blur-[4px] transition-all duration-500 ease-out select-none cursor-pointer touch-none overscroll-none',
         fading ? 'opacity-0 pointer-events-none' : 'opacity-100 pointer-events-auto',
       )}
     >

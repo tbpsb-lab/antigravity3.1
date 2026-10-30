@@ -1,3 +1,5 @@
+import { splitGluedTokens } from './turkish-word-splitter'
+
 export type ThemeId = 'ios' | 'linear' | 'kindle'
 
 export type ChunkItem = {
@@ -88,13 +90,17 @@ export function cleanPunctuationAndCamelCase(text: string): string {
 export function tokenize(text: string): string[] {
   const dehyphenated = dehyphenateText(text)
   const cleaned = cleanPunctuationAndCamelCase(dehyphenated)
-  return cleaned
+  const rawTokens = cleaned
     .replace(/\s+/g, ' ')
     .trim()
     .split(/\s+/)
     .filter(Boolean)
     .filter((w) => !/^#{1,6}$/.test(w))
     .map((w) => w.replace(/^#{1,6}(?=\S)/, ''))
+
+  // Kelimeler dizilere (tokens) ayrıldıktan hemen sonra çalışan
+  // Türkçe Yapışık Kelime Ayırıcı ve Yazım Denetimi (Post-Processing Word Splitter)
+  return splitGluedTokens(rawTokens)
 }
 
 export function pivotIndex(word: string): number {
@@ -164,7 +170,7 @@ export function createChunks(
           flush(true, false, inFootnote)
         }
         const cleanLine = line.replace(/^#{1,6}\s+/, '')
-        const hWords = cleanLine.split(/\s+/).filter(Boolean)
+        const hWords = splitGluedTokens(cleanLine.split(/\s+/).filter(Boolean))
         if (hWords.length > 0) {
           const hStart = globalWordIdx
           globalWordIdx += hWords.length
@@ -180,7 +186,7 @@ export function createChunks(
         continue
       }
 
-      const lineWords = line.split(/\s+/).filter(Boolean)
+      const lineWords = splitGluedTokens(line.split(/\s+/).filter(Boolean))
       for (let i = 0; i < lineWords.length; i++) {
         const w = lineWords[i]
         if (/^\[dipnot/i.test(w)) inFootnote = true
@@ -214,7 +220,7 @@ export function createChunks(
   }
 
   // Fallback: dizi girdisi için kelime bazlı ayrıştırma
-  const words = input
+  const words = splitGluedTokens(input)
   const chunks: ChunkItem[] = []
   let currentWords: string[] = []
   let currentStartIndex = 0

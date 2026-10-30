@@ -12,6 +12,8 @@
  * 7. Taranmış (resimli) PDF sayfaları için Tesseract OCR motoruna otomatik geçiş yapar.
  */
 
+import { splitGluedText } from './turkish-word-splitter'
+
 export type ExtractedBook = {
   title: string
   text: string
@@ -1867,6 +1869,9 @@ export async function parsePdfDocument(
     .split(/\r?\n/)
     .map((l) => l.replace(/[ \t]+/g, ' ').trim())
     .join('\n')
+
+  // 5. KURAL: Metin işleme hattının (pipeline) en sonunda Türkçe Yapışık Kelime Ayırıcı katmanı
+  cleanedText = splitGluedText(cleanedText)
   const wordCount = cleanedText.split(/\s+/).filter(Boolean).length
 
   if (wordCount < 10) {

@@ -59,12 +59,11 @@ export function TopBar({ ref, theme, onThemeChange, onOpenText, hidden, fontCont
                   title={t.hint}
                   onClick={() => onThemeChange(t.id)}
                   className={cn(
-                    'ctl h-8 gap-1.5 px-2.5 text-xs font-medium landscape-short:h-7',
+                    'ctl h-8 px-2.5 text-xs font-medium landscape-short:h-7',
                     active ? 'ctl-primary' : 'bg-transparent text-muted-foreground',
                   )}
                 >
-                  <span className="font-mono opacity-70">{t.key}</span>
-                  <span className="hidden min-[380px]:inline">{t.label}</span>
+                  <span>{t.label}</span>
                 </button>
               )
             })}

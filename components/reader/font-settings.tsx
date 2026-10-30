@@ -7,10 +7,16 @@ import { cn } from '@/lib/utils'
 
 export type FontFace = 'theme' | 'sans' | 'serif' | 'mono'
 
-export const FONT_FACES: { id: FontFace; label: string; sample: string; family?: string }[] = [
+export const FONT_FACES: { id: FontFace; label: string; sample: string; family: string }[] = [
+  {
+    id: 'theme',
+    label: 'Tema',
+    sample: 'Aa',
+    family: 'var(--reader-font)',
+  },
   {
     id: 'mono',
-    label: 'Mono (Sabit Eksen)',
+    label: 'Mono',
     sample: 'Aa',
     family: 'var(--font-geist-mono), ui-monospace, monospace',
   },
@@ -26,7 +32,6 @@ export const FONT_FACES: { id: FontFace; label: string; sample: string; family?:
     sample: 'Aa',
     family: 'var(--font-literata), ui-serif, Georgia, serif',
   },
-  { id: 'theme', label: 'Tema', sample: 'Aa' },
 ]
 
 export const FONT_SCALE_MIN = 0.5

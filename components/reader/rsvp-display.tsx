@@ -195,13 +195,9 @@ export function RsvpDisplay({
 
   const finalScale = fontScale * autoFitScale
 
-  // Harf genişliklerinin oynamaması için yüksek okunabilirlikli monospace / optik hizalı font
-  const defaultMonoFont =
-    'var(--font-geist-mono), "Geist Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace'
-
   const wordStyle = {
     fontSize: `calc(var(--word-base) * ${finalScale})`,
-    fontFamily: fontFamily || defaultMonoFont,
+    fontFamily: fontFamily || 'var(--reader-font)',
     fontVariantNumeric: 'tabular-nums',
     fontFeatureSettings: '"tnum", "zero"',
     fontVariantLigatures: 'none',

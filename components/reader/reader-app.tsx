@@ -34,7 +34,7 @@ import { useElementHeight } from '@/lib/use-element-height'
 
 export function ReaderApp() {
   const [theme, setTheme] = useState<ThemeId>('ios')
-  const [fontFace, setFontFace] = useState<FontFace>('mono')
+  const [fontFace, setFontFace] = useState<FontFace>('theme')
   const [fontScale, setFontScale] = useState(1)
   const [chunkSize, setChunkSize] = useState<number>(1)
   const [readFootnotes, setReadFootnotes] = useState<boolean>(true)
@@ -339,6 +339,12 @@ export function ReaderApp() {
     [chunks, index, text, chunkSize],
   )
 
+  // Tema değiştiğinde yazı tipini o temanın özgün yazı tipine (Tema / var(--reader-font)) uyarla
+  const handleThemeChange = useCallback((newTheme: ThemeId) => {
+    setTheme(newTheme)
+    setFontFace('theme')
+  }, [])
+
   const onKeyDown = useEffectEvent((e: KeyboardEvent) => {
     if (sheetOpen) return
     const target = e.target as HTMLElement | null
@@ -380,9 +386,13 @@ export function ReaderApp() {
         break
       case 'Digit1':
       case 'Digit2':
-      case 'Digit3':
-        setTheme(THEMES[Number(e.key) - 1].id)
+      case 'Digit3': {
+        const targetTheme = THEMES[Number(e.key) - 1]?.id
+        if (targetTheme) {
+          handleThemeChange(targetTheme)
+        }
         break
+      }
     }
   })
 
@@ -506,7 +516,7 @@ export function ReaderApp() {
           />
         }
         theme={theme}
-        onThemeChange={setTheme}
+        onThemeChange={handleThemeChange}
         onOpenText={() => {
           setPlaying(false)
           setSheetOpen(true)

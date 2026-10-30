@@ -720,6 +720,30 @@ export function collapseSpacedLetters(str: string): string {
 }
 
 /**
+ * Satır sonu ve boşluklu tireleme onarım motoru (De-hyphenation Engine).
+ * 1. Satır sonunda tire ("-" veya "\u00AD") + satır sonu (\r?\n) + küçük harf ([a-zçğıöşü]) örüntüsünü birleştirir
+ *    Örnek: "prog-\nramlama" -> "programlama", "uygu-\r\nlama" -> "uygulama", "uygu\u00AD\nlama" -> "uygulama"
+ * 2. Tire + boşluk + küçük harf ([a-zçğıöşü]) örüntüsünü birleştirir ("uygu- lama" -> "uygulama")
+ * 3. İstisna olarak: Rakamlar arasındaki tireleri ("2025-2026") ve aralarında boşluk olmayan
+ *    gerçek birleşik kelimeleri ("e-posta", "check-up") asla bozmaz.
+ */
+export function dehyphenateText(text: string): string {
+  if (!text) return ''
+  return text
+    // 1. Satır sonunda tire + satır sonu (\r?\n) + küçük harf ([a-zçğıöşü])
+    .replace(
+      /([a-zA-ZçğıöşüÇĞİÖŞÜ0-9])[\-\u00AD\uFFFD\u2010\u2011\u2012\u2212\u00AC~]\s*[\r\n]+\s*([a-zçğıöşü])/g,
+      '$1$2',
+    )
+    // 2. Tire + boşluk + küçük harf ([a-zçğıöşü])
+    // İstisna: Rakamlar arasındaki tireleri ("2025-2026") ve aralıksız gerçek birleşik kelimeleri ("e-posta", "check-up") korur
+    .replace(
+      /(?<!\d)([a-zA-ZçğıöşüÇĞİÖŞÜ]{2,})[\-\u00AD\uFFFD\u2010\u2011\u2012\u2212\u00AC~]\s+([a-zçğıöşü]{1,15})(?!\d)/g,
+      '$1$2',
+    )
+}
+
+/**
  * Satır içindeki görünmez koşullu tireleri (\u00AD), bozuk PDF tire karakterlerini (\uFFFD),
  * orta noktaları (·, •), kerning boşluklarını ve OCR hatalarını onarır.
  */
@@ -1507,6 +1531,18 @@ function finalizePdfLine(
     const curr = lineGroup.items[i]
     if (i > 0) {
       const prev = lineGroup.items[i - 1]
+
+      // 1. KURAL: PDF.js (getTextContent) parçaları (items) birleştirilirken
+      // parça sonundaki tire ("-" veya "\u00AD") ile biten metinden sonra gelen
+      // ve küçük harfle başlayan parçayı araya boşluk koymadan ve tireyi silerek birleştir
+      const prevEndsWithHyphen = /([a-zA-ZçğıöşüÇĞİÖŞÜ0-9])[\-\u00AD\uFFFD\u2010\u2011\u2012\u2212\u00AC~]\s*$/.test(text)
+      const currStartsWithLower = /^\s*([a-zçğıöşü])/.test(curr.str)
+
+      if (prevEndsWithHyphen && currStartsWithLower) {
+        text = text.replace(/[\-\u00AD\uFFFD\u2010\u2011\u2012\u2212\u00AC~]\s*$/, '') + curr.str.replace(/^\s+/, '')
+        continue
+      }
+
       const isBracketFn = /^\[\d+\]$/.test(curr.str)
       const isTrailingPunctOrHyphen = /^[\-\u00AD\uFFFD\u2010\u2011\u2012\u2013\u00AC'’”\)\]\.,;:\!\?]+$/.test(
         curr.str.trim(),
@@ -1758,7 +1794,7 @@ export async function parsePdfDocument(
     }
   }
 
-  const cleanedText = resultBlocks.join('\n\n').trim()
+  const cleanedText = dehyphenateText(resultBlocks.join('\n\n').trim())
   const wordCount = cleanedText.split(/\s+/).filter(Boolean).length
 
   if (wordCount < 10) {

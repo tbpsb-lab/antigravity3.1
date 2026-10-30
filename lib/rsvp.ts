@@ -28,8 +28,32 @@ Başlangıçta dakikada iki yüz elli kelime yeterlidir. Rahatladıkça hızı y
 
 Unutmayın, amaç yalnızca hız değil, berraklıktır. Zihniniz sakin, gözünüz tek bir noktada ve metin akıp giderken, okumak yeniden keyifli bir sessizliğe dönüşür.`
 
-export function tokenize(text: string): string[] {
+/**
+ * Satır sonu ve boşluklu tireleme onarım motoru (De-hyphenation Engine).
+ * 1. Satır sonunda tire ("-" veya "\u00AD") + satır sonu (\r?\n) + küçük harf ([a-zçğıöşü]) örüntüsünü birleştirir
+ *    Örnek: "prog-\nramlama" -> "programlama", "uygu-\r\nlama" -> "uygulama", "uygu\u00AD\nlama" -> "uygulama"
+ * 2. Tire + boşluk + küçük harf ([a-zçğıöşü]) örüntüsünü birleştirir ("uygu- lama" -> "uygulama")
+ * 3. İstisna olarak: Rakamlar arasındaki tireleri ("2025-2026") ve aralarında boşluk olmayan
+ *    gerçek birleşik kelimeleri ("e-posta", "check-up") asla bozmaz.
+ */
+export function dehyphenateText(text: string): string {
+  if (!text) return ''
   return text
+    // 1. Satır sonunda tire + satır sonu (\r?\n) + küçük harf ([a-zçğıöşü])
+    .replace(
+      /([a-zA-ZçğıöşüÇĞİÖŞÜ0-9])[\-\u00AD\uFFFD\u2010\u2011\u2012\u2212\u00AC~]\s*[\r\n]+\s*([a-zçğıöşü])/g,
+      '$1$2',
+    )
+    // 2. Tire + boşluk + küçük harf ([a-zçğıöşü])
+    // İstisna: Rakamlar arasındaki tireleri ("2025-2026") ve aralarında boşluk olmayan birleşik kelimeleri ("e-posta", "check-up") korur
+    .replace(
+      /(?<!\d)([a-zA-ZçğıöşüÇĞİÖŞÜ]{2,})[\-\u00AD\uFFFD\u2010\u2011\u2012\u2212\u00AC~]\s+([a-zçğıöşü]{1,15})(?!\d)/g,
+      '$1$2',
+    )
+}
+
+export function tokenize(text: string): string[] {
+  return dehyphenateText(text)
     .trim()
     .split(/\s+/)
     .filter(Boolean)
@@ -66,11 +90,8 @@ export function createChunks(
 
   // Eğer metin string olarak verildiyse satır ve başlık duyarlı ayrıştırma uygula
   if (typeof input === 'string') {
-    // Fail-safe: satır sonunda tire ile bitip alt satırda devam eden bölünmüş kelimeleri önceden birleştir
-    const sanitizedInput = input.replace(
-      /([a-zA-ZçğıöşüÇĞİÖŞÜ0-9])[\-\u00AD\uFFFD\u2010\u2011\u2012\u2212\u00AC~]\r?\n\s*([a-zçğıöşü])/g,
-      '$1$2',
-    )
+    // Kelimeleri bölmeden ÖNCE de-hyphenation kurallarını uygula
+    const sanitizedInput = dehyphenateText(input)
     const lines = sanitizedInput.split(/\r?\n/)
     const chunks: ChunkItem[] = []
     let curWords: string[] = []

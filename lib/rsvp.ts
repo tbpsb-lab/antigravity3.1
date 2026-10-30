@@ -66,7 +66,12 @@ export function createChunks(
 
   // Eğer metin string olarak verildiyse satır ve başlık duyarlı ayrıştırma uygula
   if (typeof input === 'string') {
-    const lines = input.split(/\r?\n/)
+    // Fail-safe: satır sonunda tire ile bitip alt satırda devam eden bölünmüş kelimeleri önceden birleştir
+    const sanitizedInput = input.replace(
+      /([a-zA-ZçğıöşüÇĞİÖŞÜ0-9])[\-\u00AD\uFFFD\u2010\u2011\u2012\u2212\u00AC~]\r?\n\s*([a-zçğıöşü])/g,
+      '$1$2',
+    )
+    const lines = sanitizedInput.split(/\r?\n/)
     const chunks: ChunkItem[] = []
     let curWords: string[] = []
     let curStart = 0

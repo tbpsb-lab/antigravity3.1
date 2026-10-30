@@ -577,6 +577,63 @@ const BROKEN_SUFFIX_SET = new Set([
   'nyla',
 ])
 
+// Standalone Turkish function words, short nouns, verbs, pronouns and adverbs
+// These words MUST NOT be merged into a continuation word across lines
+export const VALID_STANDALONE_TURKISH_WORDS = new Set<string>([
+  've', 'de', 'da', 'bu', 'şu', 'o', 'ne', 'en', 'az', 'çok', 'bir', 'her', 'hiç',
+  'iyi', 'yol', 'su', 'gün', 'yıl', 'ay', 'ak', 'ev', 'el', 'et', 'ek', 'ot', 'ok',
+  'un', 'uç', 'ye', 'ya', 'ha', 'ah', 'ey', 'oy', 'öz', 'ön', 'iç', 'ip', 'iş', 'iz',
+  'il', 'in', 'aç', 'at', 'av', 'al', 'an', 'as', 'ad', 'aş', 'var', 'yok', 'son', 'ilk',
+  'ben', 'sen', 'biz', 'siz', 'kim', 'tek', 'zor', 'dar', 'boş', 'sağ', 'sol', 'üst', 'alt',
+  'geç', 'ara', 'art', 'dün', 'ses', 'söz', 'göz', 'yüz', 'baş', 'yer', 'kan', 'can', 'hak',
+  'hal', 'düş', 'göl', 'dağ', 'taş', 'kış', 'yaz', 'kar', 'zar', 'kol', 'pul', 'çöp', 'çam',
+  'bal', 'bel', 'böl', 'bük', 'çal', 'çek', 'çık', 'çiz', 'çöz', 'del', 'dik', 'diz', 'doy',
+  'dök', 'dön', 'dur', 'duy', 'gel', 'git', 'gör', 'gül', 'kaç', 'kal', 'kes', 'kır', 'kız',
+  'koş', 'koy', 'öl', 'öv', 'sat', 'sev', 'seç', 'sil', 'sor', 'soy', 'sun', 'sür', 'tut',
+  'ver', 'vur', 'yap', 'yat', 'yık', 'yit', 'yut', 'yürü', 'biri', 'kimi', 'bunu', 'şunu',
+  'onun', 'buna', 'şuna', 'ona', 'yani', 'gibi', 'için', 'kadar', 'sonra', 'önce', 'göre',
+  'karşı', 'doğru', 'üzere', 'ancak', 'fakat', 'çünkü', 'belki', 'zaten', 'bile', 'daha',
+  'nasıl', 'neden', 'nerede', 'şimdi', 'böyle', 'şöyle', 'öyle', 'kendi', 'artık', 'hemen',
+  'bazen', 'asla', 'yine', 'hala', 'hâlâ', 'elbette', 'tabii', 'ayrıca', 'nereden', 'burada',
+  'orada', 'şurada', 'hepsi', 'bütün', 'hep', 'pek', 'tam', 'biraz', 'biriyle',
+  'biriydi', 'birisi', 'birkaç', 'birçok', 'birtakım', 'başka', 'diğer', 'öteki', 'hangisi',
+  'neresi', 'kimse', 'şey', 'şeyler', 'şeyleri', 'şeylerin', 'şeyde', 'şeyden'
+])
+
+// Non-word continuation fragments that CANNOT be standalone Turkish words
+export const NON_STANDALONE_WORD_B_PATTERNS: RegExp[] = [
+  /^(sabasındaki|zelce|ranan|bekken|zünü|nunu|rinin|lediği|bette|füsleri|ginlik|larken)/i,
+  /^(ndan|nden|nda|nde|na|ne|nı|ni|nın|nin|nun|nün|nu|nü)$/i,
+  /^(sından|sinden|sında|sinde|sına|sine|sını|sini|sının|sinin|sunun|sünün|sunu|sünü)$/i,
+  /^(larıyla|leriyle|larında|lerinde|larından|lerinden|larına|lerine|larını|lerini|larının|lerinin)$/i,
+  /^(lık|lik|luk|lük|lığa|liğe|luğa|lüğe|lığı|liği|luğu|lüğü|lığın|liğin|luğun|lüğün)$/i,
+  /^(mış|miş|muş|müş|mıştı|mişti|muştu|müştü|mışsa|mişse|muşsa|müşse|dığı|diği|duğu|düğü|dığında|diğinde|duğunda|düğünde)$/i,
+  /^(ırken|irken|urken|ürken|arken|erken)$/i,
+  /^(arak|erek|yarak|yerek|ıp|ip|up|üp|yıp|yip|yup|yüp|ınca|ince|unca|ünce|yınca|yince|yunca|yünce)$/i,
+  /^(acak|ecek|acaktı|ecekti|acağımı|eceğimi|acağını|eceğini|acağımız|eceğimiz|acaklar|ecekler)$/i,
+  /^(abil|ebil|abilir|ebilir|abilirdi|ebilirdi|abiliyor|ebiliyor|amaz|emez|amazdı|emezdi)$/i,
+  /^(laş|leş|laştır|leştir|laştırma|leştirme|lan|len|landır|lendir|landırma|lendirme)$/i,
+  /^(mekten|maktan|meye|maya|meyi|mayı|menin|manın|mek|mak)$/i,
+  /^(dir|dır|dur|dür|tir|tır|tur|tür|dirler|dırlar|durlar|dürler|tirler|tırlar|turlar|türler)$/i,
+  /^(daki|deki|taki|teki)$/i,
+  /^(sel|sal|cil|cıl|cul|cül)$/i,
+]
+
+// Non-word Turkish syllables / prefix fragments resulting from soft-hyphen drops
+export const KNOWN_SPLIT_PREFIXES = new Set<string>([
+  'ka', 'ba', 'gü', 'dav', 'sö', 'bur', 'söy', 'el', 'parmağıy', 'rağ', 'ça', 'ger',
+  'tenef', 'uygar', 'müm', 'ola', 'öğ', 'bü', 'kü', 'sol', 'yaş',
+  'ko', 'dü', 'or', 'fa', 'me', 'ge', 'te', 'se', 'he', 'de', 'be', 'ke', 'le', 're',
+  've', 'ne', 'ze', 'pe', 'şe', 'çe', 'bo', 'to', 'do', 'go', 'mo', 'no', 'ro',
+  'so', 'zo', 'lo', 'po', 'yo', 'ku', 'tu', 'du', 'gu', 'mu', 'nu', 'ru', 'zu',
+  'lu', 'pu', 'yu', 'bı', 'tı', 'dı', 'gı', 'mı', 'nı', 'rı', 'sı', 'zı', 'lı', 'pı',
+  'kı', 'yı', 'fı', 'hı', 'cı', 'çı', 'ca', 'ma', 'na', 'pa', 'sa', 'ta', 'va',
+  'za', 'la', 'büş', 'düş', 'kork', 'sak', 'sakla', 'bek', 'bekle',
+  'düşün', 'bil', 'sev', 'anla', 'iste', 'konu', 'din', 'hatır',
+  'yaşa', 'yara', 'duy', 'fark', 'his', 'kay', 'çev', 'yük', 'düzen', 'kapa', 'açı',
+  'ölüm', 'kitap', 'sayfa', 'kütüp'
+])
+
 const TITLE_CASE_STOPWORDS = new Set([
   've',
   'ile',
@@ -797,6 +854,10 @@ export function cleanIntraLineHyphens(rawLineText: string): string {
   t = t.replace(/([a-zA-ZçğıöşüÇĞİÖŞÜ0-9]):'(?=\s|$)/g, '$1."')
   t = t.replace(/([a-zA-ZçğıöşüÇĞİÖŞÜ0-9]);'(?=\s|$)/g, '$1,"')
 
+  // 19. Bitişik tırnak ve diyalog başlangıçlarını ayır ("sayılır:'"Evet" -> 'sayılır." "Evet')
+  t = t.replace(/([.:!?…])(["”’»]+)([A-ZÇĞİÖŞÜ"“‘])/g, '$1$2 $3')
+  t = t.replace(/([:;])'([A-ZÇĞİÖŞÜ])/g, '$1" $2')
+
   return t.trim()
 }
 
@@ -850,12 +911,12 @@ function tryMergeWordPair(
   }
 
   // 2. Türkçe Ğ kuralı (Türkçe'de hiçbir kelime ğ veya Ğ ile başlamaz; OCR tireyi yutsa bile daima önceki kelimenin devamıdır)
-  if (/^[ğĞ]/.test(cleanNext)) {
+  if (/^[ğĞ]/.test(cleanNextCore)) {
     const cleanPrefix = lastWord.replace(/[\-\u00AD\uFFFD\u2010\u2011\u2012\u2212\u00AC~]+$/, '')
     return cleanPrefix + cleanNext
   }
 
-  // 3. Kesme işareti ile bölünen özel isim veya ek ("Türkiye’" + "nin")
+  // 3. Kesme işareti ile bölünen özel isim veya ek ("Türkiye’" + "nin", "Nora'" + "ya")
   const apostropheMatch = lastWord.match(/^(\S*[a-zA-ZçğıöşüÇĞİÖŞÜ0-9]['’‘\`])$/)
   if (
     apostropheMatch &&
@@ -864,8 +925,22 @@ function tryMergeWordPair(
     return apostropheMatch[1] + cleanNext
   }
 
-  // 4. Tire düşmüş ama ikinci parça tek başına kelime olamayacak bir ekse (BROKEN_SUFFIX_SET)
-  if (/[a-zçğıöşü]$/.test(lastWord) && BROKEN_SUFFIX_SET.has(cleanNextCore.toLowerCase())) {
+  // 4. Tire düşmüş ama ikinci parça tek başına kelime olamayacak bir ekse (BROKEN_SUFFIX_SET veya NON_STANDALONE_WORD_B_PATTERNS)
+  if (
+    /[a-zçğıöşü]$/.test(lastWord) &&
+    (BROKEN_SUFFIX_SET.has(cleanNextCore.toLowerCase()) ||
+      NON_STANDALONE_WORD_B_PATTERNS.some((rx) => rx.test(cleanNextCore)))
+  ) {
+    return lastWord + cleanNext
+  }
+
+  // 5. Tire düşmüş hece/kök bölmesi (ka + sabasındaki, Ba + yan, gü + zelce, dav + ranan, be + bekken, sö + zünü, bur + nunu, bi + rinin, söy + lediği, El + bette, parmağıy + la, rağ + men, ça + larken, ger + ginlik)
+  const lowerA = lastWord.toLowerCase().replace(/[^a-zçğıöşü]/g, '')
+  if (
+    /^[a-zçğıöşü]/.test(cleanNextCore) &&
+    !VALID_STANDALONE_TURKISH_WORDS.has(lowerA) &&
+    (KNOWN_SPLIT_PREFIXES.has(lowerA) || lowerA.length <= 2)
+  ) {
     return lastWord + cleanNext
   }
 
@@ -1441,8 +1516,9 @@ function finalizePdfLine(
       let hasHorizontalGap = true
       if (prev.width && prev.width > 0) {
         const gap = curr.x - (prev.x + prev.width)
-        const bothLowerLetters = /[a-zçğıöşü]$/.test(prev.str.trim()) && /^[a-zçğıöşü]/.test(curr.str.trim())
-        const threshold = bothLowerLetters ? lineFontSize * 0.22 : lineFontSize * 0.14
+        // Yalnızca gerçek glif kerning ayrılmalarında (< 0.7 pt) yapay boşluğu engelle.
+        // İki yana yaslı metinlerde normal kelime aralığını asla ezme (örn: kırışmış oval, bütün okulda).
+        const threshold = Math.min(0.7, lineFontSize * 0.06)
         if (gap < threshold) {
           hasHorizontalGap = false
         }

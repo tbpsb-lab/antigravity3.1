@@ -7,6 +7,7 @@ export type ChunkItem = {
   words: string[]
   startIndex: number
   isSentenceEnd: boolean
+  isParagraphEnd?: boolean
   isHeading?: boolean
   isFootnote?: boolean
   footnoteLabel?: string
@@ -215,13 +216,19 @@ export function createChunks(
     let globalWordIdx = 0
     let inFootnote = false
 
-    const flush = (isSentenceEnd: boolean, isHeading: boolean = false, isFootnote: boolean = false) => {
+    const flush = (
+      isSentenceEnd: boolean,
+      isHeading: boolean = false,
+      isFootnote: boolean = false,
+      isParagraphEnd: boolean = false,
+    ) => {
       if (curWords.length === 0) return
       chunks.push({
         text: curWords.join(' '),
         words: [...curWords],
         startIndex: curStart,
         isSentenceEnd,
+        isParagraphEnd,
         isHeading,
         isFootnote,
       })
@@ -232,7 +239,9 @@ export function createChunks(
       const line = rawLine.trim()
       if (!line) {
         if (curWords.length > 0) {
-          flush(true, false, inFootnote)
+          flush(true, false, inFootnote, true)
+        } else if (chunks.length > 0) {
+          chunks[chunks.length - 1].isParagraphEnd = true
         }
         continue
       }
@@ -241,7 +250,9 @@ export function createChunks(
 
       if (isHeading) {
         if (curWords.length > 0) {
-          flush(true, false, inFootnote)
+          flush(true, false, inFootnote, true)
+        } else if (chunks.length > 0) {
+          chunks[chunks.length - 1].isParagraphEnd = true
         }
         const cleanLine = line.replace(/^#{1,6}\s+/, '')
         const hWords = splitGluedTokens(cleanLine.split(/\s+/).filter(Boolean))
@@ -253,6 +264,7 @@ export function createChunks(
             words: hWords,
             startIndex: hStart,
             isSentenceEnd: true,
+            isParagraphEnd: true,
             isHeading: true,
             isFootnote: false,
           })
@@ -287,7 +299,9 @@ export function createChunks(
     }
 
     if (curWords.length > 0) {
-      flush(true, false, inFootnote)
+      flush(true, false, inFootnote, true)
+    } else if (chunks.length > 0) {
+      chunks[chunks.length - 1].isParagraphEnd = true
     }
 
     return chunks
@@ -303,13 +317,14 @@ export function createChunks(
   let currentFootnoteLabel: string | undefined = undefined
   let inFootnoteSpan = false
 
-  const flush = (isEnd: boolean) => {
+  const flush = (isEnd: boolean, isParaEnd: boolean = false) => {
     if (currentWords.length === 0) return
     chunks.push({
       text: currentWords.join(' '),
       words: [...currentWords],
       startIndex: currentStartIndex,
       isSentenceEnd: isEnd,
+      isParagraphEnd: isParaEnd,
       isHeading: isCurrentHeading,
       isFootnote: isCurrentFootnote,
       footnoteLabel: currentFootnoteLabel,
@@ -381,59 +396,144 @@ export function createChunks(
       nextStartsSpecial ||
       i === words.length - 1
     ) {
-      flush(isSentenceEnd || isHeadingEnd)
+      flush(isSentenceEnd || isHeadingEnd, i === words.length - 1)
     }
   }
 
   return chunks
 }
 
+export const TURKISH_ABBREVIATIONS = new Set([
+  'dr.',
+  'prof.',
+  'doç.',
+  'av.',
+  'vb.',
+  'yy.',
+  'bkz.',
+  'hz.',
+  'cad.',
+  'sok.',
+  'apt.',
+  'no.',
+  'sf.',
+  'vs.',
+  'alm.',
+  'ing.',
+  'fr.',
+  'mad.',
+  'böl.',
+])
+
+export function isAbbreviation(word: string): boolean {
+  const normalized = word.trim().toLowerCase().replace(/^[^\wçğıöşü0-9]+/, '')
+  if (TURKISH_ABBREVIATIONS.has(normalized)) return true
+  // Tek harfli isim kısaltmaları: örn. "M.", "A."
+  if (/^[a-zçğıöşü]\.$/i.test(normalized)) return true
+  return false
+}
+
 /**
- * Dinamik süre hesaplayıcı (Speed Variability, Başlık Beklemesi, Noktalama Nefes Payı)
+ * 2. KURAL: Dynamic WPM Pacing Engine (calculateWordDelay)
+ *
+ * Her kelimenin uzunluğuna, harf yapısına ve noktalama işaretlerine göre
+ * ekranda kalma süresini (delay ms) dinamik hesaplar:
+ *
+ * 1. Baz süre: baseDelay = 60000 / baseWpm
+ * 2. Noktalamasız harf sayısı (cleanLength) ve başlangıç çarpanı (multiplier):
+ *    - 1 - 3 harf: 0.9 (kısa bağlaçlarda hafif hızlan)
+ *    - 4 - 8 harf: 1.0 (standart hız)
+ *    - 9 - 11 harf: 1.25
+ *    - 12 - 14 harf: 1.5
+ *    - 15 ve üzeri harf: 1.75
+ * 3. Noktalama Gecikmeleri (Üzerine Ekle):
+ *    - Cümle bitiren noktalama (. ! ? … ." .”): +1.0 (Kısaltmalar hariç: Dr. Prof. vb. yy.)
+ *    - Virgül, noktalı virgül, iki nokta veya tire (, ; : —): +0.5
+ *    - Kelime içinde rakam varsa (/\d/): +0.3
+ *    - Paragraf sonu: +1.4
+ * 4. Üst sınır: Math.min(multiplier, 3.0) -> Math.round(baseDelay * multiplier)
  */
-export function chunkDelay(chunk: ChunkItem | string, wpm: number, chunkSize: number = 1): number {
-  const base = 60000 / wpm
-  const text = typeof chunk === 'string' ? chunk : chunk.text
-  const words = typeof chunk === 'string' ? text.split(/\s+/).filter(Boolean) : chunk.words
-  const wordCount = Math.max(1, words.length)
-  const isHeading = typeof chunk === 'object' ? chunk.isHeading : text.startsWith('#')
-  const isSentenceEnd = typeof chunk === 'object' ? chunk.isSentenceEnd : /[.!?…]["”’»)]*$/.test(text)
-  const isFootnote = typeof chunk === 'object' ? chunk.isFootnote : /^\[dipnot/i.test(text)
+export function calculateWordDelay(
+  word: string | ChunkItem,
+  baseWpm: number,
+  options: { isParagraphEnd?: boolean } = {},
+): number {
+  const text = typeof word === 'string' ? word : word.text
+  const isHeading = typeof word === 'object' ? word.isHeading : text.startsWith('#')
+  const baseDelay = 60000 / Math.max(1, baseWpm)
 
-  // 1. Chunk boyutuna göre süre: Ortalama WPM sabit kalır, çoklu kelimede algılama payı verilir
-  let duration = base * (wordCount > 1 ? Math.pow(wordCount, 0.72) : 1)
-
-  // 2. Başlık beklemesi ve nefes payı:
-  // "Bölüm Başlığı" metin rozeti yerine; başlık daha yavaş geçer (~3.5x) ve ardından nefes payı (+450ms) verilir (~1.25s)
+  // Bölüm başlıkları için bütünlüklü okuma süresi
   if (isHeading) {
-    return Math.max(duration * 3.5 + 450, 1250)
+    return Math.max(Math.round(baseDelay * 3.5 + 450), 1250)
   }
 
-  // 3. Dipnot başlangıç payı
-  if (isFootnote) {
-    duration *= 1.25
+  // 1. Kelimenin noktalamasız harf sayısını (cleanLength) bul
+  const cleanWord = text.replace(/[^\wçğıöşüÇĞİÖŞÜ0-9]/g, '')
+  const cleanLength = cleanWord.length
+
+  // Başlangıç çarpanını (multiplier) belirle:
+  let multiplier = 1.0
+  if (cleanLength <= 3) {
+    multiplier = 0.9 // 1 - 3 harf: kısa bağlaçlarda hafif hızlan
+  } else if (cleanLength <= 8) {
+    multiplier = 1.0 // 4 - 8 harf: standart hız
+  } else if (cleanLength <= 11) {
+    multiplier = 1.25 // 9 - 11 harf
+  } else if (cleanLength <= 14) {
+    multiplier = 1.5 // 12 - 14 harf
+  } else {
+    multiplier = 1.75 // 15 ve üzeri harf
   }
 
-  // 4. Noktalama nefes payı
-  if (isSentenceEnd) {
-    duration *= 2.1
-  } else if (/[,;:–—]["”’»)]*$/.test(text)) {
-    duration *= 1.4
+  // Çoklu kelime öbeği (chunk > 1) modu için kelime sayısına göre algılama payı
+  if (typeof word === 'object' && word.words && word.words.length > 1) {
+    multiplier *= Math.pow(word.words.length, 0.72)
   }
 
-  // 5. Kelime uzunluğu esnemesi (uzun kelimelerde yavaşla, kısa kelimelerde hızlan)
-  const totalChars = text.replace(/\s+/g, '').length
-  if (totalChars > 11 * wordCount) {
-    duration *= 1.18
-  } else if (totalChars < 4 * wordCount && !isSentenceEnd) {
-    duration *= 0.92
+  // 2. Noktalama Gecikmeleri (Üzerine Ekle)
+  const isSentenceEndPunct = /[.!?…][”"’')\]]*$/.test(text)
+  const isSentenceEnd = (typeof word === 'object' && word.isSentenceEnd) || isSentenceEndPunct
+  const isAbbr = isAbbreviation(text)
+
+  // a) Kelime cümle bitiren bir noktalama ile bitiyorsa: +1.0 artır (Kısaltmalar hariç)
+  if (isSentenceEndPunct || isSentenceEnd) {
+    if (!isAbbr) {
+      multiplier += 1.0
+    }
+  } else if (/[,;:—–-][”"’')\]]*$/.test(text)) {
+    // b) Kelime virgül, noktalı virgül, iki nokta veya tire ile bitiyorsa: +0.5 artır
+    multiplier += 0.5
   }
 
-  return duration
+  // c) Kelime içinde rakam varsa (/\d/): +0.3 artır
+  if (/\d/.test(text)) {
+    multiplier += 0.3
+  }
+
+  // d) Eğer kelime paragraf sonuysa: +1.4 artır
+  const isParagraphEnd = options.isParagraphEnd || (typeof word === 'object' && word.isParagraphEnd)
+  if (isParagraphEnd) {
+    multiplier += 1.4
+  }
+
+  // Dipnot rozeti ek payı
+  if (typeof word === 'object' && word.isFootnote) {
+    multiplier += 0.25
+  }
+
+  // Toplam çarpanın çok aşırı uzamaması için üst sınır 3.0
+  const cappedMultiplier = Math.min(multiplier, 3.0)
+  return Math.round(baseDelay * cappedMultiplier)
+}
+
+export function chunkDelay(chunk: ChunkItem | string, wpm: number, chunkSize: number = 1): number {
+  return calculateWordDelay(chunk, wpm, {
+    isParagraphEnd: typeof chunk === 'object' ? chunk.isParagraphEnd : false,
+  })
 }
 
 export function wordDelay(word: string, wpm: number): number {
-  return chunkDelay(word, wpm, 1)
+  return calculateWordDelay(word, wpm)
 }
 
 export function formatRemaining(chunksLeft: number, wpm: number, chunkSize: number = 1): string {

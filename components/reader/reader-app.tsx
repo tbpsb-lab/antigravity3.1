@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useEffectEvent, useMemo, useState } from 'react'
+import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from 'react'
 import { cn } from '@/lib/utils'
 import {
   MAX_WPM,
@@ -12,6 +12,7 @@ import {
   splitAtPivot,
   tokenize,
   createChunks,
+  calculateWordDelay,
   chunkDelay,
 } from '@/lib/rsvp'
 import {
@@ -68,28 +69,56 @@ export function ReaderApp() {
   const currentChunk = chunks[index]
   const zen = playing
 
+  // 3. KURAL: Yumuşak Kalkış (Ramp-Up / Warm-up) sayacı
+  const rampStepRef = useRef(0)
+
+  // 1 & 2. KURAL: Dynamic WPM Pacing Engine (Dinamik Zamanlayıcı Döngüsü)
   useEffect(() => {
-    if (!playing || chunks.length === 0) return
-    const timer = setTimeout(
-      () => {
-        if (index >= lastIndex) setPlaying(false)
-        else setIndex((i) => i + 1)
-      },
-      chunkDelay(chunks[index] ?? '', wpm, chunkSize),
-    )
+    if (!playing || chunks.length === 0) {
+      rampStepRef.current = 0
+      return
+    }
+
+    const currentItem = chunks[index]
+    if (!currentItem) return
+
+    // Yumuşak Kalkış (Ramp-Up): İlk 5 kelimede hedef hızın %60'ından başlayıp %100'e kademeli çıkış
+    const currentRamp = rampStepRef.current
+    const speedFactor = currentRamp < 5 ? 0.6 + 0.4 * (currentRamp / 4) : 1.0
+    const effectiveWpm = Math.max(MIN_WPM, Math.round(wpm * speedFactor))
+
+    // Her kelimenin uzunluğuna, harf yapısına ve noktalamasına göre gecikmeyi dinamik hesapla
+    const delay = calculateWordDelay(currentItem, effectiveWpm, {
+      isParagraphEnd: currentItem.isParagraphEnd,
+    })
+
+    const timer = setTimeout(() => {
+      rampStepRef.current = currentRamp + 1
+      if (index >= lastIndex) {
+        setPlaying(false)
+        rampStepRef.current = 0
+      } else {
+        setIndex((i) => i + 1)
+      }
+    }, delay)
+
     return () => clearTimeout(timer)
-  }, [playing, index, wpm, chunks, lastIndex, chunkSize])
+  }, [playing, index, wpm, chunks, lastIndex])
 
   const togglePlay = useCallback(() => {
     if (chunks.length === 0) return
     setPlaying((p) => {
+      rampStepRef.current = 0
       if (!p && index >= lastIndex) setIndex(0)
       return !p
     })
   }, [chunks.length, index, lastIndex])
 
   const seek = useCallback(
-    (next: number) => setIndex(Math.min(lastIndex, Math.max(0, next))),
+    (next: number) => {
+      rampStepRef.current = 0
+      setIndex(Math.min(lastIndex, Math.max(0, next)))
+    },
     [lastIndex],
   )
 

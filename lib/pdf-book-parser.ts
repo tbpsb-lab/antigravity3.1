@@ -159,6 +159,7 @@ const PRAISE_KEYWORDS = [
 
 // Türkçe'de tek başına kelime olmayan, kerning/OCR hatasıyla kelimeden kopmuş ek parçaları
 const BROKEN_SUFFIX_SET = new Set([
+  // Şahıs, ek fiil ve zaman ekleri
   'iyorsunuz',
   'iyorum',
   'iyorsun',
@@ -179,14 +180,81 @@ const BROKEN_SUFFIX_SET = new Set([
   'üyorsun',
   'üyoruz',
   'üyorlar',
-  'acağım',
+  'diyor',
+  'diyordu',
+  'diyormuş',
+  'diyelim',
+  'yordu',
+  'yormuş',
+  'yorduk',
+  'yordun',
+  'yordunuz',
+  'cekti',
+  'caktı',
+  'cekler',
+  'caklar',
+  'ceksin',
+  'caksın',
+  'cektim',
+  'caktım',
+  'cektik',
+  'caktık',
+  'mişti',
+  'mıştı',
+  'muştu',
+  'müştü',
+  'miştir',
+  'mıştır',
+  'muştur',
+  'müştür',
+  'mişler',
+  'mışlar',
+  'muşlar',
+  'müşler',
+  'eceği',
+  'acağı',
+  'ecek',
+  'acak',
+  'ecektir',
+  'acaktır',
   'eceğim',
-  'acaksın',
+  'acağım',
   'eceksin',
-  'acaklar',
+  'acaksın',
+  'eceğiz',
+  'acağız',
+  'eceksiniz',
+  'acaksınız',
   'ecekler',
+  'acaklar',
   'acağımız',
   'eceğimiz',
+  'ebilir',
+  'abilir',
+  'ebilirdi',
+  'abilirdi',
+  'ebilirsin',
+  'abilirsin',
+  'ebilirse',
+  'abilirse',
+  'ebilecek',
+  'abilecek',
+  'ebileceği',
+  'abileceği',
+  'ebilmek',
+  'abilmek',
+  'irsin',
+  'ırsın',
+  'ursun',
+  'ürsün',
+  'ilirsin',
+  'ılırsın',
+  'ulursun',
+  'ülürsün',
+  'siniz',
+  'sınız',
+  'sunuz',
+  'sünüz',
   'ışacağım',
   'işeceğim',
   'ışmış',
@@ -209,10 +277,77 @@ const BROKEN_SUFFIX_SET = new Set([
   'kmesi',
   'kmak',
   'kmek',
+  // Hal, aitlik, çoğul ve bağlaç ekleri
+  'ndaki',
+  'ndeki',
+  'ndakiler',
+  'ndekiler',
+  'ndeydi',
+  'ndaydı',
+  'ndeymiş',
+  'ndaymış',
+  'ndadır',
+  'ndedir',
+  'ndakine',
+  'ndekine',
+  'ndığında',
+  'ndiğinde',
+  'nduğunda',
+  'ndüğünde',
+  'yle',
+  'yla',
+  'yleydi',
+  'ylaydı',
+  'daki',
+  'deki',
+  'takı',
+  'teki',
   'ller',
   'llar',
   'lleri',
   'lları',
+  'nları',
+  'nleri',
+  'nların',
+  'nlerin',
+  'nlarına',
+  'nlerine',
+  'nlarında',
+  'nlerinde',
+  'nlarından',
+  'nlerinden',
+  'ları',
+  'leri',
+  'ların',
+  'lerin',
+  'larına',
+  'lerine',
+  'larında',
+  'lerinde',
+  'larından',
+  'lerinden',
+  'vlar',
+  'vler',
+  'vları',
+  'vleri',
+  'larını',
+  'lerini',
+  'lerinin',
+  'lerinin',
+  'sında',
+  'sinde',
+  'sından',
+  'sinden',
+  'sına',
+  'sine',
+  'sını',
+  'sini',
+  'sının',
+  'sinin',
+  'sı',
+  'si',
+  'su',
+  'sü',
   'lir',
   'lirim',
   'lirsin',
@@ -231,6 +366,16 @@ const BROKEN_SUFFIX_SET = new Set([
   'liğine',
   'lığında',
   'liğinde',
+  'lığından',
+  'liğinden',
+  'luğundan',
+  'lüğünden',
+  'luğunu',
+  'lüğünü',
+  'lıkları',
+  'likleri',
+  'lukları',
+  'lükleri',
   'ığı',
   'iği',
   'uğu',
@@ -275,6 +420,26 @@ const BROKEN_SUFFIX_SET = new Set([
   'imiz',
   'umuz',
   'ümüz',
+  'ımızın',
+  'imizin',
+  'umuzun',
+  'ümüzün',
+  'ımıza',
+  'imize',
+  'umuza',
+  'ümüze',
+  'ımızda',
+  'imizde',
+  'umuzda',
+  'ümüzde',
+  'ımızdan',
+  'imizden',
+  'umuzdan',
+  'ümüzden',
+  'ımızı',
+  'imizi',
+  'umuzu',
+  'ümüzü',
   'ıyız',
   'iyiz',
   'uyuz',
@@ -285,12 +450,16 @@ const BROKEN_SUFFIX_SET = new Set([
   'ürüm',
   'ında',
   'inde',
+  'unda',
+  'ünde',
   'undan',
   'ünden',
   'ından',
   'inden',
   'ına',
   'ine',
+  'una',
+  'üne',
   'ını',
   'ini',
   'unu',
@@ -299,6 +468,10 @@ const BROKEN_SUFFIX_SET = new Set([
   'inin',
   'unun',
   'ünün',
+  'ıyla',
+  'iyle',
+  'uyla',
+  'üyle',
   'ıkları',
   'ikleri',
   'ukları',
@@ -309,14 +482,77 @@ const BROKEN_SUFFIX_SET = new Set([
   'mden',
   'ndan',
   'nden',
+  'dan',
+  'den',
+  'tan',
+  'ten',
+  'madan',
+  'meden',
+  'meksizin',
+  'maksızın',
+  'yken',
+  'ken',
   'ip',
   'ıp',
   'up',
   'üp',
+  'yip',
+  'yıp',
+  'yup',
+  'yüp',
+  'yerek',
+  'yarak',
+  'meyip',
+  'mayıp',
+  'meyerek',
+  'mayarak',
+  'meye',
+  'maya',
+  'meyi',
+  'mayı',
+  'mek',
+  'mak',
+  'mekte',
+  'makta',
+  'mekten',
+  'maktan',
+  'mişken',
+  'mışken',
   'ız',
   'iz',
   'uz',
   'üz',
+  'diğinde',
+  'dığında',
+  'duğunda',
+  'düğünde',
+  'diğinden',
+  'dığından',
+  'duğundan',
+  'düğünden',
+  'diğine',
+  'dığına',
+  'duğuna',
+  'düğüne',
+  'diğini',
+  'dığını',
+  'duğunu',
+  'düğünü',
+  'diğimiz',
+  'dığımız',
+  'duğumuz',
+  'düğümüz',
+  'diğiniz',
+  'dığınız',
+  'duğunuz',
+  'düğünüz',
+  'dikleri',
+  'dıkları',
+  'dukları',
+  'dükleri',
+  'füsleri',
+  'füsü',
+  'füse',
   'lerini',
   'lerinin',
   'lerinde',
@@ -483,7 +719,7 @@ export function cleanIntraLineHyphens(rawLineText: string): string {
 
   // 9. Satır sonunda harf ile tire arasına girmiş boşluğu kaldır
   t = t.replace(
-    /([a-zA-ZçğıöşüÇĞİÖŞÜ0-9])\s+([\-\u00AD\uFFFD\u2010\u2011\u2012\u2212\u00AC~'’‘\`]+)$/,
+    /([a-zA-ZçğıöşüÇĞİÖŞÜ0-9])\s+([\-\u00AD\uFFFD\u2010\u2011\u2012\u2212\u00AC~'’‘\`]+)\s*$/,
     '$1$2',
   )
 
@@ -496,22 +732,34 @@ export function cleanIntraLineHyphens(rawLineText: string): string {
     '$1$2$3',
   )
 
-  // 12. Font kerning hatasıyla kopmuş tek harfli Türkçe ekleri birleştir ("insanları n" -> "insanların")
+  // 12. Font kerning hatasıyla kopmuş tek harfli Türkçe ekleri birleştir ("insanları n" -> "insanların", "ilerlett i" -> "ilerletti")
   t = t.replace(
-    /(?<![a-zA-ZçğıöşüÇĞİÖŞÜ0-9])([a-zA-ZçğıöşüÇĞİÖŞÜ][a-zçğıöşü]{1,20})\s+([nmı](?:['’‘][a-zçğıöşü]{1,8})?)(?=[,.;:!?'”"\)\s]|$)/g,
+    /(?<![a-zA-ZçğıöşüÇĞİÖŞÜ0-9])([a-zA-ZçğıöşüÇĞİÖŞÜ][a-zçğıöşü]{2,20})\s+([iıuümnd](?:['’‘][a-zçğıöşü]{1,8})?)(?=[,.;:!?'”"\)\s]|$)/g,
     '$1$2',
   )
 
-  // 13. BROKEN_SUFFIX_SET yardımıyla kelimeden kopmuş Türkçe ek parçalarını birleştir
+  // 13. BROKEN_SUFFIX_SET yardımıyla kelimeden kopmuş Türkçe ek parçalarını birleştir (noktalamayı koruyarak)
   t = t.replace(
-    /(?<![a-zA-ZçğıöşüÇĞİÖŞÜ0-9])([a-zA-ZçğıöşüÇĞİÖŞÜ]*[a-zçğıöşü])\s+([a-zçğıöşü]{2,12})(?![a-zA-ZçğıöşüÇĞİÖŞÜ0-9])/g,
-    (full, stem, suffix) => {
-      if (BROKEN_SUFFIX_SET.has(suffix)) {
-        return stem + suffix
+    /(?<![a-zA-ZçğıöşüÇĞİÖŞÜ0-9])([a-zA-ZçğıöşüÇĞİÖŞÜ][a-zçğıöşü]{1,25})\s+([a-zçğıöşü]{2,14})([,.;:!?\"\'’»\)]*)(?=\s|$)/g,
+    (full, stem, suffix, punct) => {
+      if (BROKEN_SUFFIX_SET.has(suffix.toLowerCase())) {
+        return stem + suffix + (punct || '')
       }
       return full
     },
   )
+
+  // Özel kerning ayrılmalarını onar
+  t = t.replace(/\bnorm\s+al\b/g, 'normal')
+  t = t.replace(/\bSoğ\s+uktan\b/g, 'Soğuktan')
+  t = t.replace(/\bsoğ\s+uktan\b/g, 'soğuktan')
+  t = t.replace(/\bzar\s+if\b/g, 'zarif')
+  t = t.replace(/\bson\s+raki\b/g, 'sonraki')
+  t = t.replace(/\bSına\s+vlar\b/g, 'Sınavlar')
+  t = t.replace(/\bsına\s+vlar\b/g, 'sınavlar')
+  t = t.replace(/\bısm\s+arladığı\b/g, 'ısmarladığı')
+  t = t.replace(/\bseçme\s+yip\b/g, 'seçmeyip')
+  t = t.replace(/\bkasabası\s+ndaki\b/g, 'kasabasındaki')
 
   // 14. Türkçe OCR "rı" -> "n" ligatür bozulmalarını onar
   t = t.replace(
@@ -555,62 +803,70 @@ export function cleanIntraLineHyphens(rawLineText: string): string {
 /**
  * İki satır veya sayfa sınırındaki kelime çiftini hece/tire bölmesi açısından birleştirir.
  */
-function tryMergeWordPair(lastWord: string, nextWord: string, context: { hasOpenParentheticalDash?: boolean } = {}): string | null {
+function tryMergeWordPair(
+  lastWord: string,
+  nextWord: string,
+  context: { hasOpenParentheticalDash?: boolean } = {},
+): string | null {
   if (!lastWord || !nextWord) return null
   const { hasOpenParentheticalDash = false } = context
 
-  // 1. Tire veya \uFFFD ile hece bölmesi ("anla-" + "şılmıyor")
+  const cleanNext = nextWord.replace(/^['"“‘\(]+/, '')
+  const cleanNextCore = cleanNext.replace(/['"”’\.,;:\!\?\)\]]+$/, '')
+
+  // 1. Tire veya \uFFFD ile hece bölmesi ("anla-" + "şılmıyor", "ka\u00AD" + "sabası")
   const hyphenMatch = lastWord.match(
-    /^(\S*[a-zA-ZçğıöşüÇĞİÖŞÜ])([\-\u00AD\uFFFD\u2010\u2011\u2012\u2212\u00AC~]+)$/,
+    /^(\S*[a-zA-ZçğıöşüÇĞİÖŞÜ0-9])([\-\u00AD\uFFFD\u2010\u2011\u2012\u2212\u00AC~]+)$/,
   )
-  if (hyphenMatch && /^[a-zA-ZçğıöşüÇĞİÖŞÜ]/.test(nextWord)) {
+  if (hyphenMatch) {
     const prefix = hyphenMatch[1]
     const hyphenChar = hyphenMatch[2]
 
     if (
       hyphenChar.includes('\uFFFD') &&
-      (hasOpenParentheticalDash || (/[a-zçğıöşü]$/.test(prefix) && /^[A-ZÇĞİÖŞÜ]/.test(nextWord)))
+      (hasOpenParentheticalDash || (/[a-zçğıöşü]$/.test(prefix) && /^[A-ZÇĞİÖŞÜ]/.test(cleanNext)))
     ) {
       return `${prefix}– ${nextWord}`
     }
 
-    if (/^[a-zçğıöşü]/.test(nextWord)) {
-      return prefix + nextWord
+    if (/^[a-zçğıöşü']/.test(cleanNext)) {
+      const leadingPrefix = lastWord.slice(0, lastWord.length - (prefix.length + hyphenChar.length))
+      return leadingPrefix + prefix + cleanNext
     }
 
     const prefixLetters = prefix.replace(/[^a-zA-ZçğıöşüÇĞİÖŞÜ]/g, '')
-    const nextLetters = nextWord.replace(/[^a-zA-ZçğıöşüÇĞİÖŞÜ]/g, '')
+    const nextLetters = cleanNextCore.replace(/[^a-zA-ZçğıöşüÇĞİÖŞÜ]/g, '')
     if (
       prefixLetters.length >= 2 &&
       prefixLetters === prefixLetters.toUpperCase() &&
       nextLetters.length >= 1 &&
       nextLetters === nextLetters.toUpperCase()
     ) {
-      return prefix + nextWord
+      const leadingPrefix = lastWord.slice(0, lastWord.length - (prefix.length + hyphenChar.length))
+      return leadingPrefix + prefix + cleanNext
     }
 
     return prefix + '–' + nextWord
   }
 
   // 2. Türkçe Ğ kuralı (Türkçe'de hiçbir kelime ğ veya Ğ ile başlamaz; OCR tireyi yutsa bile daima önceki kelimenin devamıdır)
-  if (/^[ğĞ]/.test(nextWord)) {
+  if (/^[ğĞ]/.test(cleanNext)) {
     const cleanPrefix = lastWord.replace(/[\-\u00AD\uFFFD\u2010\u2011\u2012\u2212\u00AC~]+$/, '')
-    return cleanPrefix + nextWord
+    return cleanPrefix + cleanNext
   }
 
   // 3. Kesme işareti ile bölünen özel isim veya ek ("Türkiye’" + "nin")
   const apostropheMatch = lastWord.match(/^(\S*[a-zA-ZçğıöşüÇĞİÖŞÜ0-9]['’‘\`])$/)
   if (
     apostropheMatch &&
-    /^[a-zçğıöşü]{1,10}(?:['"”’\.,;:\!\?\)\]\¹²³⁴⁵⁶⁷⁸⁹⁰\*†‡]|\[\d+\])*$/.test(nextWord)
+    /^[a-zçğıöşü]{1,10}(?:['"”’\.,;:\!\?\)\]\¹²³⁴⁵⁶⁷⁸⁹⁰\*†‡]|\[\d+\])*$/.test(cleanNext)
   ) {
-    return apostropheMatch[1] + nextWord
+    return apostropheMatch[1] + cleanNext
   }
 
   // 4. Tire düşmüş ama ikinci parça tek başına kelime olamayacak bir ekse (BROKEN_SUFFIX_SET)
-  const cleanNext = nextWord.replace(/['"”’\.,;:\!\?\)\]]+$/, '')
-  if (/[a-zçğıöşü]$/.test(lastWord) && BROKEN_SUFFIX_SET.has(cleanNext)) {
-    return lastWord + nextWord
+  if (/[a-zçğıöşü]$/.test(lastWord) && BROKEN_SUFFIX_SET.has(cleanNextCore.toLowerCase())) {
+    return lastWord + cleanNext
   }
 
   return null
@@ -621,6 +877,24 @@ function tryMergeWordPair(lastWord: string, nextWord: string, context: { hasOpen
  * bölünmüş kelimeleri tek parça olarak diker (De-hyphenation across lines & pages).
  */
 export function mergeSplitWordsAcrossLinesAndPages(preparedPages: PreparedPage[]) {
+  // Sayfa başlarındaki ve sonlarındaki tekil sayfa numaralarını kesin olarak temizle
+  for (const page of preparedPages) {
+    if (page.isBoilerplate) continue
+    while (
+      page.bodyLines.length > 0 &&
+      (!page.bodyLines[0].text.trim() || /^\d{1,4}\.?$/.test(page.bodyLines[0].text.trim()))
+    ) {
+      page.bodyLines.shift()
+    }
+    while (
+      page.bodyLines.length > 0 &&
+      (!page.bodyLines[page.bodyLines.length - 1].text.trim() ||
+        /^\d{1,4}\.?$/.test(page.bodyLines[page.bodyLines.length - 1].text.trim()))
+    ) {
+      page.bodyLines.pop()
+    }
+  }
+
   const sequence: PdfLine[] = []
   for (const page of preparedPages) {
     if (page.isBoilerplate) continue
@@ -641,6 +915,15 @@ export function mergeSplitWordsAcrossLinesAndPages(preparedPages: PreparedPage[]
     const wordsB = lineB.text.trim().split(/\s+/).filter(Boolean)
     if (!wordsA.length || !wordsB.length) continue
 
+    // Eğer son kelime tek başına bir tire ise ("verebile" + "-"): tireyi önceki kelimeye bitiştir
+    if (
+      wordsA.length >= 2 &&
+      /^[\-\u00AD\uFFFD\u2010\u2011\u2012\u2212\u00AC~]+$/.test(wordsA[wordsA.length - 1])
+    ) {
+      wordsA.pop()
+      wordsA[wordsA.length - 1] += '-'
+    }
+
     const lastWordA = wordsA[wordsA.length - 1]
     const firstWordB = wordsB[0]
 
@@ -657,8 +940,8 @@ export function mergeSplitWordsAcrossLinesAndPages(preparedPages: PreparedPage[]
         wordsA[wordsA.length - 1] = merged
         wordsB.shift()
       }
-      lineA.text = wordsA.join(' ')
-      lineB.text = wordsB.join(' ')
+      lineA.text = cleanIntraLineHyphens(wordsA.join(' '))
+      lineB.text = cleanIntraLineHyphens(wordsB.join(' '))
     }
   }
 

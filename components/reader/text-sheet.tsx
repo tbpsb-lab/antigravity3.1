@@ -222,7 +222,7 @@ function TextSheetBody({ initialText, onClose, onApply }: Omit<TextSheetProps, '
             )}
           >
             <Link2 className="size-3.5" />
-            <span>Site & Haber Linki</span>
+            <span>Link</span>
           </button>
 
           <button

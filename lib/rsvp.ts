@@ -52,8 +52,44 @@ export function dehyphenateText(text: string): string {
     )
 }
 
+/**
+ * 3. KURAL: Noktalama ve camelCase Temizliği
+ * - Noktalama işaretlerinden sonra boşluk unutulmuşsa ayır:
+ *   ([.,!?;:])([a-zA-ZÇĞİÖŞÜçğıöşü]) -> $1 $2 (Rakamları bozma, örn: 3.14).
+ * - Küçük harften hemen sonra büyük harf geliyorsa ayır:
+ *   ([a-zçğıöşü])([A-ZÇĞİÖŞÜ]) -> $1 $2.
+ */
+export function cleanPunctuationAndCamelCase(text: string): string {
+  if (!text) return ''
+  let t = text
+
+  // URL ve e-posta adreslerini koru
+  const urls: string[] = []
+  t = t.replace(
+    /\b(https?:\/\/[^\s]+|www\.[^\s]+|[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})\b/g,
+    (m) => {
+      urls.push(m)
+      return `___URL_${urls.length - 1}___`
+    },
+  )
+
+  // 1. Noktalama işaretlerinden sonra boşluk unutulmuşsa ayır (3.14 veya 12,5 gibi sayıları bozmadan):
+  t = t.replace(/([.,!?;:])([a-zA-ZÇĞİÖŞÜçğıöşü])/g, '$1 $2')
+
+  // 2. Küçük harften hemen sonra büyük harf geliyorsa ayır:
+  t = t.replace(/([a-zçğıöşü])([A-ZÇĞİÖŞÜ])/g, '$1 $2')
+
+  // URL ve e-postaları geri yükle
+  t = t.replace(/___URL_(\d+)___/g, (_, idx) => urls[Number(idx)])
+
+  return t
+}
+
 export function tokenize(text: string): string[] {
-  return dehyphenateText(text)
+  const dehyphenated = dehyphenateText(text)
+  const cleaned = cleanPunctuationAndCamelCase(dehyphenated)
+  return cleaned
+    .replace(/\s+/g, ' ')
     .trim()
     .split(/\s+/)
     .filter(Boolean)
@@ -90,8 +126,8 @@ export function createChunks(
 
   // Eğer metin string olarak verildiyse satır ve başlık duyarlı ayrıştırma uygula
   if (typeof input === 'string') {
-    // Kelimeleri bölmeden ÖNCE de-hyphenation kurallarını uygula
-    const sanitizedInput = dehyphenateText(input)
+    // Kelimeleri bölmeden ÖNCE de-hyphenation ve noktalama/camelCase kurallarını uygula
+    const sanitizedInput = cleanPunctuationAndCamelCase(dehyphenateText(input))
     const lines = sanitizedInput.split(/\r?\n/)
     const chunks: ChunkItem[] = []
     let curWords: string[] = []

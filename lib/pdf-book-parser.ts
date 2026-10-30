@@ -712,7 +712,6 @@ export function collapseSpacedLetters(str: string): string {
   s = s.replace(/\bPR\s+OB\s+LEME\b/g, 'PROBLEME')
   s = s.replace(/\bB\s+İÇME\b/g, 'BİÇME')
   s = s.replace(/\bİÇİNDEKİ\s+LER\b/g, 'İÇİNDEKİLER')
-  s = s.replace(/(?<!\w)([bcdfgğhjklmnprsştvyzBCDFGĞHJKLMNPRSŞTVYZ])\s+([aeıioöuü][a-zçğıöşü]{1,6})\b/g, '$1$2')
   s = s.replace(/\bon\s+u\b/g, 'onu')
   s = s.replace(/\bya\s+pa\s+nın\b/g, 'yapanın')
   s = s.replace(/(?<![a-zA-ZçğıöşüÇĞİÖŞÜ0-9])n\s+a\s*sıl\s*a(?![a-zA-ZçğıöşüÇĞİÖŞÜ0-9])/gi, 'nasıla')
@@ -741,6 +740,39 @@ export function dehyphenateText(text: string): string {
       /(?<!\d)([a-zA-ZçğıöşüÇĞİÖŞÜ]{2,})[\-\u00AD\uFFFD\u2010\u2011\u2012\u2212\u00AC~]\s+([a-zçğıöşü]{1,15})(?!\d)/g,
       '$1$2',
     )
+}
+
+/**
+ * 3. KURAL: Noktalama ve camelCase Temizliği
+ * - Noktalama işaretlerinden sonra boşluk unutulmuşsa ayır:
+ *   ([.,!?;:])([a-zA-ZÇĞİÖŞÜçğıöşü]) -> $1 $2 (Rakamları bozma, örn: 3.14).
+ * - Küçük harften hemen sonra büyük harf geliyorsa ayır:
+ *   ([a-zçğıöşü])([A-ZÇĞİÖŞÜ]) -> $1 $2.
+ */
+export function cleanPunctuationAndCamelCase(text: string): string {
+  if (!text) return ''
+  let t = text
+
+  // URL ve e-posta adreslerini koru
+  const urls: string[] = []
+  t = t.replace(
+    /\b(https?:\/\/[^\s]+|www\.[^\s]+|[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})\b/g,
+    (m) => {
+      urls.push(m)
+      return `___URL_${urls.length - 1}___`
+    },
+  )
+
+  // 1. Noktalama işaretlerinden sonra boşluk unutulmuşsa ayır (örn. 3.14 ve 12,5 rakamlarını bozmadan):
+  t = t.replace(/([.,!?;:])([a-zA-ZÇĞİÖŞÜçğıöşü])/g, '$1 $2')
+
+  // 2. Küçük harften hemen sonra büyük harf geliyorsa ayır:
+  t = t.replace(/([a-zçğıöşü])([A-ZÇĞİÖŞÜ])/g, '$1 $2')
+
+  // URL ve e-postaları geri yükle
+  t = t.replace(/___URL_(\d+)___/g, (_, idx) => urls[Number(idx)])
+
+  return t
 }
 
 /**
@@ -882,7 +914,11 @@ export function cleanIntraLineHyphens(rawLineText: string): string {
   t = t.replace(/([.:!?…])(["”’»]+)([A-ZÇĞİÖŞÜ"“‘])/g, '$1$2 $3')
   t = t.replace(/([:;])'([A-ZÇĞİÖŞÜ])/g, '$1" $2')
 
-  return t.trim()
+  // 20. Noktalama ve camelCase Temizliği (3. Adım)
+  t = cleanPunctuationAndCamelCase(t)
+
+  // 21. Normalizasyon: çoklu boşlukları tek boşluğa indir (4. Adım)
+  return t.replace(/\s+/g, ' ').trim()
 }
 
 /**
@@ -1437,7 +1473,7 @@ export function classifyPageBoilerplate(
 
 /**
  * PDF.js metin parçalarını Y ve X koordinatlarına göre sıralayıp satırlara gruplar.
- * Glifler arası yatay boşluğu kontrol ederek "g e l e c e k" gibi harf ayrılmalarını engeller.
+ * 2. KURAL: Koordinat tabanlı boşluk hesabı ve satır sonu kontrollerini uygular.
  */
 function groupPdfItemsIntoLines(items: any[], pageHeight: number, pageNumber: number): PdfLine[] {
   if (!items || !items.length) return []
@@ -1448,24 +1484,43 @@ function groupPdfItemsIntoLines(items: any[], pageHeight: number, pageNumber: nu
     .sort((a, b) => a - b)
   const medianH = heights.length ? heights[Math.floor(heights.length / 2)] : 12
 
-  const validItems = items
-    .filter((it) => it.str && it.str.trim().length > 0)
-    .map((it) => {
-      const x = it.transform?.[4] || 0
-      const y = it.transform?.[5] || 0
-      const fontSize = Math.abs(it.transform?.[3]) || it.height || 12
-      return {
-        str: it.str,
-        x,
-        y,
-        width: it.width || 0,
-        fontSize,
-        yFromTop: pageHeight ? pageHeight - y : 0,
-      }
-    })
+  const validItems: Array<{
+    str: string
+    x: number
+    y: number
+    width: number
+    fontSize: number
+    yFromTop: number
+    hasEOL: boolean
+  }> = []
 
+  let lastValid: any = null
+  for (const it of items) {
+    if (!it.str || !it.str.trim()) {
+      if (it.hasEOL && lastValid) {
+        lastValid.hasEOL = true
+      }
+      continue
+    }
+    const x = it.transform?.[4] || 0
+    const y = it.transform?.[5] || 0
+    const fontSize = Math.abs(it.transform?.[3]) || it.height || 12
+    const itemObj = {
+      str: it.str,
+      x,
+      y,
+      width: it.width || 0,
+      fontSize,
+      yFromTop: pageHeight ? pageHeight - y : 0,
+      hasEOL: Boolean(it.hasEOL),
+    }
+    validItems.push(itemObj)
+    lastValid = itemObj
+  }
+
+  // 2. KURAL: Y koordinatına göre yukarıdan aşağıya (Math.abs(a.y - b.y) > 2), X'e göre soldan sağa sırala
   validItems.sort((a, b) => {
-    if (Math.abs(a.y - b.y) > 4) {
+    if (Math.abs(a.y - b.y) > 2) {
       return b.y - a.y // Yukarıdan aşağıya
     }
     return a.x - b.x // Soldan sağa
@@ -1492,7 +1547,8 @@ function groupPdfItemsIntoLines(items: any[], pageHeight: number, pageNumber: nu
       item.y - currentLine.y <= medianH * 0.75 &&
       /^\d{1,2}$|^\*{1,3}$|^†$/.test(item.str.trim())
 
-    if (yDiff <= Math.max(4, currentLine.maxFontSize * 0.45) || isSuperscript) {
+    // Y koordinatı değiştiyse (Math.abs(currentY - prevY) > 2) yeni satıra geç
+    if (yDiff <= 2 || isSuperscript) {
       if (isSuperscript) {
         item.str = `[${item.str.trim()}]`
       }
@@ -1532,9 +1588,7 @@ function finalizePdfLine(
     if (i > 0) {
       const prev = lineGroup.items[i - 1]
 
-      // 1. KURAL: PDF.js (getTextContent) parçaları (items) birleştirilirken
-      // parça sonundaki tire ("-" veya "\u00AD") ile biten metinden sonra gelen
-      // ve küçük harfle başlayan parçayı araya boşluk koymadan ve tireyi silerek birleştir
+      // 1. KURAL: De-hyphenation - Tire ("-" veya "\u00AD") ile biten ve sonraki küçük harfle başlayan parça
       const prevEndsWithHyphen = /([a-zA-ZçğıöşüÇĞİÖŞÜ0-9])[\-\u00AD\uFFFD\u2010\u2011\u2012\u2212\u00AC~]\s*$/.test(text)
       const currStartsWithLower = /^\s*([a-zçğıöşü])/.test(curr.str)
 
@@ -1543,35 +1597,43 @@ function finalizePdfLine(
         continue
       }
 
+      // 2. KURAL: Koordinat Tabanlı Boşluk Hesabı (PDF.js getTextContent)
+      // - Y koordinatı değiştiyse (Math.abs(currentY - prevY) > 2) ve önceki satır tire ile bitmiyorsa araya boşluk koy.
+      // - Aynı satırda (currentY === prevY), önceki item'ın bitiş X koordinatı (prevX + prevWidth) ile yeni item'ın
+      //   başlangıç X koordinatı (currentX) arasındaki mesafe font boyutunun %15'inden (fontSize * 0.15) büyükse
+      //   ve arada boşluk yoksa, araya otomatik " " (boşluk) ekle.
+      // - item.hasEOL (End of Line) true ise ve kelime tire ile bitmiyorsa sonuna boşluk ekle.
+      const yDiff = Math.abs(curr.y - prev.y)
+      const gap = curr.x - (prev.x + prev.width)
+      const fontSize = curr.fontSize || prev.fontSize || lineFontSize
+
       const isBracketFn = /^\[\d+\]$/.test(curr.str)
-      const isTrailingPunctOrHyphen = /^[\-\u00AD\uFFFD\u2010\u2011\u2012\u2013\u00AC'’”\)\]\.,;:\!\?]+$/.test(
-        curr.str.trim(),
-      )
+      const isTrailingPunctOrHyphen = /^[\-\u00AD\uFFFD\u2010\u2011\u2012\u2013\u00AC'’”\)\]\.,;:\!\?]+$/.test(curr.str.trim())
       const prevEndsWithJoiner = /['’‘“\(\[\-\u00AD\uFFFD\u2010\u2011]$/.test(prev.str.trim())
 
-      let hasHorizontalGap = true
-      if (prev.width && prev.width > 0) {
-        const gap = curr.x - (prev.x + prev.width)
-        // Yalnızca gerçek glif kerning ayrılmalarında (< 0.7 pt) yapay boşluğu engelle.
-        // İki yana yaslı metinlerde normal kelime aralığını asla ezme (örn: kırışmış oval, bütün okulda).
-        const threshold = Math.min(0.7, lineFontSize * 0.06)
-        if (gap < threshold) {
-          hasHorizontalGap = false
-        }
-      }
+      const isYBreak = yDiff > 2
+      const isSameLineSpace = yDiff <= 2 && gap >= (fontSize * 0.15)
+      const isEolBreak = Boolean(prev.hasEOL)
 
-      if (
-        hasHorizontalGap &&
+      const needsSpace =
+        (isYBreak || isSameLineSpace || isEolBreak) &&
         !isBracketFn &&
         !isTrailingPunctOrHyphen &&
         !prevEndsWithJoiner &&
         !text.endsWith(' ') &&
         !curr.str.startsWith(' ')
-      ) {
+
+      if (needsSpace) {
         text += ' '
       }
     }
+
     text += curr.str
+
+    // item.hasEOL true ise ve tire ile bitmiyorsa sonuna boşluk ekle
+    if (curr.hasEOL && !/[\-\u00AD\uFFFD\u2010\u2011\u2012\u2212\u00AC~]\s*$/.test(text) && !text.endsWith(' ')) {
+      text += ' '
+    }
   }
 
   return {
@@ -1794,7 +1856,17 @@ export async function parsePdfDocument(
     }
   }
 
-  const cleanedText = dehyphenateText(resultBlocks.join('\n\n').trim())
+  // 1. KURAL: Satır sonu kontrolü - tire yoksa satırlar \n ile ayrılır, asla .join("") veya .replace(/\n/g, "") yapılmaz
+  let cleanedText = dehyphenateText(resultBlocks.join('\n\n').trim())
+
+  // 3. KURAL: Noktalama ve camelCase Temizliği
+  cleanedText = cleanPunctuationAndCamelCase(cleanedText)
+
+  // 4. KURAL: Satır sonlarını korurken ardışık yatay boşlukları tek boşluğa indir
+  cleanedText = cleanedText
+    .split(/\r?\n/)
+    .map((l) => l.replace(/[ \t]+/g, ' ').trim())
+    .join('\n')
   const wordCount = cleanedText.split(/\s+/).filter(Boolean).length
 
   if (wordCount < 10) {

@@ -13,8 +13,11 @@ type ControlDockProps = {
   wpm: number
   playing: boolean
   chunkSize?: number
+  step?: number
   onToggle: () => void
   onSeek: (index: number) => void
+  onStepPrev?: () => void
+  onStepNext?: () => void
   onWpmChange: (delta: number) => void
 }
 
@@ -26,8 +29,11 @@ export function ControlDock({
   wpm,
   playing,
   chunkSize = 1,
+  step = 10,
   onToggle,
   onSeek,
+  onStepPrev,
+  onStepNext,
   onWpmChange,
 }: ControlDockProps) {
   const last = Math.max(0, total - 1)
@@ -97,20 +103,22 @@ export function ControlDock({
           <div className="flex items-center gap-1 justify-self-end" role="group" aria-label="Kelime atla">
             <button
               type="button"
-              onClick={() => onSeek(index - 10)}
+              onClick={onStepPrev ?? (() => onSeek(Math.max(0, index - step)))}
               disabled={index === 0}
               className="ctl size-9 disabled:opacity-40 sm:size-10 landscape-short:size-9"
-              aria-label="10 öbek geri"
+              aria-label={`${step} öbek geri`}
+              title={`${step} öbek geri`}
               aria-keyshortcuts="Shift+ArrowLeft"
             >
               <ChevronLeft className="size-5" />
             </button>
             <button
               type="button"
-              onClick={() => onSeek(index + 10)}
+              onClick={onStepNext ?? (() => onSeek(Math.min(last, index + step)))}
               disabled={index >= last}
               className="ctl size-9 disabled:opacity-40 sm:size-10 landscape-short:size-9"
-              aria-label="10 öbek ileri"
+              aria-label={`${step} öbek ileri`}
+              title={`${step} öbek ileri`}
               aria-keyshortcuts="Shift+ArrowRight"
             >
               <ChevronRight className="size-5" />

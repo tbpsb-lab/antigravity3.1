@@ -188,6 +188,27 @@ export function ReaderApp() {
     [showWpmToast],
   )
 
+  // Esnek Bağlam Penceresi ve Sayfalama (Görünen kelime adedi ve alttaki <> buton adımı)
+  const [contextPageSize, setContextPageSize] = useState(60)
+  const contextPageSizeInChunks = Math.max(1, Math.round(contextPageSize / Math.max(1, chunkSize)))
+
+  const handleStepPrev = useCallback(() => {
+    rampStepRef.current = 0
+    const pageIdx = Math.floor(index / contextPageSizeInChunks)
+    let targetIdx = pageIdx * contextPageSizeInChunks
+    if (index === targetIdx) {
+      targetIdx = Math.max(0, (pageIdx - 1) * contextPageSizeInChunks)
+    }
+    seek(targetIdx)
+  }, [index, contextPageSizeInChunks, seek])
+
+  const handleStepNext = useCallback(() => {
+    rampStepRef.current = 0
+    const pageIdx = Math.floor(index / contextPageSizeInChunks)
+    const targetIdx = Math.min(lastIndex, (pageIdx + 1) * contextPageSizeInChunks)
+    seek(targetIdx)
+  }, [index, contextPageSizeInChunks, lastIndex, seek])
+
   // Klavye ok tuşları ve mouse wheel için kademeli değişim
   const changeWpm = useCallback(
     (delta: number) => {
@@ -363,14 +384,18 @@ export function ReaderApp() {
       case 'ArrowLeft':
         e.preventDefault()
         if (e.shiftKey) {
-          seek(index - 10)
+          handleStepPrev()
         } else {
           handleSmartRewind()
         }
         break
       case 'ArrowRight':
         e.preventDefault()
-        seek(index + (e.shiftKey ? 10 : 1))
+        if (e.shiftKey) {
+          handleStepNext()
+        } else {
+          seek(index + 1)
+        }
         break
       case 'ArrowUp':
         e.preventDefault()
@@ -525,13 +550,18 @@ export function ReaderApp() {
       />
 
       <main
-        className="absolute inset-0 flex items-center justify-center overflow-hidden px-4 transition-[padding] duration-500 ease-[cubic-bezier(0.2,0.8,0.2,1)] sm:px-8"
+        className="absolute inset-0 flex flex-col items-center justify-start overflow-hidden px-4 transition-[padding] duration-500 ease-[cubic-bezier(0.2,0.8,0.2,1)] sm:px-8"
         style={{
           paddingTop: zen ? 0 : headerHeight,
           paddingBottom: zen ? 0 : dockHeight,
         }}
       >
-        <div className="relative flex max-h-full w-full max-w-4xl lg:max-w-5xl xl:max-w-6xl flex-col py-3 transition-[max-width] duration-300">
+        <div
+          className={cn(
+            'relative flex h-full w-full max-w-4xl lg:max-w-5xl xl:max-w-6xl flex-col py-2 sm:py-3 transition-[max-width] duration-300 min-h-0',
+            (zen || words.length === 0) && 'justify-center',
+          )}
+        >
           <RsvpDisplay
             word={currentChunk?.text ?? ''}
             chunk={currentChunk}
@@ -552,6 +582,7 @@ export function ReaderApp() {
           <ContextPeek
             words={words}
             index={currentChunk?.startIndex ?? index}
+            chunkSize={chunkSize}
             visible={!zen && words.length > 0}
             onJump={(wordIdx) => {
               // Kelime indeksine en yakın chunk indeksini bul
@@ -566,6 +597,7 @@ export function ReaderApp() {
                 seek(Math.min(wordIdx, lastIndex))
               }
             }}
+            onVisibleCountChange={setContextPageSize}
           />
         </div>
       </main>
@@ -578,8 +610,11 @@ export function ReaderApp() {
         wpm={wpm}
         playing={playing}
         chunkSize={chunkSize}
+        step={contextPageSizeInChunks}
         onToggle={togglePlay}
         onSeek={seek}
+        onStepPrev={handleStepPrev}
+        onStepNext={handleStepNext}
         onWpmChange={changeWpm}
       />
 

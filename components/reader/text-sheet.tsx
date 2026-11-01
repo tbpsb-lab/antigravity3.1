@@ -1,6 +1,6 @@
 'use client'
 
-import { AlertCircle, FileText, Link2, Loader2, Sparkles, Upload, Video, X } from 'lucide-react'
+import { AlertCircle, Clipboard, FileText, Link2, Loader2, Upload, Video, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { SAMPLE_TEXT, tokenize } from '@/lib/rsvp'
 import { fetchArticleFromUrl } from '@/lib/article-parser'
@@ -26,7 +26,6 @@ function TextSheetBody({ initialText, onClose, onApply }: Omit<TextSheetProps, '
   // Kullanıcı tercihi: Sıralama: Metin, PDF, Site & Haber Linki, YouTube
   const [activeTab, setActiveTab] = useState<TabType>('text')
   const [draft, setDraft] = useState(initialText)
-  const [clipboardSnippet, setClipboardSnippet] = useState<{ text: string; wordCount: number } | null>(null)
   const [url, setUrl] = useState('')
   const [youtubeUrl, setYoutubeUrl] = useState('')
   const [loading, setLoading] = useState(false)
@@ -46,57 +45,19 @@ function TextSheetBody({ initialText, onClose, onApply }: Omit<TextSheetProps, '
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose, loading])
 
-  // Akıllı Pano Algılama: Merkez açıldığında panoda YouTube linki, haber linki veya metin varsa otomatik ilgili sekmeye yapıştır
-  useEffect(() => {
-    let isMounted = true
-    const detectClipboard = async () => {
-      try {
-        if (typeof navigator === 'undefined' || !navigator.clipboard?.readText) return
+  // Manuel Pano Yapıştırma (iPad / iOS sistem 'Yapıştır' popover'ını engellemek için otomatik değil, sadece kullanıcı butona dokunduğunda çalışır)
+  const handlePasteFromClipboard = async () => {
+    try {
+      if (typeof navigator !== 'undefined' && navigator.clipboard?.readText) {
         const clip = (await navigator.clipboard.readText()).trim()
-        if (!clip || !isMounted) return
-
-        // 1. YouTube Linki Algılama
-        const ytId = extractYouTubeId(clip)
-        if (ytId) {
-          setYoutubeUrl(clip)
-          if (initialText === SAMPLE_TEXT) {
-            setActiveTab('youtube')
-          }
-          return
+        if (clip) {
+          setDraft(clip)
         }
-
-        // 2. Web / Haber Linki Algılama
-        if (/^https?:\/\/[^\s]+$/i.test(clip) && !clip.includes('\n')) {
-          setUrl(clip)
-          if (initialText === SAMPLE_TEXT) {
-            setActiveTab('url')
-          }
-          return
-        }
-
-        // 3. Kopyalanmış Metin Algılama
-        if (clip.length >= 10 && clip !== initialText && clip !== SAMPLE_TEXT) {
-          const wordCount = tokenize(clip).length
-          if (initialText === SAMPLE_TEXT) {
-            // Henüz bir doküman yüklenmemişse doğrudan taslağa aktar
-            setDraft(clip)
-            setActiveTab('text')
-          } else {
-            // Halihazırda bir PDF veya doküman yüklüyse ASLA mevcut metni ezme!
-            // Kullanıcıya tek tıkla yapıştırma seçeneği sun
-            setClipboardSnippet({ text: clip, wordCount })
-          }
-        }
-      } catch {
-        // Tarayıcı pano izni kısıtlıysa sessizce devam et
       }
+    } catch {
+      // Tarayıcı pano izni kısıtlıysa kullanıcı doğrudan metin alanına yapıştırabilir
     }
-
-    detectClipboard()
-    return () => {
-      isMounted = false
-    }
-  }, [initialText])
+  }
 
   // 1. Web & Haber Linki Çekici
   const handleFetchArticle = async (e?: React.FormEvent) => {
@@ -298,24 +259,19 @@ function TextSheetBody({ initialText, onClose, onApply }: Omit<TextSheetProps, '
                 <button
                   type="button"
                   onClick={() => setDraft(SAMPLE_TEXT)}
-                  className="ctl h-8 rounded-lg px-2.5 text-xs text-muted-foreground"
+                  className="ctl h-8 rounded-lg px-2.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
                 >
                   Örnek Metin
                 </button>
-                {clipboardSnippet && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setDraft(clipboardSnippet.text)
-                      setClipboardSnippet(null)
-                    }}
-                    className="ctl h-8 rounded-lg px-2.5 text-xs text-primary bg-primary/10 hover:bg-primary/20 gap-1.5 transition-colors border border-primary/20"
-                    title="Panodaki kopyalanmış metni yapıştır"
-                  >
-                    <Sparkles className="size-3.5" />
-                    <span>Panodan Yapıştır ({clipboardSnippet.wordCount} kelime)</span>
-                  </button>
-                )}
+                <button
+                  type="button"
+                  onClick={handlePasteFromClipboard}
+                  className="ctl h-8 rounded-lg px-2.5 text-xs text-muted-foreground hover:text-foreground gap-1.5 transition-colors"
+                  title="Panodaki metni yapıştır"
+                >
+                  <Clipboard className="size-3.5" />
+                  <span>Panodan Yapıştır</span>
+                </button>
               </div>
               <div className="flex items-center gap-3">
                 <span className="font-mono text-xs tabular-nums text-muted-foreground">

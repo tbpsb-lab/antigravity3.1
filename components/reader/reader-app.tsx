@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from 'react'
-import { Gauge } from 'lucide-react'
+import { Gauge, X, Zap } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
   MAX_WPM,
@@ -31,6 +31,7 @@ import { RsvpDisplay } from './rsvp-display'
 import { ContextPeek } from './context-peek'
 import { ControlDock } from './control-dock'
 import { TextSheet } from './text-sheet'
+import { SpeedTestModal } from './speed-test-modal'
 import { FONT_FACES, FontSettings, type FontFace } from './font-settings'
 import { useElementHeight } from '@/lib/use-element-height'
 
@@ -51,6 +52,26 @@ export function ReaderApp() {
   const [wpm, setWpm] = useState(300)
   const [playing, setPlaying] = useState(false)
   const [sheetOpen, setSheetOpen] = useState(false)
+  const [speedTestOpen, setSpeedTestOpen] = useState(false)
+  const [showSpeedTestBanner, setShowSpeedTestBanner] = useState(false)
+
+  // İlk giriş kontrolü: Daha önce hız testi yapılmamış veya kapatılmamışsa davet butonunu göster
+  useEffect(() => {
+    try {
+      const isCompleted = localStorage.getItem('odak_speed_test_completed')
+      const isDismissed = localStorage.getItem('odak_speed_test_dismissed')
+      if (!isCompleted && !isDismissed) {
+        setShowSpeedTestBanner(true)
+      }
+    } catch {}
+  }, [])
+
+  const dismissSpeedTestBanner = useCallback(() => {
+    setShowSpeedTestBanner(false)
+    try {
+      localStorage.setItem('odak_speed_test_dismissed', 'true')
+    } catch {}
+  }, [])
 
   const words = useMemo(() => tokenize(text), [text])
 
@@ -317,6 +338,15 @@ export function ReaderApp() {
       showWpmToast()
     },
     [showWpmToast],
+  )
+
+  const handleApplySpeedTest = useCallback(
+    (newWpm: number) => {
+      setWpmDirect(newWpm)
+      setShowSpeedTestBanner(false)
+      hideWpmToastWithFade(1500)
+    },
+    [setWpmDirect, hideWpmToastWithFade],
   )
 
   // Esnek Bağlam Penceresi ve Sayfalama (Görünen kelime adedi ve alttaki <> buton adımı)
@@ -746,6 +776,10 @@ export function ReaderApp() {
           setPlaying(false)
           setSheetOpen(true)
         }}
+        onOpenSpeedTest={() => {
+          setPlaying(false)
+          setSpeedTestOpen(true)
+        }}
         hidden={zen}
       />
 
@@ -761,7 +795,36 @@ export function ReaderApp() {
           <div className="flex-1 w-full min-h-0" />
 
           {/* Okuma Penceresi: Ekranın tam ortasında sabit kalır, duraklatıldığında yukarı itilmez */}
-          <div className="w-full shrink-0">
+          <div className="w-full shrink-0 flex flex-col items-center">
+            {/* İlk Giriş Hız Testi Davet Şeridi (Zarif, tek satır, temaya uyumlu) */}
+            {showSpeedTestBanner && !zen && (
+              <div className="mb-2 sm:mb-3 flex w-full max-w-lg items-center justify-between gap-2 rounded-full border border-primary/25 bg-background/80 px-3.5 py-1.5 shadow-sm backdrop-blur-md animate-in fade-in slide-in-from-top-2 duration-300">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPlaying(false)
+                    setSpeedTestOpen(true)
+                  }}
+                  className="flex flex-1 min-w-0 items-center gap-2 text-xs sm:text-sm font-medium text-foreground hover:text-primary transition-colors cursor-pointer text-left truncate"
+                >
+                  <Zap className="size-3.5 text-amber-500 fill-amber-500/25 shrink-0" />
+                  <span className="truncate">Okuma hızınızı test edip ideal RSVP hızınızı kalibre edin</span>
+                  <span className="shrink-0 text-[11px] font-semibold text-primary underline underline-offset-2 ml-1">
+                    Başla →
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={dismissSpeedTestBanner}
+                  className="ctl size-6 shrink-0 rounded-full text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                  aria-label="Kapat"
+                  title="Kapat"
+                >
+                  <X className="size-3.5" />
+                </button>
+              </div>
+            )}
+
             <RsvpDisplay
               word={currentChunk?.text ?? ''}
               chunk={currentChunk}
@@ -897,6 +960,12 @@ export function ReaderApp() {
         initialText={text}
         onClose={() => setSheetOpen(false)}
         onApply={applyText}
+      />
+
+      <SpeedTestModal
+        open={speedTestOpen}
+        onClose={() => setSpeedTestOpen(false)}
+        onApplySpeed={handleApplySpeedTest}
       />
     </div>
   )

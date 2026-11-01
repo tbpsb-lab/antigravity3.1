@@ -1,7 +1,7 @@
 'use client'
 
-import { ChevronLeft, ChevronRight } from 'lucide-react'
-import type { CSSProperties, Ref } from 'react'
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp } from 'lucide-react'
+import { useEffect, useRef, useState, type CSSProperties, type Ref } from 'react'
 import { cn } from '@/lib/utils'
 import { formatRemaining } from '@/lib/rsvp'
 
@@ -27,6 +27,7 @@ export function ControlDock({
   index,
   total,
   wpm,
+  playing,
   chunkSize = 1,
   step = 10,
   onSeek,
@@ -36,91 +37,188 @@ export function ControlDock({
   const last = Math.max(0, total - 1)
   const progress = last > 0 ? (index / last) * 100 : 0
 
+  // Açılır / Kapanır tek satırlık panel durumu
+  const [isHovered, setIsHovered] = useState(false)
+  const [isManuallyExpanded, setIsManuallyExpanded] = useState(false)
+  const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const touchStartYRef = useRef<number | null>(null)
+
+  const isExpanded = isHovered || isManuallyExpanded
+
+  // Okuma başladığında paneli otomatik daralt
+  useEffect(() => {
+    if (playing) {
+      setIsHovered(false)
+      setIsManuallyExpanded(false)
+    }
+  }, [playing])
+
+  // Masaüstü fare ve Apple Pencil hover desteği
+  const handleMouseEnter = () => {
+    if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current)
+    setIsHovered(true)
+  }
+
+  const handleMouseLeave = () => {
+    if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current)
+    hoverTimeoutRef.current = setTimeout(() => {
+      setIsHovered(false)
+    }, 600)
+  }
+
+  // Dokunmatik / tık ile açma kapama
+  const handleToggleExpand = () => {
+    setIsManuallyExpanded((prev) => !prev)
+  }
+
+  // Alt sınırdan yukarı/aşağı kaydırma jesti
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length === 1) {
+      touchStartYRef.current = e.touches[0].clientY
+    }
+  }
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartYRef.current === null) return
+    const deltaY = e.changedTouches[0].clientY - touchStartYRef.current
+    touchStartYRef.current = null
+    // Yukarı kaydırma: Aç
+    if (deltaY < -15) {
+      setIsManuallyExpanded(true)
+    }
+    // Aşağı kaydırma: Kapat
+    else if (deltaY > 15) {
+      setIsManuallyExpanded(false)
+      setIsHovered(false)
+    }
+  }
+
   return (
     <footer
       ref={ref}
       aria-hidden={hidden}
       inert={hidden}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
       className={cn(
-        'absolute inset-x-0 bottom-0 z-30 px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] transition-all duration-500 ease-[cubic-bezier(0.2,0.8,0.2,1)] sm:px-6 sm:pb-3 landscape-short:pb-1.5',
+        'absolute inset-x-0 bottom-0 z-30 flex flex-col items-center justify-end transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] select-none',
         hidden && 'pointer-events-none translate-y-8 opacity-0',
       )}
     >
-      {/* Ultra Kompakt İlerleme ve Kontrol Çubuğu (OKU butonu kaldırıldı, pencereye dokunarak okunur) */}
-      <div className="panel mx-auto flex max-w-xl flex-col gap-1.5 p-2 sm:p-2.5 sm:px-4 landscape-short:max-w-3xl landscape-short:gap-1 landscape-short:p-1.5 landscape-short:px-3">
-        {/* İlerleme Kaydırıcısı (Scrubber) */}
-        <div className="flex flex-col gap-0.5">
-          <label htmlFor="scrubber" className="sr-only">
-            Metin içinde konum
-          </label>
-          <input
-            id="scrubber"
-            type="range"
-            min={0}
-            max={last}
-            step={1}
-            value={index}
-            onChange={(e) => onSeek(Number(e.target.value))}
-            className="scrubber"
-            style={{ '--progress': `${progress}%` } as CSSProperties}
-          />
-        </div>
+      {/* 1. Genişletildiğinde Çıkan Tek Satırlık Kompakt Kontrol Paneli */}
+      <div
+        className={cn(
+          'w-full max-w-2xl px-2 sm:px-4 pb-1 transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]',
+          isExpanded
+            ? 'opacity-100 translate-y-0 pointer-events-auto'
+            : 'opacity-0 translate-y-3 pointer-events-none max-h-0 overflow-hidden pb-0',
+        )}
+      >
+        <div className="panel flex h-10 sm:h-11 w-full items-center gap-1.5 sm:gap-2.5 px-2 sm:px-3 shadow-lg">
+          {/* Geri Atla Butonu */}
+          <button
+            type="button"
+            onClick={onStepPrev ?? (() => onSeek(Math.max(0, index - step)))}
+            disabled={index === 0}
+            className="ctl size-7 sm:size-8 shrink-0 rounded-md disabled:opacity-30"
+            aria-label={`${step} öbek geri`}
+            title={`${step} öbek geri`}
+            aria-keyshortcuts="Shift+ArrowLeft"
+          >
+            <ChevronLeft className="size-4" />
+          </button>
 
-        {/* Bilgi ve Navigasyon Satırı */}
-        <div className="flex items-center justify-between gap-2 px-0.5">
-          {/* Sol: Konum ve Kalan Süre */}
-          <div className="flex items-center gap-1.5 font-mono text-[11px] tabular-nums text-muted-foreground sm:text-xs">
-            <span>
-              {total === 0 ? 0 : index + 1}/{total}
-              {chunkSize > 1 ? ` (${chunkSize}K)` : ''}
-            </span>
-            <span className="opacity-40">·</span>
-            <span>{formatRemaining(total - index - 1, wpm, chunkSize)} kaldı</span>
+          {/* Konum / Toplam */}
+          <span className="font-mono text-[11px] tabular-nums text-muted-foreground whitespace-nowrap shrink-0">
+            {total === 0 ? 0 : index + 1}/{total}
+            {chunkSize > 1 ? ` (${chunkSize}K)` : ''}
+          </span>
+
+          {/* Scrubber Kaydırıcı (Tüm orta boşluğu doldurur) */}
+          <div className="flex-1 min-w-[70px] flex items-center">
+            <label htmlFor="scrubber" className="sr-only">
+              Metin içinde konum
+            </label>
+            <input
+              id="scrubber"
+              type="range"
+              min={0}
+              max={last}
+              step={1}
+              value={index}
+              onChange={(e) => onSeek(Number(e.target.value))}
+              className="scrubber w-full"
+              style={{ '--progress': `${progress}%` } as CSSProperties}
+            />
           </div>
 
-          {/* Sağ: Hız Göstergesi ve Sayfa/Blok Atla Butonları */}
-          <div className="flex items-center gap-2">
-            <div
-              className="flex items-center gap-1 font-mono text-xs text-muted-foreground"
-              role="status"
-              aria-label={`Okuma hızı: ${wpm} kelime/dakika`}
-            >
-              <span className="text-xs font-semibold tabular-nums text-foreground sm:text-sm">{wpm}</span>
-              <span className="text-[10px]">k/dk</span>
-            </div>
+          {/* Kalan Süre */}
+          <span className="font-mono text-[11px] tabular-nums text-muted-foreground/75 whitespace-nowrap hidden sm:inline shrink-0">
+            {formatRemaining(total - index - 1, wpm, chunkSize)} kaldı
+          </span>
 
-            <div className="flex items-center gap-0.5" role="group" aria-label="Kelime atla">
-              <button
-                type="button"
-                onClick={onStepPrev ?? (() => onSeek(Math.max(0, index - step)))}
-                disabled={index === 0}
-                className="ctl size-7.5 rounded-md disabled:opacity-40 sm:size-8"
-                aria-label={`${step} öbek geri`}
-                title={`${step} öbek geri`}
-                aria-keyshortcuts="Shift+ArrowLeft"
-              >
-                <ChevronLeft className="size-4" />
-              </button>
-              <button
-                type="button"
-                onClick={onStepNext ?? (() => onSeek(Math.min(last, index + step)))}
-                disabled={index >= last}
-                className="ctl size-7.5 rounded-md disabled:opacity-40 sm:size-8"
-                aria-label={`${step} öbek ileri`}
-                title={`${step} öbek ileri`}
-                aria-keyshortcuts="Shift+ArrowRight"
-              >
-                <ChevronRight className="size-4" />
-              </button>
-            </div>
-          </div>
+          {/* Hız Göstergesi */}
+          <span className="font-mono text-xs font-semibold tabular-nums text-foreground whitespace-nowrap shrink-0">
+            {wpm} <span className="text-[10px] font-normal text-muted-foreground">k/dk</span>
+          </span>
+
+          {/* İleri Atla Butonu */}
+          <button
+            type="button"
+            onClick={onStepNext ?? (() => onSeek(Math.min(last, index + step)))}
+            disabled={index >= last}
+            className="ctl size-7 sm:size-8 shrink-0 rounded-md disabled:opacity-30"
+            aria-label={`${step} öbek ileri`}
+            title={`${step} öbek ileri`}
+            aria-keyshortcuts="Shift+ArrowRight"
+          >
+            <ChevronRight className="size-4" />
+          </button>
+
+          {/* Daralt / Kapat Butonu */}
+          <button
+            type="button"
+            onClick={() => {
+              setIsManuallyExpanded(false)
+              setIsHovered(false)
+            }}
+            className="ctl size-7 sm:size-8 shrink-0 rounded-md text-muted-foreground hover:text-foreground"
+            aria-label="Kontrolleri daralt"
+            title="Daralt"
+          >
+            <ChevronDown className="size-4" />
+          </button>
         </div>
       </div>
 
-      <p className="mx-auto mt-1.5 hidden max-w-xl text-center text-[11px] text-muted-foreground lg:block landscape-short:hidden">
-        <kbd className="font-mono">Space</kbd> oku/dur · <kbd className="font-mono">← →</kbd> gez ·{' '}
-        <kbd className="font-mono">↕</kbd> kaydır (hız) · <kbd className="font-mono">C</kbd> öbek ({chunkSize}K) · <kbd className="font-mono">1 2 3</kbd> tema
-      </p>
+      {/* 2. Minik Şeffaf Açma/Kapatma Tuşu (Pill Tab) */}
+      <div
+        className="relative flex w-full justify-center"
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+      >
+        <button
+          type="button"
+          onClick={handleToggleExpand}
+          className="ctl flex h-4 w-12 sm:w-16 items-center justify-center rounded-t-md border-t border-x border-border/40 bg-background/60 hover:bg-background/90 text-muted-foreground/60 hover:text-foreground backdrop-blur-md transition-colors"
+          aria-label={isExpanded ? 'Kontrol çubuğunu gizle' : 'Kontrol çubuğunu aç'}
+          title={isExpanded ? 'Gizle' : 'Kontrolleri göster'}
+        >
+          {isExpanded ? (
+            <ChevronDown className="size-3" />
+          ) : (
+            <ChevronUp className="size-3" />
+          )}
+        </button>
+      </div>
+
+      {/* 3. İncecik Progress Bar Çizgisi (Her zaman en alt sınırda görünür) */}
+      <div className="h-[2.5px] w-full bg-foreground/10 overflow-hidden shrink-0">
+        <div
+          className="h-full bg-primary transition-[width] duration-150 ease-out"
+          style={{ width: `${progress}%` }}
+        />
+      </div>
     </footer>
   )
 }

@@ -187,27 +187,6 @@ export function AboutModal({ open, onClose, theme }: AboutModalProps) {
             )
           })}
         </div>
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => setActiveTab(tab.id)}
-                className={cn(
-                  'flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs sm:text-sm font-medium transition-all cursor-pointer border',
-                  isActive
-                    ? theme === 'linear'
-                      ? 'bg-purple-950/80 text-purple-200 border-purple-400 shadow-[0_0_12px_rgba(168,85,247,0.4)] font-semibold'
-                      : theme === 'kindle'
-                      ? 'bg-[#ede3cf] dark:bg-[#3d3326] text-[#2c1e10] dark:text-[#f8f3ea] border-[#b8a783] shadow-sm font-semibold'
-                      : 'bg-white text-slate-900 border-slate-300 dark:bg-white/20 dark:text-white dark:border-white/80 shadow-md ring-1 ring-sky-400/40 font-semibold'
-                    : 'panel text-muted-foreground hover:text-foreground opacity-75 hover:opacity-100 border-border/40'
-                )}
-              >
-                <Icon className={cn('size-4 shrink-0', tab.color)} />
-                <span className="truncate">{tab.label}</span>
-              </button>
-            )
-          })}
-        </div>
 
         {/* Sekmeler Arası Yatay Scroll / Slider Alanı */}
         <div className="relative w-full overflow-hidden rounded-2xl">
@@ -549,7 +528,7 @@ export function AboutModal({ open, onClose, theme }: AboutModalProps) {
                 )}
                 title={tab.label}
                 aria-label={tab.label}
-              />
+              ></button>
             )
           })}
         </div>

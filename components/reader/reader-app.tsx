@@ -498,7 +498,7 @@ export function ReaderApp() {
   return (
     <div
       data-theme={theme}
-      className="app-bg relative h-dvh w-full touch-none overscroll-none select-none overflow-hidden font-sans text-foreground transition-colors duration-500 selection:bg-primary/25"
+      className="app-bg relative h-dvh w-full touch-manipulation overscroll-none overflow-hidden font-sans text-foreground transition-colors duration-500 selection:bg-primary/25"
     >
       <TopBar
         ref={headerRef}

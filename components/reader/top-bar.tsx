@@ -22,7 +22,7 @@ export function TopBar({ ref, theme, onThemeChange, onOpenText, hidden, fontCont
       aria-hidden={hidden}
       inert={hidden}
       className={cn(
-        'absolute inset-x-0 top-0 z-30 px-3 pt-[max(0.75rem,env(safe-area-inset-top))] transition-all duration-500 ease-[cubic-bezier(0.2,0.8,0.2,1)] sm:px-6 sm:pt-5 landscape-short:pt-2',
+        'absolute inset-x-0 top-0 z-40 px-3 pt-[max(0.75rem,env(safe-area-inset-top))] transition-all duration-500 ease-[cubic-bezier(0.2,0.8,0.2,1)] sm:px-6 sm:pt-5 landscape-short:pt-2',
         hidden && 'pointer-events-none -translate-y-6 opacity-0',
       )}
     >

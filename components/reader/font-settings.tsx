@@ -105,6 +105,8 @@ export function FontSettings({
         inert={!open}
         className={cn(
           'panel panel-solid absolute -right-12 top-full z-50 mt-2 w-[min(18rem,calc(100vw-1.5rem))] origin-top-right p-3.5 sm:right-0 transition-all duration-200 ease-out shadow-xl',
+          // Yatay mobil (kısa ekran): panel ekran yüksekliğini aşmasın, kendi içinde kaydırılsın
+          'max-h-[calc(100dvh-5.5rem)] overflow-y-auto overscroll-contain touch-pan-y landscape-short:max-h-[calc(100dvh-3.75rem)] landscape-short:w-[min(26rem,calc(100vw-1.5rem))] landscape-short:p-3',
           open ? 'scale-100 opacity-100' : 'pointer-events-none scale-95 opacity-0',
         )}
       >

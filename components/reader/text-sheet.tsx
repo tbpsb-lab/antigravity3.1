@@ -166,7 +166,7 @@ function TextSheetBody({ initialText, onClose, onApply }: Omit<TextSheetProps, '
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-6">
+    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-6 landscape-short:items-center landscape-short:p-2">
       <button
         type="button"
         aria-label="Kapat"
@@ -177,7 +177,7 @@ function TextSheetBody({ initialText, onClose, onApply }: Omit<TextSheetProps, '
         role="dialog"
         aria-modal="true"
         aria-labelledby="text-sheet-title"
-        className="panel panel-solid relative flex max-h-[90dvh] w-full max-w-2xl flex-col gap-3 rounded-b-none p-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-2xl animate-in slide-in-from-bottom-8 fade-in duration-300 sm:rounded-b-(--panel-radius) sm:p-5"
+        className="panel panel-solid relative flex max-h-[90dvh] w-full max-w-2xl flex-col gap-3 overflow-y-auto overscroll-contain touch-pan-y rounded-b-none p-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-2xl animate-in slide-in-from-bottom-8 fade-in duration-300 *:shrink-0 sm:rounded-b-(--panel-radius) sm:p-5 landscape-short:max-h-[calc(100dvh-1rem)] landscape-short:gap-2 landscape-short:rounded-b-(--panel-radius) landscape-short:p-3 landscape-short:pb-3"
       >
         {/* Üst Başlık ve Kapat Butonu */}
         <div className="flex items-center justify-between gap-3">
@@ -185,7 +185,7 @@ function TextSheetBody({ initialText, onClose, onApply }: Omit<TextSheetProps, '
             <h2 id="text-sheet-title" className="text-base font-semibold tracking-tight">
               Okuma & İçerik Merkezi
             </h2>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-muted-foreground landscape-short:hidden">
               Metin yapıştırın, PDF kitap yükleyin, haber bağlantısı veya YouTube videosu ekleyin.
             </p>
           </div>
@@ -291,7 +291,7 @@ function TextSheetBody({ initialText, onClose, onApply }: Omit<TextSheetProps, '
               onChange={(e) => setDraft(e.target.value)}
               placeholder="Metninizi buraya yapıştırın veya yazın..."
               rows={6}
-              className="w-full resize-none rounded-2xl border border-border bg-background p-4 font-mono text-xs leading-relaxed text-foreground outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring sm:text-sm"
+              className="w-full resize-none rounded-2xl border border-border bg-background p-4 font-mono text-xs leading-relaxed text-foreground outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring sm:text-sm landscape-short:h-[max(5rem,calc(100dvh-12rem))] landscape-short:p-3"
             />
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-2">
@@ -363,7 +363,7 @@ function TextSheetBody({ initialText, onClose, onApply }: Omit<TextSheetProps, '
                 }
               }}
               className={cn(
-                'flex flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed p-6 text-center cursor-pointer transition-colors',
+                'flex flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed p-6 text-center cursor-pointer transition-colors landscape-short:p-3',
                 isDragOver ? 'border-primary bg-primary/5' : 'border-border/80 hover:border-primary/60 hover:bg-foreground/5',
               )}
             >

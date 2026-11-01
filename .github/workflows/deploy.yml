@@ -42,10 +42,8 @@ jobs:
         run: |
           set -o pipefail
           pnpm build 2>&1 | tee build.log || {
-            echo "## Build Error Log" >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
-            cat build.log >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
+            ERR=$(tail -n 25 build.log | tr '\r\n' ' | ')
+            echo "::error title=NextBuildError::$ERR"
             exit 1
           }
 

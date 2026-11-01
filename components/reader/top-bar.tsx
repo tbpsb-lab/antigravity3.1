@@ -18,8 +18,8 @@ type TopBarProps = {
   onToggleFullscreen?: () => void
 }
 
-// Konsept 1: Optik Odak Vizörü (ORP Reticle) Logosu
-function OrpReticleLogo({ className }: { className?: string }) {
+// Konsept 2: "Akışkan İris / Ufuk Çizgisi" (The Horizon Eye) Logosu
+function HorizonEyeLogo({ className }: { className?: string }) {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -28,38 +28,70 @@ function OrpReticleLogo({ className }: { className?: string }) {
       className={cn('size-5 text-foreground/85 transition-colors', className)}
       aria-hidden="true"
     >
-      {/* Dış Optik Odak Çemberi */}
+      {/* Üst Göz Kapağı Yayı */}
+      <path
+        d="M 3 12 C 7 5 17 5 21 12"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        className="opacity-90"
+      />
+
+      {/* Alt Göz Kapağı Yayı */}
+      <path
+        d="M 3 12 C 7 19 17 19 21 12"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        className="opacity-90"
+      />
+
+      {/* Yatay Ufuk Akış Çizgisi (RSVP Tek Satır Metin Akışı) */}
+      <line
+        x1="1.5"
+        y1="12"
+        x2="8.5"
+        y2="12"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
+      <line
+        x1="15.5"
+        y1="12"
+        x2="22.5"
+        y2="12"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
+
+      {/* İris Odak Çemberi */}
       <circle
         cx="12"
         cy="12"
-        r="7.5"
+        r="3.5"
         stroke="currentColor"
         strokeWidth="1.5"
-        className="opacity-80"
+        className="opacity-90"
       />
 
-      {/* 4 Kardinal Vizör / Nişangah Kılavuz Çentiği */}
-      <line x1="12" y1="2" x2="12" y2="5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-      <line x1="12" y1="19" x2="12" y2="22" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-      <line x1="2" y1="12" x2="5" y2="12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-      <line x1="19" y1="12" x2="22" y2="12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-
       {/* Merkez RSVP Odak Noktası (ORP - Optimal Tanıma Noktası) */}
-      <circle cx="12" cy="12" r="2" className="fill-pivot" stroke="none" />
+      <circle cx="12" cy="12" r="1.8" className="fill-pivot" stroke="none" />
     </svg>
   )
 }
 
-// 1. Gerçek saydam cam lens (Hafif açık mavi buğulu gradyan & specular yansıma)
+// 1. Gerçek saydam cam lens (Üst kısmı cam beyazı, sağ alt 3'te biri açık mavi, çerçeve cam kenarı)
 function CamShape() {
   return (
     <span
-      className="relative block size-6 sm:size-7 rounded-full backdrop-blur-md border border-sky-300/50 dark:border-sky-400/35 bg-gradient-to-br from-sky-100/60 via-sky-300/25 to-sky-400/10 dark:from-sky-400/30 dark:via-sky-500/15 dark:to-transparent shadow-[inset_0_1px_2px_rgba(255,255,255,0.95),0_2px_8px_rgba(56,189,248,0.2)] shrink-0 transition-transform duration-300"
+      className="relative block size-6 sm:size-7 rounded-full backdrop-blur-md border border-white/80 dark:border-white/30 bg-gradient-to-br from-white/85 via-white/20 to-transparent shadow-[inset_0_1.5px_2px_rgba(255,255,255,0.95),inset_-1px_-1px_2px_rgba(56,189,248,0.4),0_2px_6px_rgba(0,0,0,0.06)] shrink-0 transition-transform duration-300 overflow-hidden"
     >
-      {/* Üst kenar optik cam yansıması */}
-      <span className="absolute top-0.5 left-1/2 -translate-x-1/2 w-2.5 h-[1.5px] rounded-full bg-white/95 dark:bg-sky-100/90 pointer-events-none shadow-[0_0_2px_rgba(255,255,255,0.8)]" />
-      {/* Alt hafif su/cam mavi ışıltısı */}
-      <span className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-2 h-[1px] rounded-full bg-sky-200/50 dark:bg-sky-300/30 pointer-events-none" />
+      {/* Üst cam kenarı parlak specular yansıması */}
+      <span className="absolute top-0.5 left-1/2 -translate-x-1/2 w-2.5 h-[1.5px] rounded-full bg-white/95 dark:bg-white/80 pointer-events-none shadow-[0_0_2px_rgba(255,255,255,0.8)]" />
+      {/* Sağ alt 3'te birlik bölgede hafif açık mavi cam kırılması */}
+      <span className="absolute -bottom-1 -right-1 size-3.5 rounded-full bg-sky-400/40 dark:bg-sky-400/30 blur-[2px] pointer-events-none" />
     </span>
   )
 }
@@ -134,7 +166,7 @@ export function TopBar({
             aria-hidden="true"
             className="panel grid size-9 place-items-center landscape-short:size-8"
           >
-            <OrpReticleLogo />
+            <HorizonEyeLogo />
           </span>
           <div className="leading-tight max-[359px]:sr-only max-w-[140px] min-[400px]:max-w-[200px] sm:max-w-xs md:max-w-sm truncate">
             <p className="text-sm font-semibold tracking-tight truncate" title={docTitle || 'Odak'}>

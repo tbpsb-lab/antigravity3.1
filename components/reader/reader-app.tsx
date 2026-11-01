@@ -32,6 +32,7 @@ import { ContextPeek } from './context-peek'
 import { ControlDock } from './control-dock'
 import { TextSheet } from './text-sheet'
 import { SpeedTestModal } from './speed-test-modal'
+import { AboutModal } from './about-modal'
 import { FONT_FACES, FontSettings, type FontFace } from './font-settings'
 import { useElementHeight } from '@/lib/use-element-height'
 
@@ -53,6 +54,7 @@ export function ReaderApp() {
   const [playing, setPlaying] = useState(false)
   const [sheetOpen, setSheetOpen] = useState(false)
   const [speedTestOpen, setSpeedTestOpen] = useState(false)
+  const [aboutOpen, setAboutOpen] = useState(false)
   const [showSpeedTestBanner, setShowSpeedTestBanner] = useState(false)
 
   // İlk giriş kontrolü: Daha önce hız testi yapılmamış veya kapatılmamışsa davet butonunu göster
@@ -780,6 +782,10 @@ export function ReaderApp() {
           setPlaying(false)
           setSpeedTestOpen(true)
         }}
+        onOpenAbout={() => {
+          setPlaying(false)
+          setAboutOpen(true)
+        }}
         hidden={zen}
       />
 
@@ -966,6 +972,12 @@ export function ReaderApp() {
         open={speedTestOpen}
         onClose={() => setSpeedTestOpen(false)}
         onApplySpeed={handleApplySpeedTest}
+      />
+
+      <AboutModal
+        open={aboutOpen}
+        onClose={() => setAboutOpen(false)}
+        theme={theme}
       />
     </div>
   )

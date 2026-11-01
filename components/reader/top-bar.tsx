@@ -11,6 +11,7 @@ type TopBarProps = {
   onThemeChange: (theme: ThemeId) => void
   onOpenText: () => void
   onOpenSpeedTest?: () => void
+  onOpenAbout?: () => void
   hidden: boolean
   fontControl: ReactNode
   docTitle?: string
@@ -469,6 +470,7 @@ export function TopBar({
   onThemeChange,
   onOpenText,
   onOpenSpeedTest,
+  onOpenAbout,
   hidden,
   fontControl,
   docTitle,
@@ -506,13 +508,21 @@ export function TopBar({
     >
       <div className="mx-auto flex max-w-5xl items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2.5">
-          <ThemedAppLogo theme={theme} />
-          <div className="leading-tight max-[359px]:sr-only max-w-[140px] min-[400px]:max-w-[200px] sm:max-w-xs md:max-w-sm truncate">
-            <p className="text-sm font-semibold tracking-tight truncate" title={docTitle || 'Odak'}>
-              {docTitle || 'Odak'}
-            </p>
-            <p className="hidden text-xs text-muted-foreground sm:block">Hızlı okuma penceresi</p>
-          </div>
+          <button
+            type="button"
+            onClick={onOpenAbout}
+            className="flex min-w-0 items-center gap-2.5 text-left group cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-2xl p-1 -m-1 transition-all active:scale-95"
+            title="Odak Hakkında, RSVP Mantığı ve Kılavuz"
+            aria-label="Odak Hakkında, RSVP Mantığı ve Kılavuz"
+          >
+            <ThemedAppLogo theme={theme} className="group-hover:scale-105 transition-transform" />
+            <div className="leading-tight max-[359px]:sr-only max-w-[140px] min-[400px]:max-w-[200px] sm:max-w-xs md:max-w-sm truncate">
+              <p className="text-sm font-semibold tracking-tight truncate group-hover:text-primary transition-colors" title={docTitle || 'Odak'}>
+                {docTitle || 'Odak'}
+              </p>
+              <p className="hidden text-xs text-muted-foreground sm:block">Hızlı okuma penceresi</p>
+            </div>
+          </button>
         </div>
 
         <div className="flex items-center gap-2">

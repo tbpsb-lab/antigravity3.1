@@ -10,6 +10,7 @@ type ContextPeekProps = {
   index: number
   chunkSize?: number
   visible: boolean
+  remainingTime?: string
   onJump: (index: number) => void
   onVisibleCountChange?: (count: number) => void
   onStepPrev?: () => void
@@ -23,6 +24,7 @@ export function ContextPeek({
   index,
   chunkSize = 1,
   visible,
+  remainingTime,
   onJump,
   onVisibleCountChange,
   onStepPrev,
@@ -73,13 +75,22 @@ export function ContextPeek({
         visible ? 'opacity-100' : 'pointer-events-none hidden opacity-0',
       )}
     >
-      {/* Üst Bilgi Başlığı (Konum Göstergesi) */}
-      <div className="flex items-center justify-end mb-1 px-1 shrink-0 landscape-short:mb-0.5">
-        {words.length > 0 && (
-          <span className="text-[11px] font-mono tabular-nums text-muted-foreground/60">
-            {start + 1} - {end} / {words.length}
-          </span>
-        )}
+      {/* Üst Bilgi Başlığı (Sol: Kelime Sayısı ve Konumu, Sağ: Kalan Süre) */}
+      <div className="flex items-center justify-between mb-1 px-1 shrink-0 landscape-short:mb-0.5">
+        <div>
+          {words.length > 0 && (
+            <span className="text-[11px] font-mono tabular-nums text-muted-foreground/60">
+              {start + 1} - {end} / {words.length}
+            </span>
+          )}
+        </div>
+        <div>
+          {remainingTime && (
+            <span className="text-[11px] font-mono tabular-nums text-muted-foreground/60">
+              {remainingTime}
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Ana Gövde: Solda minik < butonu, Ortada kesinlikle scrollbarsız esnek metin alanı, Sağda minik > butonu */}

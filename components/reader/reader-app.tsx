@@ -17,6 +17,7 @@ import {
   chunkDelay,
   findPreviousSentenceIndex,
   findCurrentSentenceStartIndex,
+  formatRemaining,
 } from '@/lib/rsvp'
 import {
   saveReadingProgress,
@@ -764,6 +765,7 @@ export function ReaderApp() {
               index={currentChunk?.startIndex ?? index}
               chunkSize={chunkSize}
               visible={!zen && words.length > 0}
+              remainingTime={`${formatRemaining(chunks.length - index - 1, wpm, chunkSize)} kaldı`}
               onJump={(wordIdx) => {
                 // Kelime indeksine en yakın chunk indeksini bul
                 const targetChunkIdx = chunks.findIndex(

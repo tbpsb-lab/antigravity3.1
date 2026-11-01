@@ -3,7 +3,6 @@
 import { ChevronDown, ChevronUp } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type Ref } from 'react'
 import { cn } from '@/lib/utils'
-import { formatRemaining } from '@/lib/rsvp'
 
 export type ChapterMarker = {
   index: number
@@ -252,11 +251,6 @@ export function ControlDock({
               </div>
             )}
           </div>
-
-          {/* Kalan Süre Bilgisi (Daralt butonu kaldırıldığı için tüm alan scrubber ve kalan süreye ayrıldı) */}
-          <span className="font-mono text-[11px] sm:text-xs tabular-nums text-muted-foreground/80 whitespace-nowrap shrink-0">
-            {formatRemaining(total - index - 1, wpm, chunkSize)} kaldı
-          </span>
         </div>
       </div>
 

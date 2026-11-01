@@ -17,12 +17,12 @@ import {
   X,
   Zap,
 } from 'lucide-react'
+import Image from 'next/image'
 import { useEffect, useState } from 'react'
 import { cn } from '@/lib/utils'
-import type { ThemeId } from '@/lib/rsvp'
-
 import { THEMES, type ThemeId } from '@/lib/rsvp'
-import { OdakWordmarkSvg } from './top-bar'
+import logoVectorDarkCard from '@/public/logos/odak-vector-dark-card.png'
+import logoVectorLightCard from '@/public/logos/odak-vector-light-card.png'
 
 type AboutModalProps = {
   open: boolean
@@ -30,43 +30,44 @@ type AboutModalProps = {
   theme: ThemeId
 }
 
-// Temaya Duyarlı Vektörel odak Rozeti (media_1793567364624_c3c8ac16.jpg ve media_1793568060338_3eb1a36e.jpg)
+// Temaya Duyarlı Vektörel odak Rozeti (media_1793569995184_395e3cd8.jpg referansı - biçimi 1:1 korunmuştur)
 function OdakModalLogo({ theme }: { theme: ThemeId }) {
-  if (theme === 'linear') {
-    // 2. NEON TEMASI: Kullanıcının talebi üzerine "siyah fontlu" (KOYU ZEMİN - media_1793567364624_c3c8ac16.jpg) vektör logosu
+  const isNeon = theme === 'linear'
+
+  if (isNeon) {
+    // 2. NEON TEMASI: Siyah fonlu vektörel logo (KOYU ZEMİN)
     return (
-      <div className="relative shrink-0 w-26 sm:w-28 h-16 sm:h-17 rounded-2xl bg-[#09090b] border border-purple-500/50 shadow-[0_0_20px_rgba(168,85,247,0.35)] p-2.5 flex items-center justify-center select-none transition-transform hover:scale-105">
-        <OdakWordmarkSvg mode="koyu-zemin" />
+      <div className="relative shrink-0 w-24 sm:w-28 h-16 sm:h-18 rounded-2xl bg-[#1d1d1d] border border-purple-500/50 shadow-[0_0_20px_rgba(168,85,247,0.35)] p-1.5 flex items-center justify-center select-none transition-transform hover:scale-105 overflow-hidden">
+        <Image
+          src={logoVectorDarkCard}
+          alt="odak Koyu Zemin Vektörel Logo"
+          width={112}
+          height={72}
+          priority
+          className="w-full h-full object-contain pointer-events-none select-none"
+        />
       </div>
     )
   }
 
-  if (theme === 'kindle') {
-    // 3. KAĞIT TEMASI: Parşömen zeminli, sepya ve bordo vektör logosu
-    return (
-      <div className="relative shrink-0 w-26 sm:w-28 h-16 sm:h-17 rounded-2xl bg-[#fbf5e5] dark:bg-[#2c241a] border border-[#cfbe96] dark:border-[#524433] shadow-[0_2px_8px_rgba(0,0,0,0.12)] p-2.5 flex items-center justify-center select-none transition-transform hover:scale-105 overflow-hidden">
-        <svg className="absolute bottom-0 right-0 size-3 pointer-events-none" viewBox="0 0 12 12" fill="none">
-          <path d="M 0 12 L 12 0 L 12 12 Z" fill="rgba(0,0,0,0.18)" />
-          <path d="M 0 12 C 2 7, 7 2, 12 0 C 8 5, 5 8, 0 12 Z" fill="#d0bf98" />
-          <path d="M 1 11 C 3 7, 7 3, 11 1 C 8 5, 5 8, 1 11 Z" fill="#f6ede0" />
-        </svg>
-        <div className="relative z-10 w-full h-full flex items-center justify-center">
-          <OdakWordmarkSvg mode="kagit" />
-        </div>
-      </div>
-    )
-  }
-
-  // 1. CAM TEMASI: Saydam kristal cam lens kartı, cyan kırılma hilali ve koyu antrasit tipografi (media_1793568060338_3eb1a36e.jpg)
+  // 1. CAM & 3. KAĞIT TEMASI: Beyaz fonlu vektörel logo (AÇIK ZEMİN) - fondan ayrıştırılmış rozet kartı
   return (
-    <div className="relative shrink-0 w-26 sm:w-28 h-16 sm:h-17 rounded-2xl bg-gradient-to-br from-white/95 via-white/70 to-white/30 dark:from-white/25 dark:via-white/10 dark:to-transparent border border-white/90 dark:border-white/30 shadow-[0_4px_22px_rgba(56,189,248,0.35),inset_0_1.5px_2px_rgba(255,255,255,0.95)] backdrop-blur-xl p-2.5 flex items-center justify-center select-none transition-transform hover:scale-105 overflow-hidden">
-      {/* Cam içi cyan ışık kırılması */}
-      <span className="absolute -inset-1 rounded-2xl bg-[radial-gradient(circle_at_85%_75%,rgba(56,189,248,0.45)_0%,rgba(56,189,248,0.1)_40%,transparent_65%)] pointer-events-none" />
-      {/* Üst kenar ince cam parıltısı */}
-      <span className="absolute top-1 left-3 right-3 h-[1px] bg-gradient-to-r from-transparent via-white/95 to-transparent pointer-events-none" />
-      <div className="relative z-10 w-full h-full flex items-center justify-center">
-        <OdakWordmarkSvg mode="cam" />
-      </div>
+    <div
+      className={cn(
+        'relative shrink-0 w-24 sm:w-28 h-16 sm:h-18 rounded-2xl bg-[#f4f4f4] p-1.5 flex items-center justify-center select-none transition-transform hover:scale-105 overflow-hidden',
+        theme === 'ios'
+          ? 'border border-white/90 dark:border-white/30 shadow-[0_4px_16px_rgba(56,189,248,0.25)]'
+          : 'border border-[#cfbe96] dark:border-[#524433] shadow-[0_2px_8px_rgba(0,0,0,0.12)]'
+      )}
+    >
+      <Image
+        src={logoVectorLightCard}
+        alt="odak Açık Zemin Vektörel Logo"
+        width={112}
+        height={72}
+        priority
+        className="w-full h-full object-contain pointer-events-none select-none"
+      />
     </div>
   )
 }

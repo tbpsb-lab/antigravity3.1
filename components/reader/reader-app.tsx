@@ -26,6 +26,9 @@ import {
   findChunkIndexForWord,
 } from '@/lib/reading-progress'
 import { loadReaderSettings, saveReaderSettings } from '@/lib/reader-settings'
+import Image from 'next/image'
+import logoVectorDarkTrans from '@/public/logos/odak-vector-dark-trans.png'
+import logoVectorLightTrans from '@/public/logos/odak-vector-light-trans.png'
 import { TopBar } from './top-bar'
 import { RsvpDisplay } from './rsvp-display'
 import { ContextPeek } from './context-peek'
@@ -810,8 +813,29 @@ export function ReaderApp() {
         }}
       >
         <div className="relative flex h-full w-full max-w-4xl lg:max-w-5xl xl:max-w-6xl flex-col items-center justify-between py-1 sm:py-2 transition-[max-width] duration-300 min-h-0">
-          {/* Üst Dengeleyici: Okuma penceresinin hem okurken hem duraklatıldığında tam merkezde sabit kalmasını sağlar */}
-          <div className="flex-1 w-full min-h-0" />
+          {/* Üst Dengeleyici: Metin okuma kutusunun üst kısmındaki boşlukta arka plana gömülmüş büyük filigran vektörel logo */}
+          <div className="flex-1 w-full min-h-0 flex items-center justify-center relative overflow-hidden pointer-events-none select-none">
+            <div
+              aria-hidden="true"
+              className={cn(
+                'pointer-events-none select-none transition-all duration-700 ease-out flex items-center justify-center',
+                'w-64 sm:w-80 md:w-[420px] max-w-[85vw] max-h-[160px] sm:max-h-[220px]',
+                playing
+                  ? 'opacity-[0.05] sm:opacity-[0.07] scale-95'
+                  : 'opacity-[0.14] sm:opacity-[0.18] scale-100',
+                theme === 'linear' && 'drop-shadow-[0_0_26px_rgba(168,85,247,0.3)]'
+              )}
+            >
+              <Image
+                src={theme === 'linear' ? logoVectorDarkTrans : logoVectorLightTrans}
+                alt=""
+                width={420}
+                height={280}
+                priority
+                className="w-full h-full object-contain pointer-events-none select-none"
+              />
+            </div>
+          </div>
 
           {/* Okuma Penceresi: Ekranın tam ortasında sabit kalır, duraklatıldığında yukarı itilmez */}
           <div className="w-full shrink-0 flex flex-col items-center">

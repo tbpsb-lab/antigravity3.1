@@ -1556,7 +1556,12 @@ export function classifyPageBoilerplate(
     return { isBoilerplate: true, reason: 'Görsel / OCR Gürültüsü', inPreface: false }
   }
 
-  // 3. Ana metin başlamadan önce 1-4 kelimelik başlık/numara sayfaları
+  // 3. Bilgi dolu ilk sayfa koruması: Rapor, makale veya bilgilendirici metinlerin ilk sayfası ASLA kapak kabul edilmez!
+  if (page.pageNumber === 1 && wordCount >= 50) {
+    return { isBoilerplate: false, reason: 'Ana Metin (Bilgi Dolu İlk Sayfa / Rapor)', inPreface: false }
+  }
+
+  // Ana metin başlamadan önce 1-4 kelimelik başlık/numara sayfaları
   if (!mainContentStarted && wordCount < 5) {
     return { isBoilerplate: true, reason: 'Ön Sayfa (Boş / Başlık)', inPreface }
   }
@@ -1567,7 +1572,12 @@ export function classifyPageBoilerplate(
   }
 
   const topLinesText = rawLines.slice(0, 4).join(' ').toLowerCase().replace(/\u0307/g, '')
+  const hasHeading = page.lines.some((l) => l.isHeading)
+
   const isChapterStart =
+    hasHeading ||
+    isExplicitChapterStart(rawLines[0] || '') ||
+    isExplicitChapterStart(topLinesText) ||
     /^(birinci\s+bölüm|1\.\s*bölüm|bölüm\s*1|kısım\s*1|probleme\s*giriş|1\s*[\-\.]\s*değer|giriş|chapter\s*1)(?![a-zA-ZçğıöşüÇĞİÖŞÜ0-9])/i.test(
       rawLines[0]?.toLowerCase().replace(/\u0307/g, '') || '',
     ) ||
@@ -1585,8 +1595,7 @@ export function classifyPageBoilerplate(
       /^(önsöz|sunuş|yazarın\s*önsözü|çevirenin\s*önsözü|takdim|foreword|preface)(?![a-zA-ZçğıöşüÇĞİÖŞÜ0-9])/i.test(
         rawLines[0]?.toLowerCase().replace(/\u0307/g, '') || '',
       ) ||
-      /(?<![a-zA-ZçğıöşüÇĞİÖŞÜ0-9])(önsöz|sunuş|yazarın\s*önsözü)(?![a-zA-ZçğıöşüÇĞİÖŞÜ0-9])/i.test(topLinesText) ||
-      (page.pageNumber <= 9 && (lower.includes('önsöz') || lower.includes('yönelmemin sebebi') || lower.includes('böyle bir problemi')))
+      /(?<![a-zA-ZçğıöşüÇĞİÖŞÜ0-9])(önsöz|sunuş|yazarın\s*önsözü)(?![a-zA-ZçğıöşüÇĞİÖŞÜ0-9])/i.test(topLinesText)
 
     if (isPrefaceStart && !isChapterStart) {
       inPreface = true
@@ -1635,20 +1644,21 @@ export function classifyPageBoilerplate(
   // 8. Kitap başındaki ön sayfalar (Kapak, yazar biyografisi, basın övgüleri, ithaf, epigraf)
   const isFrontZone = totalPages >= 5 && page.pageNumber <= Math.min(25, Math.floor(totalPages * 0.25))
   if (isFrontZone && !mainContentStarted && !isChapterStart) {
-    // Yazar Biyografisi kontrolü
-    const bioHits = AUTHOR_BIO_KEYWORDS.filter((kw) => lower.includes(kw)).length
-    if (bioHits >= 1 || (lower.includes('@') && (lower.includes('roman') || lower.includes('kitap') || lower.includes('yazar')))) {
+    // Yazar Biyografisi kontrolü: Sayfa başında açıkça biyografi başlığı bulunmalı ve sayfa bölüm başlığı içermemelidir
+    const isBioHeader = /^(yazar\s+hakkında|yazarın\s+biyografisi|yazar\s+biyografisi|biyografi|özgeçmiş|yazarın\s+özgeçmişi|about\s+the\s+author)\b/i.test(topLinesText)
+    if (isBioHeader && wordCount < 300 && !hasHeading) {
       return { isBoilerplate: true, reason: 'Yazar Biyografisi', inPreface: false }
     }
 
     // Basın ve Okur Övgüleri
+    const isPraiseHeader = /^(övgüler|basından\s+övgüler|kitap\s+hakkında\s+övgüler|praise\s+for)\b/i.test(topLinesText)
     const praiseHits = PRAISE_KEYWORDS.filter((kw) => lower.includes(kw)).length
-    if (praiseHits >= 2 || (fullText.includes('"') && praiseHits >= 1 && wordCount < 300)) {
+    if ((isPraiseHeader || (fullText.includes('"') && praiseHits >= 2)) && wordCount < 280 && !hasHeading) {
       return { isBoilerplate: true, reason: 'Basın ve Okur Övgüleri', inPreface: false }
     }
 
-    // Kısa ön sayfalar (Yarım başlık, ithaf, epigraf vb.)
-    if (wordCount < 65) {
+    // Kısa ön sayfalar (Yarım başlık, ithaf, epigraf vb. - yalnızca 1-45 kelime)
+    if (wordCount < 45 && !hasHeading) {
       return { isBoilerplate: true, reason: 'Ön Sayfa (Kapak / İthaf / Tanıtım)', inPreface: false }
     }
   }

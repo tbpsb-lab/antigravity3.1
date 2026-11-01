@@ -430,20 +430,11 @@ export function ReaderApp() {
       }
     }
 
-    const onNativeWheel = (e: WheelEvent) => {
-      e.preventDefault()
-      if (Math.abs(e.deltaY) > 10) {
-        changeWpm(e.deltaY < 0 ? WPM_STEP : -WPM_STEP)
-      }
-    }
-
     el.addEventListener('touchmove', onNativeTouchMove, { passive: false })
-    el.addEventListener('wheel', onNativeWheel, { passive: false })
     return () => {
       el.removeEventListener('touchmove', onNativeTouchMove)
-      el.removeEventListener('wheel', onNativeWheel)
     }
-  }, [changeWpm, setWpmDirect, zen])
+  }, [setWpmDirect, zen])
 
   const handleZenTouchEnd = () => {
     if (!zenTouchStateRef.current) return
@@ -463,25 +454,45 @@ export function ReaderApp() {
     action()
   }
 
-  // Masaüstünde okuma açıkken (veya tam ekrandayken) farenin scroll tekeriyle hızı anında artırıp azaltma
+  // Farenin scroll tekeriyle (mouse wheel) okuma hızı kontrolü:
+  // Hem duraklatıldığında hem okuma akarken TEK VE MERKEZİ kaynaktan tam 25 WPM'lik adımlarla artırıp azaltır.
   useEffect(() => {
-    const handleGlobalWheel = (e: WheelEvent) => {
-      const activeTag = document.activeElement?.tagName
-      if (activeTag === 'INPUT' || activeTag === 'TEXTAREA') return
+    let lastWheelTime = 0
 
-      if (playing) {
-        e.preventDefault()
-        if (Math.abs(e.deltaY) > 8) {
-          changeWpm(e.deltaY < 0 ? WPM_STEP : -WPM_STEP)
-        }
+    const handleGlobalWheel = (e: WheelEvent) => {
+      // Metin tablosu / modal açıkken veya form alanındayken hızı değiştirme
+      if (sheetOpen) return
+      const target = e.target as HTMLElement | null
+      const activeTag = document.activeElement?.tagName
+      if (
+        activeTag === 'INPUT' ||
+        activeTag === 'TEXTAREA' ||
+        target?.tagName === 'INPUT' ||
+        target?.tagName === 'TEXTAREA' ||
+        target?.closest?.('input, textarea, [role="dialog"], [role="menu"]')
+      ) {
+        return
       }
+
+      // Çok küçük titreşim veya sıfır delta'ları yoksay
+      if (Math.abs(e.deltaY) < 4) return
+
+      // Fare teker çentiklerinde art arda birden fazla event fırlamasını önleyen hafif zaman eşiği
+      const now = performance.now()
+      if (now - lastWheelTime < 60) return
+      lastWheelTime = now
+
+      if (e.cancelable) {
+        e.preventDefault()
+      }
+      changeWpm(e.deltaY < 0 ? WPM_STEP : -WPM_STEP)
     }
 
     window.addEventListener('wheel', handleGlobalWheel, { passive: false })
     return () => {
       window.removeEventListener('wheel', handleGlobalWheel)
     }
-  }, [playing, changeWpm])
+  }, [changeWpm, sheetOpen])
 
   // Chunk boyutu değiştiğinde mevcut kalınan kelimeden zıplama olmadan aynı konumu koru
   const handleChunkSizeChange = useCallback(
@@ -842,12 +853,6 @@ export function ReaderApp() {
           onTouchStart={handleZenTouchStart}
           onTouchMove={handleZenTouchMove}
           onTouchEnd={handleZenTouchEnd}
-          onWheel={(e) => {
-            e.preventDefault()
-            if (Math.abs(e.deltaY) > 10) {
-              changeWpm(e.deltaY < 0 ? WPM_STEP : -WPM_STEP)
-            }
-          }}
           className="fixed inset-0 z-20 flex select-none pointer-events-auto touch-none overscroll-none"
         >
           {/* Sol %25: Akıllı cümle başı geri sar */}

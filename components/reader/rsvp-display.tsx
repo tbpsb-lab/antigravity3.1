@@ -139,12 +139,6 @@ export function RsvpDisplay({
     }
   }
 
-  const handleWheel = (e: React.WheelEvent) => {
-    if (onWpmChange && Math.abs(e.deltaY) > 15) {
-      onWpmChange(e.deltaY < 0 ? WPM_STEP : -WPM_STEP)
-    }
-  }
-
   const handleChildClick = (action?: () => void) => {
     if (touchStateRef.current?.hasSwiped) {
       return
@@ -243,7 +237,6 @@ export function RsvpDisplay({
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
-        onWheel={handleWheel}
         className={cn(
           'rsvp-stage group relative flex flex-col justify-center min-h-[96px] sm:min-h-[110px] w-full overflow-hidden px-4 py-3.5 text-left outline-none transition-all duration-500 sm:px-8 sm:py-5 [@media(max-height:640px)]:py-2.5 landscape-short:py-1.5 select-none touch-none overscroll-none',
           isPulsing && 'pulse-jump',

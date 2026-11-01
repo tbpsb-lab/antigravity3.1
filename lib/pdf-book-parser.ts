@@ -656,6 +656,17 @@ const TITLE_CASE_STOPWORDS = new Set([
   'mi',
   'mu',
   'mü',
+  'and',
+  'or',
+  'of',
+  'the',
+  'in',
+  'on',
+  'at',
+  'to',
+  'for',
+  'with',
+  'by',
 ])
 
 // PDF.js kütüphanesini tarayıcıda dinamik yükle (Next.js SSR uyumlu)
@@ -1128,70 +1139,185 @@ function findRepeatedHeaderFooterLines(pages: { pageNumber: number; lines: PdfLi
 }
 
 /**
+ * Açık bölüm anahtar kelimelerini (BÖLÜM 1, GİRİŞ, ÖNSÖZ, ÖZET..., SONUÇ...) kontrol eder.
+ */
+function isExplicitChapterStart(t: string): boolean {
+  return /^(?:(?:birinci|ikinci|üçüncü|dördüncü|beşinci|\d{1,2}|[IVXLC]{1,5})[\.\-\s]+)?(bölüm|kısım|fasıl|chapter|part|section|giriş|önsöz|sunuş|sonsöz|sonuç|epilog|prolog|özet\s+yönetici\s+raporu|yönetici\s+özeti|özet|içindekiler|kaynakça|kaynaklar)(\b|\s|$)/i.test(
+    t.trim(),
+  )
+}
+
+/**
  * Bir satırın bölüm veya konu başlığı olup olmadığını tespit eder.
  */
 function isHeadingLine(lineObj: PdfLine, medianFontSize: number, lineIdx: number, allLines: PdfLine[]): boolean {
   const t = lineObj.text.trim()
   if (!t || t.length > 95) return false
 
+  // Şema, diyagram veya tablo karakterleri içeren satırlar başlık olamaz
+  const DIAGRAM_CHARS = ['│', '┌', '└', '┴', '┬', '├', '┤', '─', '▼', '▲', '$$', '\\longrightarrow', '──>', '═', '║', '╔', '╗', '╚', '╝']
+  if (DIAGRAM_CHARS.some((char) => t.includes(char))) return false
+  if (t.startsWith('[') && t.endsWith(']')) return false
+
+  // Önceki satır virgül, noktalı virgül, tire, taksim veya ok işaretiyle bitiyorsa, bu satır yarım kalmış bir ifadenin devamıdır
+  if (allLines && lineIdx > 0) {
+    const prevText = allLines[lineIdx - 1].text.trim()
+    if (/[,;\-\–\—\>\/]$/.test(prevText)) {
+      return false
+    }
+  }
+
   const words = t.split(/\s+/)
-  if (words.length > 12) return false
+  if (words.length > 16) return false
+
+  // Madde işaretleri (bullet) veya liste belirteçleri başlık olamaz
+  if (/^[●•▪\*\-]\s+/.test(t)) return false
+
+  // Cümle bitiren noktalama (. ! ?), noktalı virgül (;) veya iki nokta ile biten lead-in satırları başlık olamaz
+  if (/[.!?:;]$/.test(t)) return false
 
   // 1. Markdown başlığı (# Başlık)
   if (/^#{1,4}\s+\S+/.test(t)) return true
 
-  // 2. Açık bölüm kelimeleri (BÖLÜM 1, 1. Bölüm, GİRİŞ, ÖNSÖZ, vb.)
-  if (
-    /^(?:(\d{1,2}|[IVXLC]{1,5}|birinci|ikinci|üçüncü|dördüncü|beşinci)[\.\-\s]+)?(bölüm|kısım|fasıl|chapter|part|section|giriş|önsöz|sunuş|sonsöz|sonuç|epilog|prolog)(?![a-zA-ZçğıöşüÇĞİÖŞÜ0-9])/i.test(
-      t,
-    ) &&
-    words.length <= 9 &&
-    !/[.!?]$/.test(t)
-  ) {
+  // 2. Açık bölüm kelimeleri (BÖLÜM 1, 1. Bölüm, GİRİŞ, ÖNSÖZ, ÖZET YÖNETİCİ RAPORU, SONUÇ vb.)
+  if (isExplicitChapterStart(t) && words.length <= 12) {
     return true
   }
 
-  // 3. Büyük font boyutu
-  if (lineObj.fontSize && medianFontSize && lineObj.fontSize >= medianFontSize * 1.18 && words.length <= 10) {
-    return true
+  // 3. Numaralı başlıklar ("1. YENİ ELEŞTİRİ..." veya "1. Zihinsel Katmanlar...")
+  const numMatch = t.match(/^(?:(\d{1,2}|[IVXLC]{1,5})\.)\s+([A-ZÇĞİÖŞÜ].*)$/)
+  if (numMatch) {
+    const rest = numMatch[2].trim()
+    const restWords = rest.split(/\s+/)
+    if (restWords.length > 0) {
+      const firstW = restWords[0].replace(/[^a-zA-ZçğıöşüÇĞİÖŞÜ]/g, '')
+      if (firstW && /^[A-ZÇĞİÖŞÜ]/.test(firstW)) {
+        if (rest.includes(':')) {
+          // İki noktadan sonraki kısım kısa ve başlık formatında olmalı (açıklama cümlesi olmamalı)
+          const afterColon = rest.split(':', 1)[1]?.trim() || ''
+          const afterWords = afterColon.split(/\s+/)
+          if (afterWords.length <= 5) {
+            const hasLowercaseContent = afterWords.some((w) => {
+              const cleanW = w.replace(/[^a-zA-ZçğıöşüÇĞİÖŞÜ]/g, '')
+              return cleanW && !TITLE_CASE_STOPWORDS.has(cleanW.toLowerCase()) && !/^[A-ZÇĞİÖŞÜ]/.test(cleanW)
+            })
+            if (!hasLowercaseContent) return true
+          }
+        } else {
+          // İki nokta yoksa: akan bir açıklama cümlesi ("1. Edebi açıdan, Yeni Eleştiri'nin...") değil, başlık olmalı
+          const sigWords = restWords
+            .map((w) => w.replace(/[^a-zA-ZçğıöşüÇĞİÖŞÜ]/g, ''))
+            .filter((w) => w && !TITLE_CASE_STOPWORDS.has(w.toLowerCase()))
+          const caps = sigWords.filter((w) => /^[A-ZÇĞİÖŞÜ0-9]/.test(w))
+          if (sigWords.length >= 1 && caps.length >= Math.ceil(sigWords.length * 0.75)) {
+            return true
+          }
+        }
+      }
+    }
   }
 
-  // 4. Tamamı BÜYÜK HARF olan kısa satırlar
+  // 4. Tamamı BÜYÜK HARF olan satırlar (ALL CAPS)
   const lettersOnly = t.replace(/[^a-zA-ZçğıöşüÇĞİÖŞÜ]/g, '')
-  if (lettersOnly.length >= 4 && lettersOnly === lettersOnly.toUpperCase() && words.length <= 8 && !/[.,;:]$/.test(t)) {
-    return true
-  }
-
-  // 5. Roma rakamı veya numara ile başlayan kısa başlık ("I. Modern Bilimin Doğuşu")
-  if (/^([IVXLC]{1,5})\.\s+[A-ZÇĞİÖŞÜ]/.test(t) && words.length <= 8 && !/[.!?]$/.test(t)) {
-    return true
-  }
-
-  // 6. Sayfanın ilk satırındaki Title Case başlıklar
-  if (
-    lineIdx === 0 &&
-    words.length >= 1 &&
-    words.length <= 8 &&
-    t.length <= 58 &&
-    !/[.!?,;:\-\uFFFD\u00AD"“”]$/.test(t) &&
-    /^[A-ZÇĞİÖŞÜ]/.test(t)
-  ) {
-    const significantWords = words.filter(
-      (w) => !TITLE_CASE_STOPWORDS.has(w.toLowerCase().replace(/[^a-zçğıöşü]/g, '')),
-    )
-    const capitalizedCount = significantWords.filter((w) =>
-      /^[A-ZÇĞİÖŞÜ0-9]/.test(w.replace(/^['"“‘\(]+/, '')),
-    ).length
-
-    const nextLine = allLines[lineIdx + 1]
-    const nextStartsSentence = !nextLine || /^[A-ZÇĞİÖŞÜ"“‘'\-\–\—]/.test(nextLine.text.trim())
-
-    if (significantWords.length >= 1 && capitalizedCount === significantWords.length && nextStartsSentence) {
+  if (lettersOnly.length >= 3 && lettersOnly === lettersOnly.toUpperCase() && words.length <= 16) {
+    if (t.includes(':')) {
+      const after = t.split(':', 1)[1]?.trim() || ''
+      const afterLetters = after.replace(/[^a-zA-ZçğıöşüÇĞİÖŞÜ]/g, '')
+      if (afterLetters && afterLetters === afterLetters.toUpperCase()) {
+        return true
+      }
+    } else {
       return true
     }
   }
 
+  // 5. Büyük font boyutu (Gövde fontundan en az %12 büyük)
+  if (lineObj.fontSize && medianFontSize && lineObj.fontSize >= medianFontSize * 1.12 && words.length <= 12) {
+    return true
+  }
+
+  // 6. Title Case başlıklar (Sayfanın herhangi bir yerinde)
+  if (
+    words.length >= 1 &&
+    words.length <= 10 &&
+    t.length <= 75 &&
+    /^[A-ZÇĞİÖŞÜ]/.test(t)
+  ) {
+    // Sonraki satır küçük harfle başlıyorsa, bu satır bölünen bir cümlenin parçasıdır
+    const nextLine = allLines[lineIdx + 1]
+    const nextStartsLowercase = nextLine && /^[a-zçğıöşü]/.test(nextLine.text.trim())
+
+    if (!nextStartsLowercase) {
+      const cleanWords = words.map((w) => w.replace(/^['"“‘\(]+|['"”’\)\:]+$/g, ''))
+      const significantWords = cleanWords.filter(
+        (w) => w && !TITLE_CASE_STOPWORDS.has(w.toLowerCase().replace(/[^a-zçğıöşü]/g, '')),
+      )
+      const capitalizedCount = significantWords.filter((w) =>
+        /^[A-ZÇĞİÖŞÜ0-9]/.test(w),
+      ).length
+
+      if (significantWords.length >= 1 && capitalizedCount === significantWords.length) {
+        return true
+      }
+    }
+  }
+
   return false
+}
+
+/**
+ * Ardışık gelen başlık satırlarını (örneğin birden fazla satıra bölünmüş kitap/makale başlıklarını)
+ * tek parça bütünlüklü bir başlık haline getirir.
+ */
+function mergeConsecutiveHeadingLines(lines: PdfLine[]): PdfLine[] {
+  const merged: PdfLine[] = []
+  let i = 0
+
+  while (i < lines.length) {
+    const current = lines[i]
+    if (!current.isHeading) {
+      merged.push(current)
+      i++
+      continue
+    }
+
+    let fullHeadingText = current.text.trim()
+    while (i + 1 < lines.length) {
+      const next = lines[i + 1]
+      if (!next.isHeading) break
+
+      const nextText = next.text.trim()
+
+      // Sonraki satır yeni bir numaralı başlık veya açık bölüm başlangıcı ise birleştirme
+      if (isExplicitChapterStart(nextText) || /^(?:\d{1,2}|[IVXLC]{1,5})\.\s+/.test(nextText)) {
+        break
+      }
+
+      // Mevcut başlık cümle bitiren noktalama içeriyorsa devam ettirme
+      if (/[.!?]$/.test(fullHeadingText)) {
+        break
+      }
+
+      const currLetters = fullHeadingText.replace(/[^a-zA-ZçğıöşüÇĞİÖŞÜ]/g, '')
+      const nextLetters = nextText.replace(/[^a-zA-ZçğıöşüÇĞİÖŞÜ]/g, '')
+      const isCurrAllCaps = currLetters.length >= 3 && currLetters === currLetters.toUpperCase()
+      const isNextAllCaps = nextLetters.length >= 2 && nextLetters === nextLetters.toUpperCase()
+      const nextWordCount = nextText.split(/\s+/).length
+
+      if ((isCurrAllCaps && isNextAllCaps && nextWordCount <= 10) || (nextWordCount <= 6 && !/[.!?]$/.test(nextText))) {
+        fullHeadingText = `${fullHeadingText} ${nextText}`
+        i++
+      } else {
+        break
+      }
+    }
+
+    current.text = fullHeadingText
+    merged.push(current)
+    i++
+  }
+
+  return merged
 }
 
 /**
@@ -1208,6 +1334,10 @@ function extractFootnotesFromLines(
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i]
+    if (line.isHeading) {
+      bodyLines.push(line)
+      continue
+    }
     const t = line.text.trim()
 
     const isExplicitFn = /^(\[\d{1,3}\]|\(\d{1,3}\)|[¹²³⁴⁵⁶⁷⁸⁹⁰]+|['"«]?\*{1,4}|†|‡|(?:dipnot|not)\s*\d+|(?:Bak\.?|Bkz\.?|Op\.\s*cit|İbid|A\.g\.e|Cfr|Karş|Her düşünürde|Ve Hartmann|I\.\s*Kant:|J\.P\.\s*Sartre|N\.\s*Guillen|N\.\s*Hartmann|M\.\s*Scheler)\b)/i.test(t)
@@ -1801,9 +1931,12 @@ export async function parsePdfDocument(
     // Dipnotları ayıkla
     const { bodyLines, footnotes } = extractFootnotesFromLines(filteredLines, medianFont)
 
+    // Ardışık başlık satırlarını tek parça başlıkta birleştir (Multi-line headings)
+    const consolidatedBodyLines = mergeConsecutiveHeadingLines(bodyLines)
+
     // Sayfa sonundaki kelimeye yapışmış sayfa numarasını onar ('farklı de7' -> 'farklı de-')
-    if (bodyLines.length > 0) {
-      const lastLine = bodyLines[bodyLines.length - 1]
+    if (consolidatedBodyLines.length > 0) {
+      const lastLine = consolidatedBodyLines[consolidatedBodyLines.length - 1]
       const m = lastLine.text.match(/([a-zA-ZçğıöşüÇĞİÖŞÜ]{2,})(\d{1,3})\.?$/)
       if (m) {
         const num = parseInt(m[2], 10)
@@ -1815,7 +1948,7 @@ export async function parsePdfDocument(
 
     // Künye ve gereksiz sayfa kontrolü
     const check = classifyPageBoilerplate(
-      { pageNumber: page.pageNumber, lines: bodyLines },
+      { pageNumber: page.pageNumber, lines: consolidatedBodyLines },
       numPages,
       { mainContentStarted, inPreface },
     )
@@ -1830,7 +1963,7 @@ export async function parsePdfDocument(
     preparedPages.push({
       pageNumber: page.pageNumber,
       lines: filteredLines,
-      bodyLines,
+      bodyLines: consolidatedBodyLines,
       footnotes,
       isBoilerplate: check.isBoilerplate,
       skipReason: check.reason,

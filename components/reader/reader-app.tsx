@@ -33,6 +33,7 @@ import { ControlDock } from './control-dock'
 import { TextSheet } from './text-sheet'
 import { SpeedTestModal } from './speed-test-modal'
 import { AboutModal } from './about-modal'
+import { PaperCornerCurl } from './paper-corner-curl'
 import { FONT_FACES, FontSettings, type FontFace } from './font-settings'
 import { useElementHeight } from '@/lib/use-element-height'
 
@@ -569,6 +570,14 @@ export function ReaderApp() {
     setFontFace('theme')
   }, [])
 
+  // HTML ve body'e data-theme senkronizasyonu (Tüm sitede scrollbar ve temaların kusursuz işlemesi için)
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      document.documentElement.setAttribute('data-theme', theme)
+      document.body.setAttribute('data-theme', theme)
+    }
+  }, [theme])
+
   const onKeyDown = useEffectEvent((e: KeyboardEvent) => {
     if (sheetOpen) return
     const target = e.target as HTMLElement | null
@@ -964,6 +973,9 @@ export function ReaderApp() {
       )}
 
 
+
+      {/* Kağıt Temasına Özel Sağ Alt Köşe Sayfa Kıvrımı (Bağlam metnini etkilemez) */}
+      <PaperCornerCurl visible={theme === 'kindle'} />
 
       <TextSheet
         open={sheetOpen}

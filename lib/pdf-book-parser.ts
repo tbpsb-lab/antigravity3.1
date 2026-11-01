@@ -747,12 +747,72 @@ export function dehyphenateText(text: string): string {
       /([a-zA-ZçğıöşüÇĞİÖŞÜ0-9])[\-\u00AD\uFFFD\u2010\u2011\u2012\u2212\u00AC~]\s*[\r\n]+\s*([a-zçğıöşü])/g,
       '$1$2',
     )
-    // 2. Tire + boşluk + küçük harf ([a-zçğıöşü])
-    // İstisna: Rakamlar arasındaki tireleri ("2025-2026") ve aralıksız gerçek birleşik kelimeleri ("e-posta", "check-up") korur
-    .replace(
-      /(?<!\d)([a-zA-ZçğıöşüÇĞİÖŞÜ]{2,})[\-\u00AD\uFFFD\u2010\u2011\u2012\u2212\u00AC~]\s+([a-zçğıöşü]{1,15})(?!\d)/g,
-      '$1$2',
-    )
+}
+
+/**
+ * PDF metninde boşlukla ayrılmış bileşik kelime tirelerini (örn. "sosyo - politik", "queen - in - waiting", "piyon - vezir")
+ * standart birleşik kelime formatına ("sosyo-politik", "queen-in-waiting", "piyon-vezir") normalize eder.
+ */
+export function normalizeCompoundWordHyphens(text: string): string {
+  if (!text) return ''
+  let prev = ''
+  let curr = text
+  while (prev !== curr) {
+    prev = curr
+    curr = curr
+      .replace(/(?<!\d)([a-zA-ZçğıöşüÇĞİÖŞÜ0-9]+)\s+[-\u00AD\uFFFD\u2010\u2011\u2012\u2212\u00AC~]\s+([a-zA-ZçğıöşüÇĞİÖŞÜ0-9]+)(?!\d)/g, '$1-$2')
+      .replace(/(?<!\d)([a-zA-ZçğıöşüÇĞİÖŞÜ0-9]+)[-\u00AD\uFFFD\u2010\u2011\u2012\u2212\u00AC~]\s+([a-zA-ZçğıöşüÇĞİÖŞÜ0-9]+)(?!\d)/g, '$1-$2')
+      .replace(/(?<!\d)([a-zA-ZçğıöşüÇĞİÖŞÜ0-9]+)\s+[-\u00AD\uFFFD\u2010\u2011\u2012\u2212\u00AC~]([a-zA-ZçğıöşüÇĞİÖŞÜ0-9]+)(?!\d)/g, '$1-$2')
+  }
+  return curr
+}
+
+/**
+ * LaTeX matematiksel sembol ve bloklarını doğal metne çevirir,
+ * metin içine dağılmış anlamsız ASCII kutu ve şema çizgilerini ayıklar.
+ */
+export function cleanLatexAndDiagrams(text: string): string {
+  if (!text) return ''
+  let t = text
+
+  // 1. LaTeX ok ve formül sembollerini okunabilir Unicode karakterlere çevir
+  t = t.replace(/\\+\s*(?:longrightarrow|rightarrow|to)/gi, ' → ')
+  t = t.replace(/\\+\s*(?:longleftarrow|leftarrow)/gi, ' ← ')
+  t = t.replace(/\\+\s*(?:iff|Leftrightarrow)/gi, ' ↔ ')
+  t = t.replace(/\\+\s*(?:implies|Rightarrow)/gi, ' ⇒ ')
+  t = t.replace(/──>/g, ' → ')
+  t = t.replace(/-->/g, ' → ')
+
+  // 2. LaTeX \text{...}, \textbf{...}, \textit{...} etiketlerinin açılması
+  t = t.replace(/\\+\s*te?x[\s\r\n]*t(?:bf|it|rm)?\s*\{([^}]+)\}/gi, '$1')
+
+  // 3. Matematik blok ayraçları ($$, $)
+  t = t.replace(/\$\$/g, ' ')
+
+  // 4. Şema / Diyagram çerçeve çizgilerinin ayıklanması
+  const lines = t.split('\n')
+  const cleanedLines: string[] = []
+
+  for (const line of lines) {
+    const trimmed = line.trim()
+    if (!trimmed) {
+      cleanedLines.push('')
+      continue
+    }
+    // Yalnızca diyagram çerçevesi, ok ve çizgilerden oluşan satırları atla
+    if (/^[│┌└┴┬├┤─▼▲═║╔╗╚╝\-\–\—\|\>\<\s\.\:\+]+$/.test(trimmed) && !/[a-zA-ZçğıöşüÇĞİÖŞÜ0-9]/.test(trimmed)) {
+      continue
+    }
+    // Satır başındaki/sonundaki izole kutu çizgilerini temizle
+    const cleanedLine = trimmed
+      .replace(/^[│║|┌└┴┬├┤─▼▲\s]+/, '')
+      .replace(/[│║|┌└┴┬├┤─▼▲\s]+$/, '')
+    if (cleanedLine) {
+      cleanedLines.push(cleanedLine)
+    }
+  }
+
+  return cleanedLines.join('\n')
 }
 
 /**
@@ -819,10 +879,10 @@ export function cleanIntraLineHyphens(rawLineText: string): string {
   t = t.replace(
     /([a-zA-ZçğıöşüÇĞİÖŞÜ]{2,})[-\u00AD\uFFFD\u2010\u2011\u2012\u2212\u00AC~]\s+([a-zçğıöşü]{1,15})/g,
     (full, left, right) => {
-      if (BROKEN_SUFFIX_SET.has(right) || right.length <= 2) {
+      if (BROKEN_SUFFIX_SET.has(right.toLowerCase())) {
         return left + right
       }
-      return `${left}– ${right}`
+      return `${left}-${right}`
     },
   )
 
@@ -1151,7 +1211,13 @@ function isExplicitChapterStart(t: string): boolean {
  * Bir satırın ANA BÖLÜM veya ANA BAŞLIK olup olmadığını tespit eder.
  * Alt başlıkları, numaralı liste maddelerini (örn. "6. Felsefi Referanslar: Metinde...") ve açıklama cümlelerini eler.
  */
-function isHeadingLine(lineObj: PdfLine, medianFontSize: number, lineIdx: number, allLines: PdfLine[]): boolean {
+function isHeadingLine(
+  lineObj: PdfLine,
+  medianFontSize: number,
+  lineIdx: number,
+  allLines: PdfLine[],
+  isFirstPage: boolean = false,
+): boolean {
   const t = lineObj.text.trim()
   if (!t || t.length > 95) return false
 
@@ -1214,8 +1280,16 @@ function isHeadingLine(lineObj: PdfLine, medianFontSize: number, lineIdx: number
     return false
   }
 
-  // 4. Çok satırlı ana başlık devam satırı (örn: 1. bölümün devamı olan "BÜTÜNLÜK")
   const lettersOnly = t.replace(/[^a-zA-ZçğıöşüÇĞİÖŞÜ]/g, '')
+
+  // 4. Belgenin ilk sayfasının başındaki ana başlık bloğu (BİLGİLENDİRME NOTU: ...)
+  if (isFirstPage && lineIdx <= 3) {
+    if (lettersOnly.length >= 4 && lettersOnly === lettersOnly.toUpperCase() && words.length <= 14) {
+      return true
+    }
+  }
+
+  // 5. Çok satırlı ana başlık devam satırı (örn: 1. bölümün devamı olan "BÜTÜNLÜK")
   if (lettersOnly.length >= 2 && lettersOnly === lettersOnly.toUpperCase() && words.length <= 6) {
     if (allLines && lineIdx > 0) {
       const prev = allLines[lineIdx - 1].text.trim()
@@ -1232,7 +1306,7 @@ function isHeadingLine(lineObj: PdfLine, medianFontSize: number, lineIdx: number
     }
   }
 
-  // 5. Belirgin derecede büyük fontlu başlık (Gövde fontundan en az %25 büyük ve sayfa başında - roman vb. için)
+  // 6. Belirgin derecede büyük fontlu başlık (Gövde fontundan en az %25 büyük ve sayfa başında - roman vb. için)
   if (
     lineObj.fontSize &&
     medianFontSize &&
@@ -1244,7 +1318,7 @@ function isHeadingLine(lineObj: PdfLine, medianFontSize: number, lineIdx: number
     if (lineIdx === 1 && allLines && /^\d+$/.test(allLines[0].text.trim())) return true
   }
 
-  // 6. Sayfa başında tek başına yer alan kısa BÜYÜK HARFLİ roman bölüm başlığı (font bilgisi olmayan PDF'ler için)
+  // 7. Sayfa başında tek başına yer alan kısa BÜYÜK HARFLİ roman bölüm başlığı (font bilgisi olmayan PDF'ler için)
   if (
     (lineIdx === 0 || (lineIdx === 1 && allLines && /^\d+$/.test(allLines[0].text.trim()))) &&
     words.length >= 1 &&
@@ -1299,7 +1373,7 @@ function mergeConsecutiveHeadingLines(lines: PdfLine[]): PdfLine[] {
       const isNextAllCaps = nextLetters.length >= 2 && nextLetters === nextLetters.toUpperCase()
       const nextWordCount = nextText.split(/\s+/).length
 
-      if ((isCurrAllCaps && isNextAllCaps && nextWordCount <= 10) || (nextWordCount <= 6 && !/[.!?]$/.test(nextText))) {
+      if ((isCurrAllCaps && isNextAllCaps && nextWordCount <= 14) || (nextWordCount <= 6 && !/[.!?]$/.test(nextText))) {
         fullHeadingText = `${fullHeadingText} ${nextText}`
         i++
       } else {
@@ -1715,16 +1789,7 @@ function finalizePdfLine(
     if (i > 0) {
       const prev = lineGroup.items[i - 1]
 
-      // 1. KURAL: De-hyphenation - Tire ("-" veya "\u00AD") ile biten ve sonraki küçük harfle başlayan parça
-      const prevEndsWithHyphen = /([a-zA-ZçğıöşüÇĞİÖŞÜ0-9])[\-\u00AD\uFFFD\u2010\u2011\u2012\u2212\u00AC~]\s*$/.test(text)
-      const currStartsWithLower = /^\s*([a-zçğıöşü])/.test(curr.str)
-
-      if (prevEndsWithHyphen && currStartsWithLower) {
-        text = text.replace(/[\-\u00AD\uFFFD\u2010\u2011\u2012\u2212\u00AC~]\s*$/, '') + curr.str.replace(/^\s+/, '')
-        continue
-      }
-
-      // 2. KURAL: Koordinat Tabanlı Boşluk Hesabı (PDF.js getTextContent)
+      // 1. KURAL: Koordinat Tabanlı Boşluk Hesabı (PDF.js getTextContent)
       // - Y koordinatı değiştiyse (Math.abs(currentY - prevY) > 2) ve önceki satır tire ile bitmiyorsa araya boşluk koy.
       // - Aynı satırda (currentY === prevY), önceki item'ın bitiş X koordinatı (prevX + prevWidth) ile yeni item'ın
       //   başlangıç X koordinatı (currentX) arasındaki mesafe font boyutunun %15'inden (fontSize * 0.15) büyükse
@@ -1764,7 +1829,7 @@ function finalizePdfLine(
   }
 
   return {
-    text: cleanIntraLineHyphens(text.replace(/\s+/g, ' ').trim()),
+    text: cleanIntraLineHyphens(normalizeCompoundWordHyphens(text.replace(/\s+/g, ' ').trim())),
     fontSize: lineGroup.maxFontSize,
     yRatio: pageHeight ? lineGroup.yFromTop / pageHeight : 0.5,
     pageNumber,
@@ -1920,7 +1985,7 @@ export async function parsePdfDocument(
 
     // Başlıkları işaretle
     filteredLines.forEach((l, idx) => {
-      l.isHeading = isHeadingLine(l, medianFont, idx, filteredLines)
+      l.isHeading = isHeadingLine(l, medianFont, idx, filteredLines, page.pageNumber === 1)
     })
 
     // Dipnotları ayıkla
@@ -1989,6 +2054,12 @@ export async function parsePdfDocument(
   // 1. KURAL: Satır sonu kontrolü - tire yoksa satırlar \n ile ayrılır, asla .join("") veya .replace(/\n/g, "") yapılmaz
   let cleanedText = dehyphenateText(resultBlocks.join('\n\n').trim())
 
+  // LaTeX matematiksel sembol ve bloklarını doğal metne çevir, kutu çizgilerini temizle
+  cleanedText = cleanLatexAndDiagrams(cleanedText)
+
+  // Spaced bileşik kelime tirelerini normalize et ("sosyo - politik" -> "sosyo-politik")
+  cleanedText = normalizeCompoundWordHyphens(cleanedText)
+
   // 3. KURAL: Noktalama ve camelCase Temizliği
   cleanedText = cleanPunctuationAndCamelCase(cleanedText)
 
@@ -2009,21 +2080,19 @@ export async function parsePdfDocument(
   // Belgenin en başındaki ana başlığı / kitap adını tespit et
   let detectedDocTitle = ''
   if (preparedPages.length > 0) {
-    const firstPageLines = preparedPages[0].lines
-    const titleCandidates: string[] = []
+    const firstPageLines = preparedPages[0].bodyLines
     for (const l of firstPageLines) {
-      if (l.isHeading) break
+      if (l.isHeading) {
+        detectedDocTitle = l.text.replace(/^#+\s*/, '').trim()
+        break
+      }
       const txt = l.text.trim()
       if (!txt) continue
       const letters = txt.replace(/[^a-zA-ZçğıöşüÇĞİÖŞÜ]/g, '')
       if (letters.length >= 3 && letters === letters.toUpperCase() && txt.split(/\s+/).length <= 15) {
-        titleCandidates.push(txt)
-      } else {
+        detectedDocTitle = txt
         break
       }
-    }
-    if (titleCandidates.length > 0 && titleCandidates.length <= 4) {
-      detectedDocTitle = titleCandidates.join(' ').replace(/\s+/g, ' ').trim()
     }
   }
 

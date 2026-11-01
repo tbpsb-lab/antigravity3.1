@@ -1,9 +1,9 @@
 'use client'
 
-import { ChevronLeft, ChevronRight, Pause, Play } from 'lucide-react'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 import type { CSSProperties, Ref } from 'react'
 import { cn } from '@/lib/utils'
-import { MAX_WPM, MIN_WPM, WPM_STEP, formatRemaining } from '@/lib/rsvp'
+import { formatRemaining } from '@/lib/rsvp'
 
 type ControlDockProps = {
   ref?: Ref<HTMLElement>
@@ -14,11 +14,11 @@ type ControlDockProps = {
   playing: boolean
   chunkSize?: number
   step?: number
-  onToggle: () => void
+  onToggle?: () => void
   onSeek: (index: number) => void
   onStepPrev?: () => void
   onStepNext?: () => void
-  onWpmChange: (delta: number) => void
+  onWpmChange?: (delta: number) => void
 }
 
 export function ControlDock({
@@ -27,14 +27,11 @@ export function ControlDock({
   index,
   total,
   wpm,
-  playing,
   chunkSize = 1,
   step = 10,
-  onToggle,
   onSeek,
   onStepPrev,
   onStepNext,
-  onWpmChange,
 }: ControlDockProps) {
   const last = Math.max(0, total - 1)
   const progress = last > 0 ? (index / last) * 100 : 0
@@ -45,12 +42,14 @@ export function ControlDock({
       aria-hidden={hidden}
       inert={hidden}
       className={cn(
-        'absolute inset-x-0 bottom-0 z-30 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] transition-all duration-500 ease-[cubic-bezier(0.2,0.8,0.2,1)] sm:px-6 sm:pb-6 landscape-short:pb-2',
+        'absolute inset-x-0 bottom-0 z-30 px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] transition-all duration-500 ease-[cubic-bezier(0.2,0.8,0.2,1)] sm:px-6 sm:pb-3 landscape-short:pb-1.5',
         hidden && 'pointer-events-none translate-y-8 opacity-0',
       )}
     >
-      <div className="panel mx-auto flex max-w-xl flex-col gap-2 p-3 sm:p-4 landscape-short:max-w-3xl landscape-short:flex-row landscape-short:items-center landscape-short:gap-4 landscape-short:px-4 landscape-short:py-2">
-        <div className="flex flex-col gap-0.5 landscape-short:min-w-0 landscape-short:flex-1">
+      {/* Ultra Kompakt İlerleme ve Kontrol Çubuğu (OKU butonu kaldırıldı, pencereye dokunarak okunur) */}
+      <div className="panel mx-auto flex max-w-xl flex-col gap-1.5 p-2 sm:p-2.5 sm:px-4 landscape-short:max-w-3xl landscape-short:gap-1 landscape-short:p-1.5 landscape-short:px-3">
+        {/* İlerleme Kaydırıcısı (Scrubber) */}
+        <div className="flex flex-col gap-0.5">
           <label htmlFor="scrubber" className="sr-only">
             Metin içinde konum
           </label>
@@ -65,69 +64,60 @@ export function ControlDock({
             className="scrubber"
             style={{ '--progress': `${progress}%` } as CSSProperties}
           />
-          <div className="flex items-center justify-between px-0.5 font-mono text-[11px] tabular-nums text-muted-foreground landscape-short:hidden">
-            <span>
-              {total === 0 ? 0 : index + 1} / {total}
-              {chunkSize > 1 ? ` (${chunkSize}K öbek)` : ''}
-            </span>
-            <span>{formatRemaining(total - index - 1, wpm, chunkSize)} kaldı</span>
-          </div>
         </div>
 
-        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-1.5 sm:gap-2 landscape-short:flex landscape-short:shrink-0">
-          <div
-            className="flex items-center gap-1.5 justify-self-start px-1 font-mono text-xs text-muted-foreground"
-            role="status"
-            aria-label={`Okuma hızı: ${wpm} kelime/dakika`}
-          >
-            <span className="text-sm font-semibold tabular-nums text-foreground">{wpm}</span>
-            <span className="text-[11px]">k/dk</span>
-            <span className="text-[10px] opacity-60 hidden sm:inline">(↕ kaydır)</span>
+        {/* Bilgi ve Navigasyon Satırı */}
+        <div className="flex items-center justify-between gap-2 px-0.5">
+          {/* Sol: Konum ve Kalan Süre */}
+          <div className="flex items-center gap-1.5 font-mono text-[11px] tabular-nums text-muted-foreground sm:text-xs">
+            <span>
+              {total === 0 ? 0 : index + 1}/{total}
+              {chunkSize > 1 ? ` (${chunkSize}K)` : ''}
+            </span>
+            <span className="opacity-40">·</span>
+            <span>{formatRemaining(total - index - 1, wpm, chunkSize)} kaldı</span>
           </div>
 
-          <button
-            type="button"
-            onClick={onToggle}
-            disabled={total === 0}
-            className="ctl ctl-primary h-14 gap-2 px-5 text-base font-semibold tracking-wide disabled:opacity-40 max-[359px]:size-13 max-[359px]:px-0 sm:px-7 landscape-short:h-10 landscape-short:px-5 landscape-short:text-sm"
-            aria-keyshortcuts="Space"
-          >
-            {playing ? (
-              <Pause className="size-5 fill-current" />
-            ) : (
-              <Play className="size-5 fill-current" />
-            )}
-            <span className="max-[359px]:sr-only">{playing ? 'DUR' : 'OKU'}</span>
-          </button>
+          {/* Sağ: Hız Göstergesi ve Sayfa/Blok Atla Butonları */}
+          <div className="flex items-center gap-2">
+            <div
+              className="flex items-center gap-1 font-mono text-xs text-muted-foreground"
+              role="status"
+              aria-label={`Okuma hızı: ${wpm} kelime/dakika`}
+            >
+              <span className="text-xs font-semibold tabular-nums text-foreground sm:text-sm">{wpm}</span>
+              <span className="text-[10px]">k/dk</span>
+            </div>
 
-          <div className="flex items-center gap-1 justify-self-end" role="group" aria-label="Kelime atla">
-            <button
-              type="button"
-              onClick={onStepPrev ?? (() => onSeek(Math.max(0, index - step)))}
-              disabled={index === 0}
-              className="ctl size-9 disabled:opacity-40 sm:size-10 landscape-short:size-9"
-              aria-label={`${step} öbek geri`}
-              title={`${step} öbek geri`}
-              aria-keyshortcuts="Shift+ArrowLeft"
-            >
-              <ChevronLeft className="size-5" />
-            </button>
-            <button
-              type="button"
-              onClick={onStepNext ?? (() => onSeek(Math.min(last, index + step)))}
-              disabled={index >= last}
-              className="ctl size-9 disabled:opacity-40 sm:size-10 landscape-short:size-9"
-              aria-label={`${step} öbek ileri`}
-              title={`${step} öbek ileri`}
-              aria-keyshortcuts="Shift+ArrowRight"
-            >
-              <ChevronRight className="size-5" />
-            </button>
+            <div className="flex items-center gap-0.5" role="group" aria-label="Kelime atla">
+              <button
+                type="button"
+                onClick={onStepPrev ?? (() => onSeek(Math.max(0, index - step)))}
+                disabled={index === 0}
+                className="ctl size-7.5 rounded-md disabled:opacity-40 sm:size-8"
+                aria-label={`${step} öbek geri`}
+                title={`${step} öbek geri`}
+                aria-keyshortcuts="Shift+ArrowLeft"
+              >
+                <ChevronLeft className="size-4" />
+              </button>
+              <button
+                type="button"
+                onClick={onStepNext ?? (() => onSeek(Math.min(last, index + step)))}
+                disabled={index >= last}
+                className="ctl size-7.5 rounded-md disabled:opacity-40 sm:size-8"
+                aria-label={`${step} öbek ileri`}
+                title={`${step} öbek ileri`}
+                aria-keyshortcuts="Shift+ArrowRight"
+              >
+                <ChevronRight className="size-4" />
+              </button>
+            </div>
           </div>
         </div>
       </div>
 
-      <p className="mx-auto mt-3 hidden max-w-xl text-center text-xs text-muted-foreground lg:block landscape-short:hidden">
+      <p className="mx-auto mt-1.5 hidden max-w-xl text-center text-[11px] text-muted-foreground lg:block landscape-short:hidden">
         <kbd className="font-mono">Space</kbd> oku/dur · <kbd className="font-mono">← →</kbd> gez ·{' '}
         <kbd className="font-mono">↕</kbd> kaydır (hız) · <kbd className="font-mono">C</kbd> öbek ({chunkSize}K) · <kbd className="font-mono">1 2 3</kbd> tema
       </p>

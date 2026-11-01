@@ -550,55 +550,60 @@ export function ReaderApp() {
       />
 
       <main
-        className="absolute inset-0 flex flex-col items-center justify-start overflow-hidden px-4 transition-[padding] duration-500 ease-[cubic-bezier(0.2,0.8,0.2,1)] sm:px-8"
+        className="absolute inset-0 flex flex-col items-center justify-center overflow-hidden px-4 transition-[padding] duration-500 ease-[cubic-bezier(0.2,0.8,0.2,1)] sm:px-8"
         style={{
           paddingTop: zen ? 0 : headerHeight,
           paddingBottom: zen ? 0 : dockHeight,
         }}
       >
-        <div
-          className={cn(
-            'relative flex h-full w-full max-w-4xl lg:max-w-5xl xl:max-w-6xl flex-col py-2 sm:py-3 transition-[max-width] duration-300 min-h-0',
-            (zen || words.length === 0) && 'justify-center',
-          )}
-        >
-          <RsvpDisplay
-            word={currentChunk?.text ?? ''}
-            chunk={currentChunk}
-            chunkSize={chunkSize}
-            playing={playing}
-            isPulsing={isPulsing}
-            onToggle={togglePlay}
-            onPrev={handleSmartRewind}
-            onNext={() => seek(index + 1)}
-            onWpmChange={changeWpm}
-            onWpmSet={setWpmDirect}
-            onWpmDragEnd={() => hideWpmToastWithFade(1000)}
-            wpm={wpm}
-            fontScale={fontScale}
-            maxSide={maxSide}
-            fontFamily={FONT_FACES.find((f) => f.id === fontFace)?.family}
-          />
-          <ContextPeek
-            words={words}
-            index={currentChunk?.startIndex ?? index}
-            chunkSize={chunkSize}
-            visible={!zen && words.length > 0}
-            onJump={(wordIdx) => {
-              // Kelime indeksine en yakın chunk indeksini bul
-              const targetChunkIdx = chunks.findIndex(
-                (c, cIdx) =>
-                  wordIdx >= c.startIndex &&
-                  (cIdx === chunks.length - 1 || wordIdx < chunks[cIdx + 1].startIndex),
-              )
-              if (targetChunkIdx !== -1) {
-                seek(targetChunkIdx)
-              } else {
-                seek(Math.min(wordIdx, lastIndex))
-              }
-            }}
-            onVisibleCountChange={setContextPageSize}
-          />
+        <div className="relative flex h-full w-full max-w-4xl lg:max-w-5xl xl:max-w-6xl flex-col items-center justify-between py-1 sm:py-2 transition-[max-width] duration-300 min-h-0">
+          {/* Üst Dengeleyici: Okuma penceresinin hem okurken hem duraklatıldığında tam merkezde sabit kalmasını sağlar */}
+          <div className="flex-1 w-full min-h-0" />
+
+          {/* Okuma Penceresi: Ekranın tam ortasında sabit kalır, duraklatıldığında yukarı itilmez */}
+          <div className="w-full shrink-0">
+            <RsvpDisplay
+              word={currentChunk?.text ?? ''}
+              chunk={currentChunk}
+              chunkSize={chunkSize}
+              playing={playing}
+              isPulsing={isPulsing}
+              onToggle={togglePlay}
+              onPrev={handleSmartRewind}
+              onNext={() => seek(index + 1)}
+              onWpmChange={changeWpm}
+              onWpmSet={setWpmDirect}
+              onWpmDragEnd={() => hideWpmToastWithFade(1000)}
+              wpm={wpm}
+              fontScale={fontScale}
+              maxSide={maxSide}
+              fontFamily={FONT_FACES.find((f) => f.id === fontFace)?.family}
+            />
+          </div>
+
+          {/* Alt Esnek Bağlam Alanı: Ortalanmış pencerenin altında başlayıp alttaki dock'a kadar esner */}
+          <div className="flex-1 w-full min-h-0 flex flex-col overflow-hidden">
+            <ContextPeek
+              words={words}
+              index={currentChunk?.startIndex ?? index}
+              chunkSize={chunkSize}
+              visible={!zen && words.length > 0}
+              onJump={(wordIdx) => {
+                // Kelime indeksine en yakın chunk indeksini bul
+                const targetChunkIdx = chunks.findIndex(
+                  (c, cIdx) =>
+                    wordIdx >= c.startIndex &&
+                    (cIdx === chunks.length - 1 || wordIdx < chunks[cIdx + 1].startIndex),
+                )
+                if (targetChunkIdx !== -1) {
+                  seek(targetChunkIdx)
+                } else {
+                  seek(Math.min(wordIdx, lastIndex))
+                }
+              }}
+              onVisibleCountChange={setContextPageSize}
+            />
+          </div>
         </div>
       </main>
 

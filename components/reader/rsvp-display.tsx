@@ -212,7 +212,7 @@ export function RsvpDisplay({
         onTouchEnd={handleTouchEnd}
         onWheel={handleWheel}
         className={cn(
-          'rsvp-stage group relative block w-full overflow-hidden px-4 py-11 text-left outline-none transition-all duration-500 sm:px-8 sm:py-15 [@media(max-height:640px)]:py-8 landscape-short:py-6 select-none touch-none overscroll-none',
+          'rsvp-stage group relative block w-full overflow-hidden px-4 py-4 text-left outline-none transition-all duration-500 sm:px-8 sm:py-6 [@media(max-height:640px)]:py-3 landscape-short:py-1.5 select-none touch-none overscroll-none',
           isPulsing && 'pulse-jump',
           playing
             ? 'border-transparent bg-transparent shadow-none'
@@ -257,20 +257,6 @@ export function RsvpDisplay({
 
         {/* İlk Açılış İçin Yarı Saydam Dokunma Rehberi (Tap Guide Overlay) */}
         <TapGuide />
-
-        {/* Üst ve Alt Odak Çentikleri: Yalnızca tek kelime ORP modunda gösterilir */}
-        {isSingleWordMode && (
-          <>
-            <span
-              aria-hidden="true"
-              className="pointer-events-none absolute left-1/2 top-3 h-3.5 w-[1.5px] -translate-x-1/2 rounded-full bg-[#ef4444]/35 sm:top-5 sm:h-4 [@media(max-height:640px)]:top-2 [@media(max-height:640px)]:h-3 landscape-short:top-2"
-            />
-            <span
-              aria-hidden="true"
-              className="pointer-events-none absolute bottom-3 left-1/2 h-3.5 w-[1.5px] -translate-x-1/2 rounded-full bg-[#ef4444]/35 sm:bottom-5 sm:h-4 [@media(max-height:640px)]:bottom-2 [@media(max-height:640px)]:h-3 landscape-short:bottom-2"
-            />
-          </>
-        )}
 
         {/* Dipnot Rozeti (Bölüm Başlığı rozeti yerine başlık tipografik vurgu ile sunulur) */}
         {isFootnote && (

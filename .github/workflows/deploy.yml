@@ -40,10 +40,11 @@ jobs:
 
       - name: Build Next.js
         run: |
+          set -o pipefail
           pnpm build 2>&1 | tee build.log || {
             echo "## Build Error Log" >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
-            tail -n 120 build.log >> $GITHUB_STEP_SUMMARY
+            cat build.log >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
             exit 1
           }

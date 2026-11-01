@@ -19,20 +19,40 @@ type TopBarProps = {
   onToggleFullscreen?: () => void
 }
 
-// odak Vektörel Reticle Logosu (media_1793566166072_8767e0f9.jpg referansı)
-function OdakWordmarkSvg({
+// odak Vektörel Reticle Logosu (media_1793567364624_c3c8ac16.jpg ve media_1793568060338_3eb1a36e.jpg referansı)
+export function OdakWordmarkSvg({
   mode = 'cam',
   className,
 }: {
-  mode: 'cam' | 'neon' | 'kagit'
+  mode: 'cam' | 'neon' | 'kagit' | 'koyu-zemin' | 'acik-zemin'
   className?: string
 }) {
   const isNeon = mode === 'neon'
   const isKagit = mode === 'kagit'
+  const isKoyuZemin = mode === 'koyu-zemin'
 
-  const textColor = isNeon ? '#a5f3fc' : isKagit ? '#654a33' : '#ffffff'
+  // Renk tanımları:
+  // Neon: Elektrik cyan (#a5f3fc) ve neon kırmızı
+  // Kağıt: Sepya koyu kahverengi (#4a3520) ve tuğla bordo (#b44c43)
+  // Koyu Zemin: Tam beyaz (#ffffff) ve kırmızı (#ef4444)
+  // Cam & Açık Zemin: Koyu antrasit (#1e293b) ve kırmızı (#ef4444) (media_1793568060338_3eb1a36e.jpg referansı)
+  const textColor = isNeon
+    ? '#a5f3fc'
+    : isKagit
+    ? '#4a3520'
+    : isKoyuZemin
+    ? '#ffffff'
+    : '#1e293b'
+
+  const bracketColor = isNeon
+    ? '#a5f3fc'
+    : isKagit
+    ? '#4a3520'
+    : isKoyuZemin
+    ? '#ffffff'
+    : '#1e293b'
+
   const pivotColor = isKagit ? '#b44c43' : '#ef4444'
-  const bracketColor = isNeon ? '#a5f3fc' : isKagit ? '#654a33' : '#ffffff'
 
   return (
     <svg
@@ -41,81 +61,84 @@ function OdakWordmarkSvg({
       xmlns="http://www.w3.org/2000/svg"
       className={cn('w-full h-full select-none', className)}
     >
-      {/* Lazer Üst & Alt Kılavuz Çizgileri */}
+      {/* Üst Dikey Kırmızı Lazer Çizgisi */}
       <line
         x1="50"
-        y1="5"
+        y1="4"
         x2="50"
-        y2="18"
+        y2="16"
         stroke={pivotColor}
-        strokeWidth="3.2"
+        strokeWidth="3.6"
         strokeLinecap="round"
-        className={isNeon ? 'drop-shadow-[0_0_4px_#ef4444]' : undefined}
+        className={isNeon ? 'drop-shadow-[0_0_6px_#ef4444]' : undefined}
       />
+
+      {/* Alt Dikey Kırmızı Lazer Çizgisi */}
       <line
         x1="50"
-        y1="50"
+        y1="52"
         x2="50"
-        y2="63"
+        y2="64"
         stroke={pivotColor}
-        strokeWidth="3.2"
+        strokeWidth="3.6"
         strokeLinecap="round"
-        className={isNeon ? 'drop-shadow-[0_0_4px_#ef4444]' : undefined}
+        className={isNeon ? 'drop-shadow-[0_0_6px_#ef4444]' : undefined}
       />
 
-      {/* 4 Köşe Vizör Parantezi (Symmetric around X=50, Y=34) */}
+      {/* 4 Köşe Vizör Parantezi (media_1793567364624_c3c8ac16.jpg geometrisi) */}
       <path
-        d="M 39 12 H 28 A 10 10 0 0 0 18 22 V 26"
+        d="M 38 13 H 25 A 12 12 0 0 0 13 25 V 27"
         stroke={bracketColor}
-        strokeWidth="2.8"
+        strokeWidth="3.5"
         strokeLinecap="round"
         strokeLinejoin="round"
-        className={isNeon ? 'drop-shadow-[0_0_3px_#38bdf8]' : undefined}
+        className={isNeon ? 'drop-shadow-[0_0_4px_#38bdf8]' : undefined}
       />
       <path
-        d="M 61 12 H 72 A 10 10 0 0 1 82 22 V 26"
+        d="M 62 13 H 75 A 12 12 0 0 1 87 25 V 27"
         stroke={bracketColor}
-        strokeWidth="2.8"
+        strokeWidth="3.5"
         strokeLinecap="round"
         strokeLinejoin="round"
-        className={isNeon ? 'drop-shadow-[0_0_3px_#38bdf8]' : undefined}
+        className={isNeon ? 'drop-shadow-[0_0_4px_#38bdf8]' : undefined}
       />
       <path
-        d="M 18 42 V 46 A 10 10 0 0 0 28 56 H 39"
+        d="M 13 41 V 43 A 12 12 0 0 0 25 55 H 38"
         stroke={bracketColor}
-        strokeWidth="2.8"
+        strokeWidth="3.5"
         strokeLinecap="round"
         strokeLinejoin="round"
-        className={isNeon ? 'drop-shadow-[0_0_3px_#38bdf8]' : undefined}
+        className={isNeon ? 'drop-shadow-[0_0_4px_#38bdf8]' : undefined}
       />
       <path
-        d="M 82 42 V 46 A 10 10 0 0 1 72 56 H 61"
+        d="M 87 41 V 43 A 12 12 0 0 1 75 55 H 62"
         stroke={bracketColor}
-        strokeWidth="2.8"
+        strokeWidth="3.5"
         strokeLinecap="round"
         strokeLinejoin="round"
-        className={isNeon ? 'drop-shadow-[0_0_3px_#38bdf8]' : undefined}
+        className={isNeon ? 'drop-shadow-[0_0_4px_#38bdf8]' : undefined}
       />
 
-      {/* odak Tipografisi - d harfi tam X=50 lazer ekseninde kilitli */}
+      {/* Bütüncül 'odak' Logosu - Kesintisiz, doğal harf aralıklı, biçimi bozulmayan vektör */}
       <text
-        y="42"
+        x="51"
+        y="43.5"
         textAnchor="middle"
         className="font-bold select-none"
         style={{
-          fontFamily: 'Inter, system-ui, -apple-system, sans-serif',
-          fontSize: '25px',
-          fontWeight: 800,
-          letterSpacing: '-0.4px',
+          fontFamily: 'var(--font-inter), Inter, system-ui, -apple-system, sans-serif',
+          fontSize: '27px',
+          fontWeight: 900,
+          letterSpacing: '-1.1px',
         }}
       >
-        <tspan x="29" fill={textColor} className={isNeon ? 'drop-shadow-[0_0_3px_#38bdf8]' : undefined}>
+        <tspan fill={textColor} className={isNeon ? 'drop-shadow-[0_0_4px_#38bdf8]' : undefined}>
           o
         </tspan>
-        <tspan x="50" fill={pivotColor} className={isNeon ? 'drop-shadow-[0_0_4px_#ef4444]' : undefined}>
+        <tspan fill={pivotColor} className={isNeon ? 'drop-shadow-[0_0_6px_#ef4444]' : undefined}>
           d
         </tspan>
-        <tspan x="72" fill={textColor} className={isNeon ? 'drop-shadow-[0_0_3px_#38bdf8]' : undefined}>
+        <tspan fill={textColor} className={isNeon ? 'drop-shadow-[0_0_4px_#38bdf8]' : undefined}>
           ak
         </tspan>
       </text>
@@ -123,7 +146,7 @@ function OdakWordmarkSvg({
   )
 }
 
-// Temaya Uyum Sağlayan Özel Biçimli Logo (media_1793566166072_8767e0f9.jpg referansı)
+// Temaya Uyum Sağlayan Özel Biçimli Logo (Aşağı doğru 1.5 kat büyütülmüş hali - media_1793568060338_3eb1a36e.jpg)
 function ThemedAppLogo({ theme, className }: { theme: ThemeId; className?: string }) {
   if (theme === 'linear') {
     // 2. NEON SİYAH: Mor Neon Elips Kapsül, Elektrik Cyan Çentikler & Neon Kırmızı Lazer
@@ -131,9 +154,9 @@ function ThemedAppLogo({ theme, className }: { theme: ThemeId; className?: strin
       <span
         aria-hidden="true"
         className={cn(
-          'relative w-13 sm:w-15 h-8.5 sm:h-9.5 rounded-full p-[1.5px] bg-[#07060b] border border-purple-500/60',
-          'shadow-[0_0_14px_rgba(168,85,247,0.7),0_0_4px_rgba(192,132,252,0.5),inset_0_0_8px_rgba(168,85,247,0.4)]',
-          'flex items-center justify-center shrink-0 transition-all duration-500 select-none overflow-hidden px-1',
+          'relative w-20.5 sm:w-22.5 h-13 sm:h-14 rounded-full p-[2px] bg-[#07060b] border-2 border-purple-500/75',
+          'shadow-[0_0_22px_rgba(168,85,247,0.85),0_0_8px_rgba(192,132,252,0.65),inset_0_0_12px_rgba(168,85,247,0.45)]',
+          'flex items-center justify-center shrink-0 transition-all duration-500 select-none overflow-hidden px-2',
           className
         )}
       >
@@ -148,9 +171,9 @@ function ThemedAppLogo({ theme, className }: { theme: ThemeId; className?: strin
       <span
         aria-hidden="true"
         className={cn(
-          'relative size-9 sm:size-10 rounded-lg bg-[#fbf5e5] dark:bg-[#2c241a]',
-          'border border-[#cfbe96] dark:border-[#524433] shadow-[0_1.5px_4px_rgba(0,0,0,0.14),inset_0_1px_0_rgba(255,255,255,0.6)]',
-          'flex items-center justify-center shrink-0 transition-all duration-500 select-none overflow-hidden p-1',
+          'relative size-14 sm:size-15 rounded-2xl bg-[#fbf5e5] dark:bg-[#2c241a]',
+          'border border-[#cfbe96] dark:border-[#524433] shadow-[0_2.5px_8px_rgba(0,0,0,0.16),inset_0_1px_0_rgba(255,255,255,0.7)]',
+          'flex items-center justify-center shrink-0 transition-all duration-500 select-none overflow-hidden p-1.5',
           className
         )}
       >
@@ -158,39 +181,39 @@ function ThemedAppLogo({ theme, className }: { theme: ThemeId; className?: strin
 
         {/* Sağ Alt Köşe Sayfa Kıvrımı (Curled Dog-Ear) */}
         <svg
-          className="absolute bottom-0 right-0 size-3 sm:size-3.5 pointer-events-none"
-          viewBox="0 0 12 12"
+          className="absolute bottom-0 right-0 size-4.5 sm:size-5 pointer-events-none"
+          viewBox="0 0 16 16"
           fill="none"
         >
-          <path d="M 0 12 L 12 0 L 12 12 Z" fill="rgba(0,0,0,0.22)" />
-          <path d="M 0 12 C 2 7, 7 2, 12 0 C 8 5, 5 8, 0 12 Z" fill="#d0bf98" />
-          <path d="M 1 11 C 3 7, 7 3, 11 1 C 8 5, 5 8, 1 11 Z" fill="#f6ede0" />
+          <path d="M 0 16 L 16 0 L 16 16 Z" fill="rgba(0,0,0,0.2)" />
+          <path d="M 0 16 C 3 9, 9 3, 16 0 C 11 7, 7 11, 0 16 Z" fill="#cfbe97" />
+          <path d="M 1 15 C 4 9, 9 4, 15 1 C 11 7, 7 11, 1 15 Z" fill="#f8f1e3" />
         </svg>
       </span>
     )
   }
 
-  // 1. CAM (Varsayılan): Yuvarlak Saydam Cam Lens, Sağ Kenar Cyan Kırılma, Beyaz Çentikler & Kırmızı Odak
+  // 1. CAM (Varsayılan): Yuvarlak Saydam Cam Lens, Canlı Cyan Kırılma, Koyu Antrasit Tipografi & Kırmızı Odak (media_1793568060338_3eb1a36e.jpg)
   return (
     <span
       aria-hidden="true"
       className={cn(
-        'relative size-9.5 sm:size-10.5 rounded-full',
-        'border border-white/80 dark:border-white/40',
+        'relative size-14 sm:size-15 rounded-full',
+        'border border-white/90 dark:border-white/40',
         'bg-gradient-to-br from-white/95 via-white/50 to-white/10 dark:from-white/35 dark:via-white/15 dark:to-transparent backdrop-blur-md',
-        'shadow-[0_0_12px_rgba(56,189,248,0.5),inset_0_1.5px_2px_rgba(255,255,255,0.95)]',
-        'flex items-center justify-center shrink-0 transition-all duration-500 select-none overflow-hidden p-1',
+        'shadow-[0_0_18px_rgba(56,189,248,0.55),inset_0_2px_3px_rgba(255,255,255,0.95)]',
+        'flex items-center justify-center shrink-0 transition-all duration-500 select-none overflow-hidden p-1.5',
         className
       )}
     >
       {/* Sağ/alt kenarda canlı açık mavi (cyan) cam kırılma hilali */}
-      <span className="absolute -inset-0.5 rounded-full bg-[radial-gradient(circle_at_88%_60%,rgba(56,189,248,0.85)_0%,rgba(56,189,248,0.25)_40%,transparent_65%)] pointer-events-none" />
+      <span className="absolute -inset-0.5 rounded-full bg-[radial-gradient(circle_at_85%_75%,rgba(56,189,248,0.9)_0%,rgba(56,189,248,0.3)_45%,transparent_70%)] pointer-events-none" />
 
       {/* Çapraz kavisli cam parlaması (Diagonal lens gloss reflection) */}
-      <span className="absolute -top-1.5 right-1 w-6 h-9 -rotate-[35deg] bg-gradient-to-b from-white/85 via-white/25 to-transparent pointer-events-none rounded-full blur-[0.4px]" />
+      <span className="absolute -top-2 right-1.5 w-8 h-12 -rotate-[35deg] bg-gradient-to-b from-white/90 via-white/30 to-transparent pointer-events-none rounded-full blur-[0.5px]" />
 
       {/* Üst kenar ince specular parıltı */}
-      <span className="absolute top-0.5 left-1/2 -translate-x-1/2 w-4 h-[1.5px] rounded-full bg-white/95 pointer-events-none shadow-[0_0_2px_rgba(255,255,255,0.9)]" />
+      <span className="absolute top-1 left-1/2 -translate-x-1/2 w-5 h-[2px] rounded-full bg-white/95 pointer-events-none shadow-[0_0_3px_rgba(255,255,255,0.9)]" />
 
       <div className="relative z-10 w-full h-full flex items-center justify-center">
         <OdakWordmarkSvg mode="cam" />

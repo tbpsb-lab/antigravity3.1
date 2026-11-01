@@ -48,7 +48,7 @@ export function ReaderApp() {
   const [headerRef, headerHeight] = useElementHeight<HTMLElement>()
   const [dockRef, dockHeight] = useElementHeight<HTMLElement>()
   const [text, setText] = useState(SAMPLE_TEXT)
-  const [docTitle, setDocTitle] = useState('Odak')
+  const [docTitle, setDocTitle] = useState('odak')
   const [index, setIndex] = useState(0)
   const [wpm, setWpm] = useState(300)
   const [playing, setPlaying] = useState(false)

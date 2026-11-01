@@ -19,7 +19,111 @@ type TopBarProps = {
   onToggleFullscreen?: () => void
 }
 
-// Temaya Uyum Sağlayan Özel Biçimli Logo (media_1793559458437_06b69cb2.png referansı)
+// odak Vektörel Reticle Logosu (media_1793566166072_8767e0f9.jpg referansı)
+function OdakWordmarkSvg({
+  mode = 'cam',
+  className,
+}: {
+  mode: 'cam' | 'neon' | 'kagit'
+  className?: string
+}) {
+  const isNeon = mode === 'neon'
+  const isKagit = mode === 'kagit'
+
+  const textColor = isNeon ? '#a5f3fc' : isKagit ? '#654a33' : '#ffffff'
+  const pivotColor = isKagit ? '#b44c43' : '#ef4444'
+  const bracketColor = isNeon ? '#a5f3fc' : isKagit ? '#654a33' : '#ffffff'
+
+  return (
+    <svg
+      viewBox="0 0 100 68"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={cn('w-full h-full select-none', className)}
+    >
+      {/* Lazer Üst & Alt Kılavuz Çizgileri */}
+      <line
+        x1="50"
+        y1="5"
+        x2="50"
+        y2="18"
+        stroke={pivotColor}
+        strokeWidth="3.2"
+        strokeLinecap="round"
+        className={isNeon ? 'drop-shadow-[0_0_4px_#ef4444]' : undefined}
+      />
+      <line
+        x1="50"
+        y1="50"
+        x2="50"
+        y2="63"
+        stroke={pivotColor}
+        strokeWidth="3.2"
+        strokeLinecap="round"
+        className={isNeon ? 'drop-shadow-[0_0_4px_#ef4444]' : undefined}
+      />
+
+      {/* 4 Köşe Vizör Parantezi (Symmetric around X=50, Y=34) */}
+      <path
+        d="M 39 12 H 28 A 10 10 0 0 0 18 22 V 26"
+        stroke={bracketColor}
+        strokeWidth="2.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className={isNeon ? 'drop-shadow-[0_0_3px_#38bdf8]' : undefined}
+      />
+      <path
+        d="M 61 12 H 72 A 10 10 0 0 1 82 22 V 26"
+        stroke={bracketColor}
+        strokeWidth="2.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className={isNeon ? 'drop-shadow-[0_0_3px_#38bdf8]' : undefined}
+      />
+      <path
+        d="M 18 42 V 46 A 10 10 0 0 0 28 56 H 39"
+        stroke={bracketColor}
+        strokeWidth="2.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className={isNeon ? 'drop-shadow-[0_0_3px_#38bdf8]' : undefined}
+      />
+      <path
+        d="M 82 42 V 46 A 10 10 0 0 1 72 56 H 61"
+        stroke={bracketColor}
+        strokeWidth="2.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className={isNeon ? 'drop-shadow-[0_0_3px_#38bdf8]' : undefined}
+      />
+
+      {/* odak Tipografisi - d harfi tam X=50 lazer ekseninde kilitli */}
+      <text
+        y="42"
+        textAnchor="middle"
+        className="font-bold select-none"
+        style={{
+          fontFamily: 'Inter, system-ui, -apple-system, sans-serif',
+          fontSize: '25px',
+          fontWeight: 800,
+          letterSpacing: '-0.4px',
+        }}
+      >
+        <tspan x="29" fill={textColor} className={isNeon ? 'drop-shadow-[0_0_3px_#38bdf8]' : undefined}>
+          o
+        </tspan>
+        <tspan x="50" fill={pivotColor} className={isNeon ? 'drop-shadow-[0_0_4px_#ef4444]' : undefined}>
+          d
+        </tspan>
+        <tspan x="72" fill={textColor} className={isNeon ? 'drop-shadow-[0_0_3px_#38bdf8]' : undefined}>
+          ak
+        </tspan>
+      </text>
+    </svg>
+  )
+}
+
+// Temaya Uyum Sağlayan Özel Biçimli Logo (media_1793566166072_8767e0f9.jpg referansı)
 function ThemedAppLogo({ theme, className }: { theme: ThemeId; className?: string }) {
   if (theme === 'linear') {
     // 2. NEON SİYAH: Mor Neon Elips Kapsül, Elektrik Cyan Çentikler & Neon Kırmızı Lazer
@@ -27,116 +131,13 @@ function ThemedAppLogo({ theme, className }: { theme: ThemeId; className?: strin
       <span
         aria-hidden="true"
         className={cn(
-          'relative w-11 sm:w-12 h-9 sm:h-10 landscape-short:h-8 rounded-full p-[2px] bg-[#07060b] border border-purple-500/50',
+          'relative w-13 sm:w-15 h-8.5 sm:h-9.5 rounded-full p-[1.5px] bg-[#07060b] border border-purple-500/60',
           'shadow-[0_0_14px_rgba(168,85,247,0.7),0_0_4px_rgba(192,132,252,0.5),inset_0_0_8px_rgba(168,85,247,0.4)]',
-          'flex items-center justify-center shrink-0 transition-all duration-500 select-none overflow-hidden',
+          'flex items-center justify-center shrink-0 transition-all duration-500 select-none overflow-hidden px-1',
           className
         )}
       >
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
-          className="size-5.5 sm:size-6 transition-colors"
-        >
-          {/* 4 Köşe Vizör Parantezi (Cyan Neon) */}
-          <path
-            d="M 5.5 8.5 V 6.2 A 1.7 1.7 0 0 1 7.2 4.5 H 9.5"
-            stroke="#a5f3fc"
-            strokeWidth="1.45"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="drop-shadow-[0_0_3px_#38bdf8]"
-          />
-          <path
-            d="M 14.5 4.5 H 16.8 A 1.7 1.7 0 0 1 18.5 6.2 V 8.5"
-            stroke="#a5f3fc"
-            strokeWidth="1.45"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="drop-shadow-[0_0_3px_#38bdf8]"
-          />
-          <path
-            d="M 5.5 15.5 V 17.8 A 1.7 1.7 0 0 0 7.2 19.5 H 9.5"
-            stroke="#a5f3fc"
-            strokeWidth="1.45"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="drop-shadow-[0_0_3px_#38bdf8]"
-          />
-          <path
-            d="M 14.5 19.5 H 16.8 A 1.7 1.7 0 0 0 18.5 17.8 V 15.5"
-            stroke="#a5f3fc"
-            strokeWidth="1.45"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="drop-shadow-[0_0_3px_#38bdf8]"
-          />
-
-          {/* Sol Hız Akış Kanatları (Cyan Neon Wedges) */}
-          <path
-            d="M 10.2 10.1 L 5.6 10.5 L 10.2 10.9 A 0.4 0.4 0 0 0 10.2 10.1 Z"
-            fill="#a5f3fc"
-            stroke="#a5f3fc"
-            strokeWidth="0.4"
-            strokeLinejoin="round"
-            className="drop-shadow-[0_0_2.5px_#38bdf8]"
-          />
-          <path
-            d="M 10.2 11.5 L 3.8 12.0 L 10.2 12.5 A 0.5 0.5 0 0 0 10.2 11.5 Z"
-            fill="#a5f3fc"
-            stroke="#a5f3fc"
-            strokeWidth="0.5"
-            strokeLinejoin="round"
-            className="drop-shadow-[0_0_3px_#38bdf8]"
-          />
-          <path
-            d="M 10.2 13.1 L 5.6 13.5 L 10.2 13.9 A 0.4 0.4 0 0 0 10.2 13.1 Z"
-            fill="#a5f3fc"
-            stroke="#a5f3fc"
-            strokeWidth="0.4"
-            strokeLinejoin="round"
-            className="drop-shadow-[0_0_2.5px_#38bdf8]"
-          />
-
-          {/* Sağ Hız Akış Kanatları (Cyan Neon Wedges) */}
-          <path
-            d="M 13.8 10.9 L 18.4 10.5 L 13.8 10.1 A 0.4 0.4 0 0 1 13.8 10.9 Z"
-            fill="#a5f3fc"
-            stroke="#a5f3fc"
-            strokeWidth="0.4"
-            strokeLinejoin="round"
-            className="drop-shadow-[0_0_2.5px_#38bdf8]"
-          />
-          <path
-            d="M 13.8 12.5 L 20.2 12.0 L 13.8 11.5 A 0.5 0.5 0 0 1 13.8 12.5 Z"
-            fill="#a5f3fc"
-            stroke="#a5f3fc"
-            strokeWidth="0.5"
-            strokeLinejoin="round"
-            className="drop-shadow-[0_0_3px_#38bdf8]"
-          />
-          <path
-            d="M 13.8 13.9 L 18.4 13.5 L 13.8 13.1 A 0.4 0.4 0 0 1 13.8 13.9 Z"
-            fill="#a5f3fc"
-            stroke="#a5f3fc"
-            strokeWidth="0.4"
-            strokeLinejoin="round"
-            className="drop-shadow-[0_0_2.5px_#38bdf8]"
-          />
-
-          {/* Merkez Dikey RSVP Kırmızı Neon Lazer Çizgisi */}
-          <line
-            x1="12"
-            y1="4.5"
-            x2="12"
-            y2="19.5"
-            stroke="#ef4444"
-            strokeWidth="1.6"
-            strokeLinecap="round"
-            className="drop-shadow-[0_0_4px_#ef4444]"
-          />
-        </svg>
+        <OdakWordmarkSvg mode="neon" />
       </span>
     )
   }
@@ -147,105 +148,13 @@ function ThemedAppLogo({ theme, className }: { theme: ThemeId; className?: strin
       <span
         aria-hidden="true"
         className={cn(
-          'relative size-9 sm:size-10 landscape-short:size-8 rounded-lg bg-[#fbf5e5] dark:bg-[#2c241a]',
+          'relative size-9 sm:size-10 rounded-lg bg-[#fbf5e5] dark:bg-[#2c241a]',
           'border border-[#cfbe96] dark:border-[#524433] shadow-[0_1.5px_4px_rgba(0,0,0,0.14),inset_0_1px_0_rgba(255,255,255,0.6)]',
-          'flex items-center justify-center shrink-0 transition-all duration-500 select-none overflow-hidden',
+          'flex items-center justify-center shrink-0 transition-all duration-500 select-none overflow-hidden p-1',
           className
         )}
       >
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
-          className="size-5.5 sm:size-6 transition-colors"
-        >
-          {/* 4 Köşe Vizör Parantezi (Sepya Mürekkep) */}
-          <path
-            d="M 5.5 8.5 V 6.2 A 1.7 1.7 0 0 1 7.2 4.5 H 9.5"
-            stroke="#654a33"
-            strokeWidth="1.45"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-          <path
-            d="M 14.5 4.5 H 16.8 A 1.7 1.7 0 0 1 18.5 6.2 V 8.5"
-            stroke="#654a33"
-            strokeWidth="1.45"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-          <path
-            d="M 5.5 15.5 V 17.8 A 1.7 1.7 0 0 0 7.2 19.5 H 9.5"
-            stroke="#654a33"
-            strokeWidth="1.45"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-          <path
-            d="M 14.5 19.5 H 16.8 A 1.7 1.7 0 0 0 18.5 17.8 V 15.5"
-            stroke="#654a33"
-            strokeWidth="1.45"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-
-          {/* Sol Hız Akış Kanatları (Sepya Mürekkep Wedges) */}
-          <path
-            d="M 10.2 10.1 L 5.6 10.5 L 10.2 10.9 A 0.4 0.4 0 0 0 10.2 10.1 Z"
-            fill="#654a33"
-            stroke="#654a33"
-            strokeWidth="0.4"
-            strokeLinejoin="round"
-          />
-          <path
-            d="M 10.2 11.5 L 3.8 12.0 L 10.2 12.5 A 0.5 0.5 0 0 0 10.2 11.5 Z"
-            fill="#654a33"
-            stroke="#654a33"
-            strokeWidth="0.5"
-            strokeLinejoin="round"
-          />
-          <path
-            d="M 10.2 13.1 L 5.6 13.5 L 10.2 13.9 A 0.4 0.4 0 0 0 10.2 13.1 Z"
-            fill="#654a33"
-            stroke="#654a33"
-            strokeWidth="0.4"
-            strokeLinejoin="round"
-          />
-
-          {/* Sağ Hız Akış Kanatları (Sepya Mürekkep Wedges) */}
-          <path
-            d="M 13.8 10.9 L 18.4 10.5 L 13.8 10.1 A 0.4 0.4 0 0 1 13.8 10.9 Z"
-            fill="#654a33"
-            stroke="#654a33"
-            strokeWidth="0.4"
-            strokeLinejoin="round"
-          />
-          <path
-            d="M 13.8 12.5 L 20.2 12.0 L 13.8 11.5 A 0.5 0.5 0 0 1 13.8 12.5 Z"
-            fill="#654a33"
-            stroke="#654a33"
-            strokeWidth="0.5"
-            strokeLinejoin="round"
-          />
-          <path
-            d="M 13.8 13.9 L 18.4 13.5 L 13.8 13.1 A 0.4 0.4 0 0 1 13.8 13.9 Z"
-            fill="#654a33"
-            stroke="#654a33"
-            strokeWidth="0.4"
-            strokeLinejoin="round"
-          />
-
-          {/* Merkez Dikey RSVP Bordo Mürekkep Kılavuzu */}
-          <line
-            x1="12"
-            y1="4.5"
-            x2="12"
-            y2="19.5"
-            stroke="#b44c43"
-            strokeWidth="1.6"
-            strokeLinecap="round"
-          />
-        </svg>
+        <OdakWordmarkSvg mode="kagit" />
 
         {/* Sağ Alt Köşe Sayfa Kıvrımı (Curled Dog-Ear) */}
         <svg
@@ -266,11 +175,11 @@ function ThemedAppLogo({ theme, className }: { theme: ThemeId; className?: strin
     <span
       aria-hidden="true"
       className={cn(
-        'relative size-9 sm:size-10 landscape-short:size-8 rounded-full',
+        'relative size-9.5 sm:size-10.5 rounded-full',
         'border border-white/80 dark:border-white/40',
         'bg-gradient-to-br from-white/95 via-white/50 to-white/10 dark:from-white/35 dark:via-white/15 dark:to-transparent backdrop-blur-md',
         'shadow-[0_0_12px_rgba(56,189,248,0.5),inset_0_1.5px_2px_rgba(255,255,255,0.95)]',
-        'flex items-center justify-center shrink-0 transition-all duration-500 select-none overflow-hidden',
+        'flex items-center justify-center shrink-0 transition-all duration-500 select-none overflow-hidden p-1',
         className
       )}
     >
@@ -283,110 +192,9 @@ function ThemedAppLogo({ theme, className }: { theme: ThemeId; className?: strin
       {/* Üst kenar ince specular parıltı */}
       <span className="absolute top-0.5 left-1/2 -translate-x-1/2 w-4 h-[1.5px] rounded-full bg-white/95 pointer-events-none shadow-[0_0_2px_rgba(255,255,255,0.9)]" />
 
-      <svg
-        viewBox="0 0 24 24"
-        fill="none"
-        xmlns="http://www.w3.org/2000/svg"
-        className="relative z-10 size-5.5 sm:size-6 transition-colors"
-      >
-        {/* 4 Köşe Vizör Parantezi (Saydam Beyaz Cam) */}
-        <path
-          d="M 5.5 8.5 V 6.2 A 1.7 1.7 0 0 1 7.2 4.5 H 9.5"
-          stroke="white"
-          strokeWidth="1.45"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          className="drop-shadow-[0_1px_1.5px_rgba(0,0,0,0.3)]"
-        />
-        <path
-          d="M 14.5 4.5 H 16.8 A 1.7 1.7 0 0 1 18.5 6.2 V 8.5"
-          stroke="white"
-          strokeWidth="1.45"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          className="drop-shadow-[0_1px_1.5px_rgba(0,0,0,0.3)]"
-        />
-        <path
-          d="M 5.5 15.5 V 17.8 A 1.7 1.7 0 0 0 7.2 19.5 H 9.5"
-          stroke="white"
-          strokeWidth="1.45"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          className="drop-shadow-[0_1px_1.5px_rgba(0,0,0,0.3)]"
-        />
-        <path
-          d="M 14.5 19.5 H 16.8 A 1.7 1.7 0 0 0 18.5 17.8 V 15.5"
-          stroke="white"
-          strokeWidth="1.45"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          className="drop-shadow-[0_1px_1.5px_rgba(0,0,0,0.3)]"
-        />
-
-        {/* Sol Hız Akış Kanatları (Beyaz Cam Wedges) */}
-        <path
-          d="M 10.2 10.1 L 5.6 10.5 L 10.2 10.9 A 0.4 0.4 0 0 0 10.2 10.1 Z"
-          fill="white"
-          stroke="white"
-          strokeWidth="0.4"
-          strokeLinejoin="round"
-          className="drop-shadow-[0_1px_1.5px_rgba(0,0,0,0.3)]"
-        />
-        <path
-          d="M 10.2 11.5 L 3.8 12.0 L 10.2 12.5 A 0.5 0.5 0 0 0 10.2 11.5 Z"
-          fill="white"
-          stroke="white"
-          strokeWidth="0.5"
-          strokeLinejoin="round"
-          className="drop-shadow-[0_1px_1.5px_rgba(0,0,0,0.3)]"
-        />
-        <path
-          d="M 10.2 13.1 L 5.6 13.5 L 10.2 13.9 A 0.4 0.4 0 0 0 10.2 13.1 Z"
-          fill="white"
-          stroke="white"
-          strokeWidth="0.4"
-          strokeLinejoin="round"
-          className="drop-shadow-[0_1px_1.5px_rgba(0,0,0,0.3)]"
-        />
-
-        {/* Sağ Hız Akış Kanatları (Beyaz Cam Wedges) */}
-        <path
-          d="M 13.8 10.9 L 18.4 10.5 L 13.8 10.1 A 0.4 0.4 0 0 1 13.8 10.9 Z"
-          fill="white"
-          stroke="white"
-          strokeWidth="0.4"
-          strokeLinejoin="round"
-          className="drop-shadow-[0_1px_1.5px_rgba(0,0,0,0.3)]"
-        />
-        <path
-          d="M 13.8 12.5 L 20.2 12.0 L 13.8 11.5 A 0.5 0.5 0 0 1 13.8 12.5 Z"
-          fill="white"
-          stroke="white"
-          strokeWidth="0.5"
-          strokeLinejoin="round"
-          className="drop-shadow-[0_1px_1.5px_rgba(0,0,0,0.3)]"
-        />
-        <path
-          d="M 13.8 13.9 L 18.4 13.5 L 13.8 13.1 A 0.4 0.4 0 0 1 13.8 13.9 Z"
-          fill="white"
-          stroke="white"
-          strokeWidth="0.4"
-          strokeLinejoin="round"
-          className="drop-shadow-[0_1px_1.5px_rgba(0,0,0,0.3)]"
-        />
-
-        {/* Merkez Dikey RSVP Kırmızı Lazer Odak Çizgisi */}
-        <line
-          x1="12"
-          y1="4.5"
-          x2="12"
-          y2="19.5"
-          stroke="#ef4444"
-          strokeWidth="1.6"
-          strokeLinecap="round"
-          className="drop-shadow-[0_0_3px_rgba(239,68,68,0.8)]"
-        />
-      </svg>
+      <div className="relative z-10 w-full h-full flex items-center justify-center">
+        <OdakWordmarkSvg mode="cam" />
+      </div>
     </span>
   )
 }
@@ -512,13 +320,13 @@ export function TopBar({
             type="button"
             onClick={onOpenAbout}
             className="flex min-w-0 items-center gap-2.5 text-left group cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-2xl p-1 -m-1 transition-all active:scale-95"
-            title="Odak Hakkında, RSVP Mantığı ve Kılavuz"
-            aria-label="Odak Hakkında, RSVP Mantığı ve Kılavuz"
+            title="odak Hakkında, RSVP Mantığı ve Kılavuz"
+            aria-label="odak Hakkında, RSVP Mantığı ve Kılavuz"
           >
             <ThemedAppLogo theme={theme} className="group-hover:scale-105 transition-transform" />
             <div className="leading-tight max-[359px]:sr-only max-w-[140px] min-[400px]:max-w-[200px] sm:max-w-xs md:max-w-sm truncate">
-              <p className="text-sm font-semibold tracking-tight truncate group-hover:text-primary transition-colors" title={docTitle || 'Odak'}>
-                {docTitle || 'Odak'}
+              <p className="text-sm font-semibold tracking-tight truncate group-hover:text-primary transition-colors" title={docTitle || 'odak'}>
+                {docTitle || 'odak'}
               </p>
               <p className="hidden text-xs text-muted-foreground sm:block">Hızlı okuma penceresi</p>
             </div>

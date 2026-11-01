@@ -14,7 +14,7 @@ const SPEED_TEST_PASSAGE = `Okuma eylemi, insan zihninin geliştirdiği en büy�
 
 Geleneksel okuma alışkanlığında gözlerimiz her kelimede duraklar ve satır boyunca sürekli sağa sola sıçramalar yapar. Bu istemsiz geri dönüşler ve duraksamalar, toplam okuma süremizin üçte ikisini sessizce tüketir.
 
-Odak RSVP teknolojisi ise göz kaslarının bu yorucu mekanik hareketini ortadan kaldırır. Kelimeleri sabit bir odak noktasında doğrudan zihninize aktararak sadece kavrama ve anlamaya odaklanmanızı sağlar. Böylece iç sesiniz yatışır, dikkat dağınıklığı kaybolur ve düşünme hızınızla okuma hızınız ilk kez birbiriyle eşitlenir.`
+odak RSVP teknolojisi ise göz kaslarının bu yorucu mekanik hareketini ortadan kaldırır. Kelimeleri sabit bir odak noktasında doğrudan zihninize aktararak sadece kavrama ve anlamaya odaklanmanızı sağlar. Böylece iç sesiniz yatışır, dikkat dağınıklığı kaybolur ve düşünme hızınızla okuma hızınız ilk kez birbiriyle eşitlenir.`
 
 const PASSAGE_WORD_COUNT = SPEED_TEST_PASSAGE.trim().split(/\s+/).length
 
@@ -142,13 +142,13 @@ function SpeedTestBody({ onClose, onApplySpeed }: Omit<SpeedTestModalProps, 'ope
         {/* 1. ADIM: GİRİŞ / HAZIRLIK */}
         {status === 'intro' && (
           <div className="flex flex-col gap-4 py-2">
-            <div className="rounded-2xl border border-border/60 bg-muted/30 p-4 text-xs sm:text-sm leading-relaxed text-foreground/90 space-y-2">
-              <p className="font-semibold text-foreground">Nasıl Çalışır?</p>
-              <p>
+            <div className="rounded-2xl border border-border/80 bg-background/95 p-4 sm:p-5 text-xs sm:text-sm leading-relaxed text-foreground space-y-2.5 shadow-sm">
+              <p className="font-bold text-foreground text-sm sm:text-base">Nasıl Çalışır?</p>
+              <p className="text-foreground/90">
                 Aşağıdaki butona tıkladığınızda <strong>{PASSAGE_WORD_COUNT} kelimelik</strong> kısa ve akıcı bir metin belirecek ve kronometre başlayacaktır.
               </p>
-              <p className="text-muted-foreground">
-                Metni yarışır gibi aceleyle değil, <strong>her zamanki doğal okuma hızınızla ve anlayarak</strong> okuyun. Okumayı bitirdiğiniz anda <em>"Metni Bitirdim"</em> butonuna basın.
+              <p className="text-foreground/80">
+                Metni yarışır gibi aceleyle değil, <strong>her zamanki doğal okuma hızınızla ve anlayarak</strong> okuyun. Okumayı bitirdiğiniz anda <em>&ldquo;Metni Bitirdim&rdquo;</em> butonuna basın.
               </p>
             </div>
 
@@ -206,7 +206,7 @@ function SpeedTestBody({ onClose, onApplySpeed }: Omit<SpeedTestModalProps, 'ope
               </div>
 
               <div className="flex flex-col items-center justify-center rounded-2xl border border-primary/40 bg-primary/10 p-3.5 sm:p-4 text-center shadow-xs">
-                <span className="text-[11px] font-semibold text-primary">Önerilen Odak (RSVP)</span>
+                <span className="text-[11px] font-semibold text-primary">Önerilen odak (RSVP)</span>
                 <span className="mt-1 font-mono text-2xl sm:text-3xl font-extrabold tracking-tight text-primary">
                   {recommendedWpm}
                 </span>

@@ -9,7 +9,7 @@ const geistMono = Geist_Mono({ subsets: ['latin', 'latin-ext'], variable: '--fon
 const literata = Literata({ subsets: ['latin', 'latin-ext'], variable: '--font-literata' })
 
 export const metadata: Metadata = {
-  title: 'Odak — Hızlı Okuma (RSVP)',
+  title: 'odak — Hızlı Okuma (RSVP)',
   description:
     'Tek kelimelik odak penceresiyle hızlı okuma. Cam, Neon ve Kağıt temaları; başparmak dostu kontroller ve Zen odak modu.',
   generator: 'v0.app',

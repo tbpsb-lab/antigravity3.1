@@ -558,6 +558,49 @@ export function formatRemaining(chunksLeft: number, wpm: number, chunkSize: numb
  *    (distance < thresholdWords), bir önceki cümlenin ilk kelimesine (daha da öncesine) zıplanır.
  *    Metnin en başındaysak (currentIndex === 0) veya daha öncesi yoksa, 0'da sabitlenir.
  */
+export function findCurrentSentenceStartIndex(
+  chunks: (ChunkItem | string)[],
+  currentIndex: number,
+): number {
+  if (!chunks || chunks.length === 0 || currentIndex <= 0) {
+    return 0
+  }
+
+  const isBoundary = (idx: number): boolean => {
+    if (idx < 0 || idx >= chunks.length) return false
+    const item = chunks[idx]
+    if (!item) return false
+    if (typeof item === 'object') {
+      if (item.isSentenceEnd || item.isParagraphEnd || item.isHeading) return true
+      return /[.!?…]["”’»)\u201D\u2019\]]*$/.test(item.text.trim())
+    }
+    return /[.!?…]["”’»)\u201D\u2019\]]*$/.test(String(item).trim())
+  }
+
+  for (let i = currentIndex - 1; i >= 0; i--) {
+    if (isBoundary(i)) {
+      return i + 1
+    }
+  }
+
+  return 0
+}
+
+/**
+ * Akıllı Cümle Başı Geri Sarma Algoritması:
+ * Geri sarma tetiklendiğinde (← tuşu veya sol dokunma alanı) sadece 1 kelime değil,
+ * tam olarak önceki cümlenin ilk kelimesine konumlanmayı sağlar.
+ *
+ * 1. Cümle Sınırı Tespiti (Sentence Boundary Detection):
+ *    Mevcut kelime indeksinden (currentIndex) geriye doğru taranır.
+ *    Cümle bitiren noktalama (. ! ? …) veya cümle sonu bayrağı taşıyan ilk öğe bulunur.
+ *    O bitiş noktasından hemen sonra gelen ilk öğe (boundary + 1), "mevcut cümlenin ilk kelimesidir".
+ *
+ * 2. Çok Yakın Durum Eşiği (Edge Case):
+ *    Eğer kullanıcı zaten cümlenin ilk kelimesindeyse veya başlangıca 3 kelimeden yakınsa
+ *    (distance < thresholdWords), bir önceki cümlenin ilk kelimesine (daha da öncesine) zıplanır.
+ *    Metnin en başındaysak (currentIndex === 0) veya daha öncesi yoksa, 0'da sabitlenir.
+ */
 export function findPreviousSentenceIndex(
   chunks: (ChunkItem | string)[],
   currentIndex: number,

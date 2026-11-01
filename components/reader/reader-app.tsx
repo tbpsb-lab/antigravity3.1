@@ -16,6 +16,7 @@ import {
   calculateWordDelay,
   chunkDelay,
   findPreviousSentenceIndex,
+  findCurrentSentenceStartIndex,
 } from '@/lib/rsvp'
 import {
   saveReadingProgress,
@@ -124,35 +125,6 @@ export function ReaderApp() {
     [lastIndex],
   )
 
-  // Mobil Ekran Kilidi (Screen Lock / Sleep) ve Sekme Değişimi Algılama:
-  // Okuma esnasında ekran kilitlenirse arka planda devam etmeyip otomatik duraklar;
-  // ekran kilidi açıldığında kaldığı yerden tıklamaya gerek kalmadan akıcı şekilde devam eder.
-  const wasPlayingBeforeLockRef = useRef(false)
-
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.hidden || document.visibilityState === 'hidden') {
-        if (playing) {
-          wasPlayingBeforeLockRef.current = true
-          setPlaying(false)
-        }
-      } else if (document.visibilityState === 'visible') {
-        if (wasPlayingBeforeLockRef.current) {
-          wasPlayingBeforeLockRef.current = false
-          // Kilit açıldığında gözün konumu yakalaması için minik bir gecikmeyle (150ms) akıcı devam et
-          setTimeout(() => {
-            setPlaying(true)
-          }, 150)
-        }
-      }
-    }
-
-    document.addEventListener('visibilitychange', handleVisibilityChange)
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange)
-    }
-  }, [playing])
-
   // 1 & 2. KURAL: Akıllı Cümle Başı Parlama (Pulse / Jump) Animasyonu
   const [isPulsing, setIsPulsing] = useState(false)
   const pulseTimerRef = useRef<NodeJS.Timeout | null>(null)
@@ -171,6 +143,51 @@ export function ReaderApp() {
       }, 400) // 400ms parlama animasyonu
     })
   }, [])
+
+  // Mobil Ekran Kilidi (Screen Lock / Sleep) ve Sekme Değişimi Algılama:
+  // Okuma esnasında ekran kilitlenirse arka planda devam etmeyip otomatik duraklar;
+  // ekran kilidi açıldığında yarım saniye (500ms) bekler ve kaldığı cümlenin başından başlar.
+  const wasPlayingBeforeLockRef = useRef(false)
+  const lockedIndexRef = useRef(0)
+  const indexRef = useRef(index)
+  indexRef.current = index
+  const chunksRef = useRef(chunks)
+  chunksRef.current = chunks
+
+  useEffect(() => {
+    let unlockTimer: NodeJS.Timeout | null = null
+
+    const handleVisibilityChange = () => {
+      if (document.hidden || document.visibilityState === 'hidden') {
+        if (playing) {
+          wasPlayingBeforeLockRef.current = true
+          lockedIndexRef.current = indexRef.current
+          setPlaying(false)
+        }
+      } else if (document.visibilityState === 'visible') {
+        if (wasPlayingBeforeLockRef.current) {
+          wasPlayingBeforeLockRef.current = false
+          // Ekran kilidi açıldığında kaldığı cümlenin ilk kelimesine geri sar
+          const startIdx = findCurrentSentenceStartIndex(chunksRef.current, lockedIndexRef.current)
+          rampStepRef.current = 0
+          setIndex(startIdx)
+          triggerPulse()
+
+          // Yarım saniye (500ms) bekledikten sonra akıcı şekilde okumaya devam et
+          if (unlockTimer) clearTimeout(unlockTimer)
+          unlockTimer = setTimeout(() => {
+            setPlaying(true)
+          }, 500)
+        }
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      if (unlockTimer) clearTimeout(unlockTimer)
+    }
+  }, [playing, triggerPulse])
 
   // 1, 2 & 3. KURAL: Akıllı Cümle Başı Geri Sarma (Sentence-Boundary Rewind)
   // Sadece 1 kelime yerine tam önceki cümlenin ilk kelimesine zıplar.
@@ -360,6 +377,26 @@ export function ReaderApp() {
     }
     action()
   }
+
+  // Masaüstünde okuma açıkken (veya tam ekrandayken) farenin scroll tekeriyle hızı anında artırıp azaltma
+  useEffect(() => {
+    const handleGlobalWheel = (e: WheelEvent) => {
+      const activeTag = document.activeElement?.tagName
+      if (activeTag === 'INPUT' || activeTag === 'TEXTAREA') return
+
+      if (playing) {
+        e.preventDefault()
+        if (Math.abs(e.deltaY) > 8) {
+          changeWpm(e.deltaY < 0 ? WPM_STEP : -WPM_STEP)
+        }
+      }
+    }
+
+    window.addEventListener('wheel', handleGlobalWheel, { passive: false })
+    return () => {
+      window.removeEventListener('wheel', handleGlobalWheel)
+    }
+  }, [playing, changeWpm])
 
   // Chunk boyutu değiştiğinde mevcut kalınan kelimeden zıplama olmadan aynı konumu koru
   const handleChunkSizeChange = useCallback(
@@ -558,6 +595,33 @@ export function ReaderApp() {
 
   const progress = chunks.length > 1 ? index / lastIndex : 0
 
+  // YouTube tarzı bölüm başlıkları (Chapters)
+  const chapters = useMemo(() => {
+    if (!chunks || chunks.length === 0) return []
+    const list: { index: number; title: string; percent: number }[] = []
+    const total = chunks.length
+    for (let i = 0; i < chunks.length; i++) {
+      const c = chunks[i]
+      const isH =
+        typeof c === 'object'
+          ? Boolean(c.isHeading || c.text.startsWith('#'))
+          : String(c).startsWith('#')
+      if (isH) {
+        const rawTitle = typeof c === 'object' ? c.text : String(c)
+        const cleanTitle = rawTitle.replace(/^#+\s*/, '').trim()
+        if (cleanTitle) {
+          const percent = total > 1 ? (i / (total - 1)) * 100 : 0
+          list.push({
+            index: i,
+            title: cleanTitle,
+            percent: Math.min(100, Math.max(0, percent)),
+          })
+        }
+      }
+    }
+    return list
+  }, [chunks])
+
   return (
     <div
       data-theme={theme}
@@ -657,6 +721,7 @@ export function ReaderApp() {
         wpm={wpm}
         playing={playing}
         chunkSize={chunkSize}
+        chapters={chapters}
         onSeek={seek}
       />
 

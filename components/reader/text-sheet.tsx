@@ -1,6 +1,6 @@
 'use client'
 
-import { AlertCircle, Clipboard, FileText, Link2, Loader2, Upload, Video, X } from 'lucide-react'
+import { AlertCircle, Clipboard, FileText, Link2, Loader2, Sparkles, Upload, Video, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { SAMPLE_TEXT, tokenize } from '@/lib/rsvp'
 import { fetchArticleFromUrl } from '@/lib/article-parser'

@@ -1148,7 +1148,8 @@ function isExplicitChapterStart(t: string): boolean {
 }
 
 /**
- * Bir satırın bölüm veya konu başlığı olup olmadığını tespit eder.
+ * Bir satırın ANA BÖLÜM veya ANA BAŞLIK olup olmadığını tespit eder.
+ * Alt başlıkları, numaralı liste maddelerini (örn. "6. Felsefi Referanslar: Metinde...") ve açıklama cümlelerini eler.
  */
 function isHeadingLine(lineObj: PdfLine, medianFontSize: number, lineIdx: number, allLines: PdfLine[]): boolean {
   const t = lineObj.text.trim()
@@ -1177,49 +1178,43 @@ function isHeadingLine(lineObj: PdfLine, medianFontSize: number, lineIdx: number
   if (/[.!?:;]$/.test(t)) return false
 
   // 1. Markdown başlığı (# Başlık)
-  if (/^#{1,4}\s+\S+/.test(t)) return true
+  if (/^#{1,3}\s+\S+/.test(t)) return true
 
-  // 2. Açık bölüm kelimeleri (BÖLÜM 1, 1. Bölüm, GİRİŞ, ÖNSÖZ, ÖZET YÖNETİCİ RAPORU, SONUÇ vb.)
+  // 2. Açık ana bölüm kelimeleri (BÖLÜM 1, 1. Bölüm, GİRİŞ, ÖNSÖZ, ÖZET YÖNETİCİ RAPORU, SONUÇ vb.)
   if (isExplicitChapterStart(t) && words.length <= 12) {
+    if (t.includes(':')) {
+      const after = t.split(':', 1)[1]?.trim() || ''
+      const afterLetters = after.replace(/[^a-zA-ZçğıöşüÇĞİÖŞÜ]/g, '')
+      if (afterLetters && afterLetters !== afterLetters.toUpperCase() && after.split(/\s+/).length > 3) {
+        return false
+      }
+    }
     return true
   }
 
-  // 3. Numaralı başlıklar ("1. YENİ ELEŞTİRİ..." veya "1. Zihinsel Katmanlar...")
+  // 3. Numaralı ve Tamamı BÜYÜK HARF olan ana bölümler ("1. YENİ ELEŞTİRİ VE METNİN İÇSEL DİNAMİKLERİ: ...")
+  // Küçük harf veya Title Case içeren numaralı satırlar (örn: "6. Felsefi Referanslar: Metinde...") liste maddesidir, elenir
   const numMatch = t.match(/^(?:(\d{1,2}|[IVXLC]{1,5})\.)\s+([A-ZÇĞİÖŞÜ].*)$/)
   if (numMatch) {
     const rest = numMatch[2].trim()
-    const restWords = rest.split(/\s+/)
-    if (restWords.length > 0) {
-      const firstW = restWords[0].replace(/[^a-zA-ZçğıöşüÇĞİÖŞÜ]/g, '')
-      if (firstW && /^[A-ZÇĞİÖŞÜ]/.test(firstW)) {
-        if (rest.includes(':')) {
-          // İki noktadan sonraki kısım kısa ve başlık formatında olmalı (açıklama cümlesi olmamalı)
-          const afterColon = rest.split(':', 1)[1]?.trim() || ''
-          const afterWords = afterColon.split(/\s+/)
-          if (afterWords.length <= 5) {
-            const hasLowercaseContent = afterWords.some((w) => {
-              const cleanW = w.replace(/[^a-zA-ZçğıöşüÇĞİÖŞÜ]/g, '')
-              return cleanW && !TITLE_CASE_STOPWORDS.has(cleanW.toLowerCase()) && !/^[A-ZÇĞİÖŞÜ]/.test(cleanW)
-            })
-            if (!hasLowercaseContent) return true
-          }
-        } else {
-          // İki nokta yoksa: akan bir açıklama cümlesi ("1. Edebi açıdan, Yeni Eleştiri'nin...") değil, başlık olmalı
-          const sigWords = restWords
-            .map((w) => w.replace(/[^a-zA-ZçğıöşüÇĞİÖŞÜ]/g, ''))
-            .filter((w) => w && !TITLE_CASE_STOPWORDS.has(w.toLowerCase()))
-          const caps = sigWords.filter((w) => /^[A-ZÇĞİÖŞÜ0-9]/.test(w))
-          if (sigWords.length >= 1 && caps.length >= Math.ceil(sigWords.length * 0.75)) {
-            return true
-          }
+    const restLetters = rest.replace(/[^a-zA-ZçğıöşüÇĞİÖŞÜ]/g, '')
+    if (restLetters.length >= 3 && restLetters === restLetters.toUpperCase()) {
+      if (rest.includes(':')) {
+        const after = rest.split(':', 1)[1]?.trim() || ''
+        const afterLetters = after.replace(/[^a-zA-ZçğıöşüÇĞİÖŞÜ]/g, '')
+        if (afterLetters && afterLetters === afterLetters.toUpperCase()) {
+          return true
         }
+      } else {
+        return true
       }
     }
+    return false
   }
 
-  // 4. Tamamı BÜYÜK HARF olan satırlar (ALL CAPS)
+  // 4. Tamamı BÜYÜK HARF olan bağımsız ana başlıklar (Belge Başlığı, ÖZET, SONUÇ vb.)
   const lettersOnly = t.replace(/[^a-zA-ZçğıöşüÇĞİÖŞÜ]/g, '')
-  if (lettersOnly.length >= 3 && lettersOnly === lettersOnly.toUpperCase() && words.length <= 16) {
+  if (lettersOnly.length >= 4 && lettersOnly === lettersOnly.toUpperCase() && words.length <= 16) {
     if (t.includes(':')) {
       const after = t.split(':', 1)[1]?.trim() || ''
       const afterLetters = after.replace(/[^a-zA-ZçğıöşüÇĞİÖŞÜ]/g, '')
@@ -1231,35 +1226,16 @@ function isHeadingLine(lineObj: PdfLine, medianFontSize: number, lineIdx: number
     }
   }
 
-  // 5. Büyük font boyutu (Gövde fontundan en az %12 büyük)
-  if (lineObj.fontSize && medianFontSize && lineObj.fontSize >= medianFontSize * 1.12 && words.length <= 12) {
-    return true
-  }
-
-  // 6. Title Case başlıklar (Sayfanın herhangi bir yerinde)
+  // 5. Belirgin derecede büyük fontlu başlık (Gövde fontundan en az %25 büyük ve sayfa başında)
   if (
-    words.length >= 1 &&
-    words.length <= 10 &&
-    t.length <= 75 &&
-    /^[A-ZÇĞİÖŞÜ]/.test(t)
+    lineObj.fontSize &&
+    medianFontSize &&
+    lineObj.fontSize >= medianFontSize * 1.25 &&
+    words.length <= 8 &&
+    (lineIdx === 0 || (allLines && allLines.length <= 3)) &&
+    !t.includes(':')
   ) {
-    // Sonraki satır küçük harfle başlıyorsa, bu satır bölünen bir cümlenin parçasıdır
-    const nextLine = allLines[lineIdx + 1]
-    const nextStartsLowercase = nextLine && /^[a-zçğıöşü]/.test(nextLine.text.trim())
-
-    if (!nextStartsLowercase) {
-      const cleanWords = words.map((w) => w.replace(/^['"“‘\(]+|['"”’\)\:]+$/g, ''))
-      const significantWords = cleanWords.filter(
-        (w) => w && !TITLE_CASE_STOPWORDS.has(w.toLowerCase().replace(/[^a-zçğıöşü]/g, '')),
-      )
-      const capitalizedCount = significantWords.filter((w) =>
-        /^[A-ZÇĞİÖŞÜ0-9]/.test(w),
-      ).length
-
-      if (significantWords.length >= 1 && capitalizedCount === significantWords.length) {
-        return true
-      }
-    }
+    return true
   }
 
   return false

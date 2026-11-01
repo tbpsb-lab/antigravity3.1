@@ -5,9 +5,9 @@ import Image from 'next/image'
 import { useEffect, useState, type ReactNode, type Ref } from 'react'
 import { cn } from '@/lib/utils'
 import { THEMES, type ThemeId } from '@/lib/rsvp'
-import logoCam from '@/public/logos/logo-cam.png'
-import logoNeon from '@/public/logos/logo-neon.png'
-import logoKagit from '@/public/logos/logo-kagit.png'
+import logoCam from '@/assets/logos/logo-cam.png'
+import logoNeon from '@/assets/logos/logo-neon.png'
+import logoKagit from '@/assets/logos/logo-kagit.png'
 
 type TopBarProps = {
   ref?: Ref<HTMLElement>

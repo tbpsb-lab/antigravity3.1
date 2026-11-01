@@ -21,8 +21,8 @@ import Image from 'next/image'
 import { useEffect, useState } from 'react'
 import { cn } from '@/lib/utils'
 import { THEMES, type ThemeId } from '@/lib/rsvp'
-import logoVectorDarkCard from '@/public/logos/odak-vector-dark-card.png'
-import logoVectorLightCard from '@/public/logos/odak-vector-light-card.png'
+import logoVectorDarkCard from '@/assets/logos/odak-vector-dark-card.png'
+import logoVectorLightCard from '@/assets/logos/odak-vector-light-card.png'
 
 type AboutModalProps = {
   open: boolean

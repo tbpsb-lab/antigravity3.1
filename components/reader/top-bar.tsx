@@ -1,9 +1,13 @@
 'use client'
 
 import { FileText, Maximize, Minimize, Zap } from 'lucide-react'
+import Image from 'next/image'
 import { useEffect, useState, type ReactNode, type Ref } from 'react'
 import { cn } from '@/lib/utils'
 import { THEMES, type ThemeId } from '@/lib/rsvp'
+import logoCam from '@/public/logos/logo-cam.png'
+import logoNeon from '@/public/logos/logo-neon.png'
+import logoKagit from '@/public/logos/logo-kagit.png'
 
 type TopBarProps = {
   ref?: Ref<HTMLElement>
@@ -146,7 +150,7 @@ export function OdakWordmarkSvg({
   )
 }
 
-// Temaya Uyum Sağlayan Özel Biçimli Logo (Aşağı doğru 1.5 kat büyütülmüş hali - media_1793568060338_3eb1a36e.jpg)
+// Temaya Uyum Sağlayan Özel Biçimli Mini Logo (1.5 kat büyütülmüş hali - media_1793569406285_e3e2edba.jpg)
 function ThemedAppLogo({ theme, className }: { theme: ThemeId; className?: string }) {
   if (theme === 'linear') {
     // 2. NEON SİYAH: Mor Neon Elips Kapsül, Elektrik Cyan Çentikler & Neon Kırmızı Lazer
@@ -154,13 +158,18 @@ function ThemedAppLogo({ theme, className }: { theme: ThemeId; className?: strin
       <span
         aria-hidden="true"
         className={cn(
-          'relative w-20.5 sm:w-22.5 h-13 sm:h-14 rounded-full p-[2px] bg-[#07060b] border-2 border-purple-500/75',
-          'shadow-[0_0_22px_rgba(168,85,247,0.85),0_0_8px_rgba(192,132,252,0.65),inset_0_0_12px_rgba(168,85,247,0.45)]',
-          'flex items-center justify-center shrink-0 transition-all duration-500 select-none overflow-hidden px-2',
+          'relative block h-[74px] w-[96px] sm:h-[86px] sm:w-[112px] shrink-0 transition-transform duration-300 select-none drop-shadow-[0_0_16px_rgba(168,85,247,0.55)]',
           className
         )}
       >
-        <OdakWordmarkSvg mode="neon" />
+        <Image
+          src={logoNeon}
+          alt="odak Neon Logo"
+          width={112}
+          height={86}
+          priority
+          className="w-full h-full object-contain pointer-events-none select-none"
+        />
       </span>
     )
   }
@@ -171,53 +180,39 @@ function ThemedAppLogo({ theme, className }: { theme: ThemeId; className?: strin
       <span
         aria-hidden="true"
         className={cn(
-          'relative size-14 sm:size-15 rounded-2xl bg-[#fbf5e5] dark:bg-[#2c241a]',
-          'border border-[#cfbe96] dark:border-[#524433] shadow-[0_2.5px_8px_rgba(0,0,0,0.16),inset_0_1px_0_rgba(255,255,255,0.7)]',
-          'flex items-center justify-center shrink-0 transition-all duration-500 select-none overflow-hidden p-1.5',
+          'relative block size-[74px] sm:size-[86px] shrink-0 transition-transform duration-300 select-none drop-shadow-[0_3px_10px_rgba(0,0,0,0.14)]',
           className
         )}
       >
-        <OdakWordmarkSvg mode="kagit" />
-
-        {/* Sağ Alt Köşe Sayfa Kıvrımı (Curled Dog-Ear) */}
-        <svg
-          className="absolute bottom-0 right-0 size-4.5 sm:size-5 pointer-events-none"
-          viewBox="0 0 16 16"
-          fill="none"
-        >
-          <path d="M 0 16 L 16 0 L 16 16 Z" fill="rgba(0,0,0,0.2)" />
-          <path d="M 0 16 C 3 9, 9 3, 16 0 C 11 7, 7 11, 0 16 Z" fill="#cfbe97" />
-          <path d="M 1 15 C 4 9, 9 4, 15 1 C 11 7, 7 11, 1 15 Z" fill="#f8f1e3" />
-        </svg>
+        <Image
+          src={logoKagit}
+          alt="odak Kağıt Logo"
+          width={86}
+          height={86}
+          priority
+          className="w-full h-full object-contain pointer-events-none select-none"
+        />
       </span>
     )
   }
 
-  // 1. CAM (Varsayılan): Yuvarlak Saydam Cam Lens, Canlı Cyan Kırılma, Koyu Antrasit Tipografi & Kırmızı Odak (media_1793568060338_3eb1a36e.jpg)
+  // 1. CAM (Varsayılan): Yuvarlak Saydam Cam Lens, Canlı Cyan Kırılma, Koyu Antrasit Tipografi & Kırmızı Odak
   return (
     <span
       aria-hidden="true"
       className={cn(
-        'relative size-14 sm:size-15 rounded-full',
-        'border border-white/90 dark:border-white/40',
-        'bg-gradient-to-br from-white/95 via-white/50 to-white/10 dark:from-white/35 dark:via-white/15 dark:to-transparent backdrop-blur-md',
-        'shadow-[0_0_18px_rgba(56,189,248,0.55),inset_0_2px_3px_rgba(255,255,255,0.95)]',
-        'flex items-center justify-center shrink-0 transition-all duration-500 select-none overflow-hidden p-1.5',
+        'relative block size-[74px] sm:size-[86px] shrink-0 transition-transform duration-300 select-none drop-shadow-[0_4px_16px_rgba(56,189,248,0.4)]',
         className
       )}
     >
-      {/* Sağ/alt kenarda canlı açık mavi (cyan) cam kırılma hilali */}
-      <span className="absolute -inset-0.5 rounded-full bg-[radial-gradient(circle_at_85%_75%,rgba(56,189,248,0.9)_0%,rgba(56,189,248,0.3)_45%,transparent_70%)] pointer-events-none" />
-
-      {/* Çapraz kavisli cam parlaması (Diagonal lens gloss reflection) */}
-      <span className="absolute -top-2 right-1.5 w-8 h-12 -rotate-[35deg] bg-gradient-to-b from-white/90 via-white/30 to-transparent pointer-events-none rounded-full blur-[0.5px]" />
-
-      {/* Üst kenar ince specular parıltı */}
-      <span className="absolute top-1 left-1/2 -translate-x-1/2 w-5 h-[2px] rounded-full bg-white/95 pointer-events-none shadow-[0_0_3px_rgba(255,255,255,0.9)]" />
-
-      <div className="relative z-10 w-full h-full flex items-center justify-center">
-        <OdakWordmarkSvg mode="cam" />
-      </div>
+      <Image
+        src={logoCam}
+        alt="odak Cam Logo"
+        width={86}
+        height={86}
+        priority
+        className="w-full h-full object-contain pointer-events-none select-none"
+      />
     </span>
   )
 }

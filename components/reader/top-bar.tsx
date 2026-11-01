@@ -18,13 +18,48 @@ type TopBarProps = {
   onToggleFullscreen?: () => void
 }
 
-// 1. Gerçek saydam cam lens (Yazısız, saf cam ve specular parlama)
+// Konsept 1: Optik Odak Vizörü (ORP Reticle) Logosu
+function OrpReticleLogo({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={cn('size-5 text-foreground/85 transition-colors', className)}
+      aria-hidden="true"
+    >
+      {/* Dış Optik Odak Çemberi */}
+      <circle
+        cx="12"
+        cy="12"
+        r="7.5"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        className="opacity-80"
+      />
+
+      {/* 4 Kardinal Vizör / Nişangah Kılavuz Çentiği */}
+      <line x1="12" y1="2" x2="12" y2="5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      <line x1="12" y1="19" x2="12" y2="22" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      <line x1="2" y1="12" x2="5" y2="12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      <line x1="19" y1="12" x2="22" y2="12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+
+      {/* Merkez RSVP Odak Noktası (ORP - Optimal Tanıma Noktası) */}
+      <circle cx="12" cy="12" r="2" className="fill-pivot" stroke="none" />
+    </svg>
+  )
+}
+
+// 1. Gerçek saydam cam lens (Hafif açık mavi buğulu gradyan & specular yansıma)
 function CamShape() {
   return (
     <span
-      className="relative block size-6 sm:size-7 rounded-full backdrop-blur-md border border-white/70 dark:border-white/30 bg-gradient-to-br from-white/50 via-white/15 to-white/5 dark:from-white/20 dark:via-white/5 dark:to-transparent shadow-[inset_0_1px_1.5px_rgba(255,255,255,0.8),0_2px_6px_rgba(0,0,0,0.06)] shrink-0 transition-transform duration-300"
+      className="relative block size-6 sm:size-7 rounded-full backdrop-blur-md border border-sky-300/50 dark:border-sky-400/35 bg-gradient-to-br from-sky-100/60 via-sky-300/25 to-sky-400/10 dark:from-sky-400/30 dark:via-sky-500/15 dark:to-transparent shadow-[inset_0_1px_2px_rgba(255,255,255,0.95),0_2px_8px_rgba(56,189,248,0.2)] shrink-0 transition-transform duration-300"
     >
-      <span className="absolute top-0.5 left-1/2 -translate-x-1/2 w-2.5 h-[1.5px] rounded-full bg-white/90 dark:bg-white/60 pointer-events-none" />
+      {/* Üst kenar optik cam yansıması */}
+      <span className="absolute top-0.5 left-1/2 -translate-x-1/2 w-2.5 h-[1.5px] rounded-full bg-white/95 dark:bg-sky-100/90 pointer-events-none shadow-[0_0_2px_rgba(255,255,255,0.8)]" />
+      {/* Alt hafif su/cam mavi ışıltısı */}
+      <span className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-2 h-[1px] rounded-full bg-sky-200/50 dark:bg-sky-300/30 pointer-events-none" />
     </span>
   )
 }
@@ -99,7 +134,7 @@ export function TopBar({
             aria-hidden="true"
             className="panel grid size-9 place-items-center landscape-short:size-8"
           >
-            <span className="size-2 rounded-full bg-pivot pivot-glow" />
+            <OrpReticleLogo />
           </span>
           <div className="leading-tight max-[359px]:sr-only max-w-[140px] min-[400px]:max-w-[200px] sm:max-w-xs md:max-w-sm truncate">
             <p className="text-sm font-semibold tracking-tight truncate" title={docTitle || 'Odak'}>

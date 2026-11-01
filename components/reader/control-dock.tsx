@@ -41,6 +41,7 @@ export function ControlDock({
   const [isManuallyExpanded, setIsManuallyExpanded] = useState(false)
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const touchStartYRef = useRef<number | null>(null)
+  const footerRef = useRef<HTMLElement | null>(null)
 
   const isExpanded = isHovered || isManuallyExpanded
 
@@ -52,8 +53,11 @@ export function ControlDock({
     }
   }, [playing])
 
-  // Masaüstü fare ve Apple Pencil hover desteği
+  // Masaüstü fare ve Apple Pencil hover desteği (Dokunmatik cihazlarda hover ile kilitlenmeyi engelle)
   const handleMouseEnter = () => {
+    if (typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches) {
+      return
+    }
     if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current)
     setIsHovered(true)
   }
@@ -65,9 +69,18 @@ export function ControlDock({
     }, 600)
   }
 
-  // Dokunmatik / tık ile açma kapama
-  const handleToggleExpand = () => {
-    setIsManuallyExpanded((prev) => !prev)
+  // Dokunmatik / tık ile açma kapama (Kapatırken hover bayrağını da kesinlikle temizler)
+  const handleToggleExpand = (e?: React.SyntheticEvent) => {
+    if (e) {
+      e.stopPropagation()
+    }
+    if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current)
+    if (isExpanded) {
+      setIsHovered(false)
+      setIsManuallyExpanded(false)
+    } else {
+      setIsManuallyExpanded(true)
+    }
   }
 
   // Alt sınırdan herhangi bir yerden yukarı/aşağı kaydırma jesti
@@ -81,16 +94,34 @@ export function ControlDock({
     if (touchStartYRef.current === null) return
     const deltaY = e.changedTouches[0].clientY - touchStartYRef.current
     touchStartYRef.current = null
-    // Yukarı kaydırma: Aç
-    if (deltaY < -15) {
+    // Yukarı kaydırma (10px): Aç
+    if (deltaY < -10) {
       setIsManuallyExpanded(true)
     }
-    // Aşağı kaydırma: Kapat
-    else if (deltaY > 15) {
+    // Aşağı kaydırma (10px): Kapat
+    else if (deltaY > 10) {
       setIsManuallyExpanded(false)
       setIsHovered(false)
     }
   }
+
+  // Panel açıkken dışarıya dokunulduğunda/tıklandığında otomatik daralt
+  useEffect(() => {
+    if (!isExpanded) return
+
+    const handlePointerDownOutside = (e: PointerEvent) => {
+      const footerEl = footerRef.current
+      if (footerEl && !footerEl.contains(e.target as Node)) {
+        setIsManuallyExpanded(false)
+        setIsHovered(false)
+      }
+    }
+
+    window.addEventListener('pointerdown', handlePointerDownOutside)
+    return () => {
+      window.removeEventListener('pointerdown', handlePointerDownOutside)
+    }
+  }, [isExpanded])
 
   // --- KESİNTİSİZ AKICI VE BÖLÜM KİLİTLENMESİ YAŞATMAYAN POINTER SCRUBBER ---
   const trackRef = useRef<HTMLDivElement>(null)
@@ -172,7 +203,11 @@ export function ControlDock({
 
   return (
     <footer
-      ref={ref}
+      ref={(el) => {
+        footerRef.current = el
+        if (typeof ref === 'function') ref(el)
+        else if (ref) (ref as React.MutableRefObject<HTMLElement | null>).current = el
+      }}
       aria-hidden={hidden}
       inert={hidden}
       onMouseEnter={handleMouseEnter}
@@ -259,6 +294,14 @@ export function ControlDock({
         <button
           type="button"
           onClick={handleToggleExpand}
+          onTouchStart={(e) => {
+            e.stopPropagation()
+          }}
+          onTouchEnd={(e) => {
+            e.stopPropagation()
+            e.preventDefault()
+            handleToggleExpand(e)
+          }}
           className="ctl flex h-5 sm:h-6 w-20 sm:w-24 items-center justify-center rounded-t-lg border-t border-x border-border/50 bg-background/80 hover:bg-background/95 text-muted-foreground hover:text-foreground backdrop-blur-md shadow-xs transition-colors cursor-pointer"
           aria-label={isExpanded ? 'İlerleme çubuğunu gizle' : 'İlerleme çubuğunu aç'}
           title={isExpanded ? 'Gizle' : 'İlerleme çubuğunu göster'}

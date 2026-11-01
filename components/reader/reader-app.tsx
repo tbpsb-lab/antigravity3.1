@@ -145,47 +145,29 @@ export function ReaderApp() {
     })
   }, [])
 
-  // Tam Ekran ve Yatay Mod Yönelim Kilitleme (Screen Orientation Lock in Landscape)
-  const lockLandscape = useCallback(async () => {
-    try {
-      const orientation = (screen.orientation || (screen as any).mozOrientation || (screen as any).msOrientation) as any
-      if (orientation && typeof orientation.lock === 'function') {
-        await orientation.lock('landscape')
-      }
-    } catch {
-      // Tarayıcı veya platform izin vermezse sessizce geç
-    }
-  }, [])
-
-  const unlockOrientation = useCallback(() => {
-    try {
-      const orientation = (screen.orientation || (screen as any).mozOrientation || (screen as any).msOrientation) as any
-      if (orientation && typeof orientation.unlock === 'function') {
-        orientation.unlock()
-      }
-    } catch {}
-  }, [])
-
+  // Tam Ekran Yönetimi (Standart Fullscreen API - Cihaz yönünü zorlamadan doğal esneklik)
   const [isFullscreen, setIsFullscreen] = useState(false)
 
   useEffect(() => {
     const handleFullscreenChange = () => {
       const isFs = Boolean(document.fullscreenElement || (document as any).webkitFullscreenElement)
       setIsFullscreen(isFs)
-      if (isFs) {
-        lockLandscape()
-      } else {
-        unlockOrientation()
-      }
+    }
+
+    const handleOrientationChange = () => {
+      // Cihaz dikey/yatay döndürüldüğünde ekran düzenini anında tazele
+      window.dispatchEvent(new Event('resize'))
     }
 
     document.addEventListener('fullscreenchange', handleFullscreenChange)
     document.addEventListener('webkitfullscreenchange', handleFullscreenChange)
+    window.addEventListener('orientationchange', handleOrientationChange)
     return () => {
       document.removeEventListener('fullscreenchange', handleFullscreenChange)
       document.removeEventListener('webkitfullscreenchange', handleFullscreenChange)
+      window.removeEventListener('orientationchange', handleOrientationChange)
     }
-  }, [lockLandscape, unlockOrientation])
+  }, [])
 
   const toggleFullscreen = useCallback(async () => {
     try {
@@ -198,19 +180,17 @@ export function ReaderApp() {
         } else if (el.webkitRequestFullscreen) {
           await el.webkitRequestFullscreen()
         }
-        await lockLandscape()
       } else {
         if (doc.exitFullscreen) {
           await doc.exitFullscreen()
         } else if (doc.webkitExitFullscreen) {
           await doc.webkitExitFullscreen()
         }
-        unlockOrientation()
       }
     } catch (err) {
-      console.warn('Tam ekran / yönelim geçiş hatası:', err)
+      console.warn('Tam ekran geçiş hatası:', err)
     }
-  }, [lockLandscape, unlockOrientation])
+  }, [])
 
   // Mobil Ekran Kilidi (Screen Lock / Sleep) ve Sekme Değişimi Algılama:
   // Okuma esnasında ekran kilitlenirse arka planda devam etmeyip otomatik duraklar;
@@ -233,11 +213,6 @@ export function ReaderApp() {
           setPlaying(false)
         }
       } else if (document.visibilityState === 'visible') {
-        // Ekran kilidi açıldığında yatay mod kilidini derhal tazele
-        if (document.fullscreenElement || (document as any).webkitFullscreenElement || isFullscreen) {
-          lockLandscape()
-        }
-
         if (wasPlayingBeforeLockRef.current) {
           wasPlayingBeforeLockRef.current = false
           // Ekran kilidi açıldığında kaldığı cümlenin ilk kelimesine geri sar
@@ -260,7 +235,7 @@ export function ReaderApp() {
       document.removeEventListener('visibilitychange', handleVisibilityChange)
       if (unlockTimer) clearTimeout(unlockTimer)
     }
-  }, [playing, triggerPulse, isFullscreen, lockLandscape])
+  }, [playing, triggerPulse])
 
   // 1, 2 & 3. KURAL: Akıllı Cümle Başı Geri Sarma (Sentence-Boundary Rewind)
   // Sadece 1 kelime yerine tam önceki cümlenin ilk kelimesine zıplar.

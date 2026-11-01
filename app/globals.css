@@ -424,3 +424,24 @@
     filter: brightness(1);
   }
 }
+
+/* ==========================================================================
+   Tam Ekran & Yön Değişimi (Fullscreen & Orientation) Taşma / Kayma Önleyici
+   ========================================================================== */
+:fullscreen,
+::backdrop,
+:-webkit-full-screen {
+  background-color: var(--background) !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+}
+
+:root:fullscreen,
+:root:-webkit-full-screen {
+  width: 100vw !important;
+  height: 100vh !important;
+  overflow: hidden !important;
+}

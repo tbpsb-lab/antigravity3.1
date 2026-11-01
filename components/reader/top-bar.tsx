@@ -88,8 +88,8 @@ export function TopBar({
               type="button"
               onClick={onToggleFullscreen}
               className="ctl panel size-10 landscape-short:size-9"
-              aria-label={isFullscreen ? 'Tam ekrandan çık' : 'Tam ekran ve yatay kilit modu'}
-              title={isFullscreen ? 'Tam ekrandan çık' : 'Tam ekran ve yatay kilit modu'}
+              aria-label={isFullscreen ? 'Tam ekrandan çık' : 'Tam ekran modu'}
+              title={isFullscreen ? 'Tam ekrandan çık' : 'Tam ekran modu'}
             >
               {isFullscreen ? <Minimize className="size-4" /> : <Maximize className="size-4" />}
             </button>

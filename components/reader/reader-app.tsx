@@ -602,6 +602,10 @@ export function ReaderApp() {
                 }
               }}
               onVisibleCountChange={setContextPageSize}
+              onStepPrev={handleStepPrev}
+              onStepNext={handleStepNext}
+              hasPrev={index > 0}
+              hasNext={index < lastIndex}
             />
           </div>
         </div>
@@ -615,12 +619,7 @@ export function ReaderApp() {
         wpm={wpm}
         playing={playing}
         chunkSize={chunkSize}
-        step={contextPageSizeInChunks}
-        onToggle={togglePlay}
         onSeek={seek}
-        onStepPrev={handleStepPrev}
-        onStepNext={handleStepNext}
-        onWpmChange={changeWpm}
       />
 
       {/* 3. KURAL: Canlı WPM Toast HUD (Dikey kaydırma sırasında canlı, touchend sonrasında 1 sn fade-out) */}

@@ -1,6 +1,6 @@
 'use client'
 
-import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp } from 'lucide-react'
+import { ChevronDown, ChevronUp } from 'lucide-react'
 import { useEffect, useRef, useState, type CSSProperties, type Ref } from 'react'
 import { cn } from '@/lib/utils'
 import { formatRemaining } from '@/lib/rsvp'
@@ -13,12 +13,7 @@ type ControlDockProps = {
   wpm: number
   playing: boolean
   chunkSize?: number
-  step?: number
-  onToggle?: () => void
   onSeek: (index: number) => void
-  onStepPrev?: () => void
-  onStepNext?: () => void
-  onWpmChange?: (delta: number) => void
 }
 
 export function ControlDock({
@@ -29,10 +24,7 @@ export function ControlDock({
   wpm,
   playing,
   chunkSize = 1,
-  step = 10,
   onSeek,
-  onStepPrev,
-  onStepNext,
 }: ControlDockProps) {
   const last = Math.max(0, total - 1)
   const progress = last > 0 ? (index / last) * 100 : 0
@@ -105,7 +97,7 @@ export function ControlDock({
         hidden && 'pointer-events-none translate-y-8 opacity-0',
       )}
     >
-      {/* 1. Genişletildiğinde Çıkan Tek Satırlık Kompakt Kontrol Paneli */}
+      {/* 1. Genişletildiğinde Çıkan Tek Satırlık Kompakt Kontrol Paneli (Sağ/sol butonlar bağlama taşındı) */}
       <div
         className={cn(
           'w-full max-w-2xl px-2 sm:px-4 pb-1 transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]',
@@ -114,20 +106,7 @@ export function ControlDock({
             : 'opacity-0 translate-y-3 pointer-events-none max-h-0 overflow-hidden pb-0',
         )}
       >
-        <div className="panel flex h-10 sm:h-11 w-full items-center gap-1.5 sm:gap-2.5 px-2 sm:px-3 shadow-lg">
-          {/* Geri Atla Butonu */}
-          <button
-            type="button"
-            onClick={onStepPrev ?? (() => onSeek(Math.max(0, index - step)))}
-            disabled={index === 0}
-            className="ctl size-7 sm:size-8 shrink-0 rounded-md disabled:opacity-30"
-            aria-label={`${step} öbek geri`}
-            title={`${step} öbek geri`}
-            aria-keyshortcuts="Shift+ArrowLeft"
-          >
-            <ChevronLeft className="size-4" />
-          </button>
-
+        <div className="panel flex h-10 sm:h-11 w-full items-center gap-2 sm:gap-3 px-2.5 sm:px-4 shadow-lg">
           {/* Konum / Toplam */}
           <span className="font-mono text-[11px] tabular-nums text-muted-foreground whitespace-nowrap shrink-0">
             {total === 0 ? 0 : index + 1}/{total}
@@ -161,19 +140,6 @@ export function ControlDock({
           <span className="font-mono text-xs font-semibold tabular-nums text-foreground whitespace-nowrap shrink-0">
             {wpm} <span className="text-[10px] font-normal text-muted-foreground">k/dk</span>
           </span>
-
-          {/* İleri Atla Butonu */}
-          <button
-            type="button"
-            onClick={onStepNext ?? (() => onSeek(Math.min(last, index + step)))}
-            disabled={index >= last}
-            className="ctl size-7 sm:size-8 shrink-0 rounded-md disabled:opacity-30"
-            aria-label={`${step} öbek ileri`}
-            title={`${step} öbek ileri`}
-            aria-keyshortcuts="Shift+ArrowRight"
-          >
-            <ChevronRight className="size-4" />
-          </button>
 
           {/* Daralt / Kapat Butonu */}
           <button

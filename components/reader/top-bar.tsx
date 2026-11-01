@@ -1,6 +1,6 @@
 'use client'
 
-import { FileText } from 'lucide-react'
+import { FileText, Maximize, Minimize } from 'lucide-react'
 import type { ReactNode, Ref } from 'react'
 import { cn } from '@/lib/utils'
 import { THEMES, type ThemeId } from '@/lib/rsvp'
@@ -13,9 +13,21 @@ type TopBarProps = {
   hidden: boolean
   fontControl: ReactNode
   docTitle?: string
+  isFullscreen?: boolean
+  onToggleFullscreen?: () => void
 }
 
-export function TopBar({ ref, theme, onThemeChange, onOpenText, hidden, fontControl, docTitle }: TopBarProps) {
+export function TopBar({
+  ref,
+  theme,
+  onThemeChange,
+  onOpenText,
+  hidden,
+  fontControl,
+  docTitle,
+  isFullscreen,
+  onToggleFullscreen,
+}: TopBarProps) {
   return (
     <header
       ref={ref}
@@ -70,6 +82,18 @@ export function TopBar({ ref, theme, onThemeChange, onOpenText, hidden, fontCont
           </div>
 
           {fontControl}
+
+          {onToggleFullscreen && (
+            <button
+              type="button"
+              onClick={onToggleFullscreen}
+              className="ctl panel size-10 landscape-short:size-9"
+              aria-label={isFullscreen ? 'Tam ekrandan çık' : 'Tam ekran ve yatay kilit modu'}
+              title={isFullscreen ? 'Tam ekrandan çık' : 'Tam ekran ve yatay kilit modu'}
+            >
+              {isFullscreen ? <Minimize className="size-4" /> : <Maximize className="size-4" />}
+            </button>
+          )}
 
           <button
             type="button"

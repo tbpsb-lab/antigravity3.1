@@ -1,7 +1,7 @@
 'use client'
 
 import { ChevronDown, ChevronUp } from 'lucide-react'
-import { useEffect, useRef, useState, type CSSProperties, type Ref } from 'react'
+import { useCallback, useEffect, useRef, useState, type CSSProperties, type Ref } from 'react'
 import { cn } from '@/lib/utils'
 import { formatRemaining } from '@/lib/rsvp'
 
@@ -93,6 +93,84 @@ export function ControlDock({
     }
   }
 
+  // --- KESİNTİSİZ AKICI VE BÖLÜM KİLİTLENMESİ YAŞATMAYAN POINTER SCRUBBER ---
+  const trackRef = useRef<HTMLDivElement>(null)
+  const isDraggingRef = useRef(false)
+  const [hoverInfo, setHoverInfo] = useState<{ title: string; percent: number } | null>(null)
+
+  const seekFromClientX = useCallback(
+    (clientX: number, snap = true) => {
+      const track = trackRef.current
+      if (!track || last <= 0) return
+
+      const rect = track.getBoundingClientRect()
+      if (rect.width <= 0) return
+
+      const rawPct = (clientX - rect.left) / rect.width
+      const clampedPct = Math.max(0, Math.min(1, rawPct))
+      const targetPercent = clampedPct * 100
+
+      // Yakın bir bölüm çentiği varsa (%2.2 toleransla) tam bölümün başlangıç indeksine kenetlen
+      if (snap && chapters.length > 0) {
+        const closeChapter = chapters.find((ch) => Math.abs(ch.percent - targetPercent) < 2.2)
+        if (closeChapter) {
+          onSeek(closeChapter.index)
+          return
+        }
+      }
+
+      const targetIdx = Math.round(clampedPct * last)
+      onSeek(targetIdx)
+    },
+    [last, chapters, onSeek],
+  )
+
+  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.button !== 0 && e.pointerType === 'mouse') return
+    isDraggingRef.current = true
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId)
+    } catch {}
+    seekFromClientX(e.clientX, true)
+  }
+
+  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    const track = trackRef.current
+    if (!track) return
+
+    if (isDraggingRef.current) {
+      seekFromClientX(e.clientX, false)
+    } else if (e.pointerType === 'mouse' || e.pointerType === 'pen') {
+      const rect = track.getBoundingClientRect()
+      const pct = Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width) * 100))
+      const activeChapter =
+        chapters.slice().reverse().find((ch) => ch.percent <= pct + 0.5) || chapters[0]
+      if (activeChapter) {
+        setHoverInfo({
+          title: activeChapter.title,
+          percent: pct,
+        })
+      } else {
+        setHoverInfo(null)
+      }
+    }
+  }
+
+  const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (isDraggingRef.current) {
+      isDraggingRef.current = false
+      try {
+        e.currentTarget.releasePointerCapture(e.pointerId)
+      } catch {}
+    }
+  }
+
+  const handlePointerLeave = () => {
+    if (!isDraggingRef.current) {
+      setHoverInfo(null)
+    }
+  }
+
   return (
     <footer
       ref={ref}
@@ -107,103 +185,99 @@ export function ControlDock({
         hidden && 'pointer-events-none translate-y-8 opacity-0',
       )}
     >
-      {/* 1. Genişletildiğinde Çıkan Tek Satırlık Kompakt Kontrol Paneli */}
+      {/* 1. Genişletildiğinde Çıkan Tek Satırlık Kompakt Kontrol Paneli - Okuma Penceresi Hizasına Uyumlu */}
       <div
         className={cn(
-          'w-full max-w-2xl px-2 sm:px-4 pb-1 transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]',
+          'w-full max-w-4xl lg:max-w-5xl xl:max-w-6xl px-4 sm:px-8 pb-1.5 transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]',
           isExpanded
             ? 'opacity-100 translate-y-0 pointer-events-auto'
             : 'opacity-0 translate-y-3 pointer-events-none max-h-0 overflow-hidden pb-0',
         )}
       >
-        <div className="panel flex h-10 sm:h-11 w-full items-center gap-2 sm:gap-3 px-3 sm:px-4 shadow-lg">
-          {/* Scrubber Kaydırıcı ve YouTube Tarzı Bölüm Başlığı İşaretçileri */}
-          <div className="relative flex-1 min-w-[120px] flex items-center">
-            <label htmlFor="scrubber" className="sr-only">
-              Metin içinde konum
-            </label>
-            <input
-              id="scrubber"
-              type="range"
-              min={0}
-              max={last}
-              step={1}
-              value={index}
-              onChange={(e) => onSeek(Number(e.target.value))}
-              className="scrubber w-full relative z-10"
-              style={{ '--progress': `${progress}%` } as CSSProperties}
+        <div className="panel flex h-11 sm:h-12 w-full items-center gap-3 sm:gap-4 px-3.5 sm:px-5 shadow-xl">
+          {/* Kesintisiz Pointer Tabanlı Scrubber ve YouTube Tarzı Bölüm İşaretçileri */}
+          <div
+            ref={trackRef}
+            role="slider"
+            tabIndex={0}
+            aria-label="Metin içinde konum"
+            aria-valuemin={0}
+            aria-valuemax={last}
+            aria-valuenow={index}
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerUp}
+            onPointerCancel={handlePointerUp}
+            onPointerLeave={handlePointerLeave}
+            onKeyDown={(e) => {
+              if (e.key === 'ArrowLeft') onSeek(Math.max(0, index - 1))
+              if (e.key === 'ArrowRight') onSeek(Math.min(last, index + 1))
+              if (e.key === 'Home') onSeek(0)
+              if (e.key === 'End') onSeek(last)
+            }}
+            className="relative flex-1 h-9 flex items-center cursor-pointer touch-none select-none py-2"
+          >
+            {/* Scrubber Ray Arka Planı (Track Background) */}
+            <div className="relative w-full h-1.5 rounded-full bg-foreground/15 overflow-hidden">
+              {/* Aktif İlerleme Doldurma Çubuğu (Fill) */}
+              <div
+                className="h-full bg-primary transition-[width] duration-75 ease-out"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+
+            {/* YouTube Tarzı Bölüm Başlığı Çentikleri (Dividers - Asla dokunmayı/kaydırmayı engellemez) */}
+            {chapters.map((ch, idx) => (
+              <div
+                key={idx}
+                style={{ left: `${ch.percent}%` }}
+                className="pointer-events-none absolute h-3.5 w-[2.5px] rounded-full bg-background ring-1 ring-border/50 -translate-x-1/2 z-10"
+                aria-hidden="true"
+              />
+            ))}
+
+            {/* Scrubber Tutamacı (Thumb - Yumuşak ve sürüklemede büyüme efekti) */}
+            <div
+              style={{ left: `${progress}%` }}
+              className="pointer-events-none absolute -translate-x-1/2 size-4 sm:size-4.5 rounded-full bg-foreground border-2 border-background shadow-md z-20 transition-transform active:scale-125"
             />
 
-            {/* Bölüm Başlığı Çentikleri ve Tıklanabilir Duraklar (YouTube Chapters) */}
-            {chapters.length > 0 && (
-              <div className="pointer-events-none absolute inset-x-0 h-3 flex items-center z-20">
-                {chapters.map((ch, idx) => (
-                  <div
-                    key={idx}
-                    style={{ left: `${ch.percent}%` }}
-                    className="absolute -translate-x-1/2 flex flex-col items-center group pointer-events-auto"
-                  >
-                    {/* Çentik Çizgisi: Üzerine gelindiğinde veya tıklandığında bölüme zıplar */}
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        onSeek(ch.index)
-                      }}
-                      className="h-3 w-[2.5px] rounded-full bg-background/90 ring-1 ring-border/40 hover:w-[4px] hover:bg-primary transition-all cursor-pointer"
-                      aria-label={`Bölüme git: ${ch.title}`}
-                      title={ch.title}
-                    />
-
-                    {/* Bölüm Adı Önizleme Baloncuğu (YouTube Chapter Tooltip) */}
-                    <div className="pointer-events-none absolute bottom-4.5 mb-1 hidden group-hover:flex whitespace-nowrap rounded-md bg-popover/95 border border-border px-2 py-0.5 text-[11px] font-medium text-popover-foreground shadow-md backdrop-blur-md animate-in fade-in zoom-in-95 duration-150 z-30">
-                      {ch.title}
-                    </div>
-                  </div>
-                ))}
+            {/* YouTube Tarzı Bölüm Adı Önizleme Baloncuğu (Tooltip) */}
+            {hoverInfo && (
+              <div
+                style={{ left: `${hoverInfo.percent}%` }}
+                className="pointer-events-none absolute bottom-8 -translate-x-1/2 whitespace-nowrap rounded-md bg-popover/95 border border-border px-2.5 py-1 text-[11px] font-medium text-popover-foreground shadow-lg backdrop-blur-md animate-in fade-in zoom-in-95 duration-100 z-30"
+              >
+                {hoverInfo.title}
               </div>
             )}
           </div>
 
-          {/* Kalan Süre */}
-          <span className="font-mono text-[11px] tabular-nums text-muted-foreground/75 whitespace-nowrap shrink-0">
+          {/* Kalan Süre Bilgisi (Daralt butonu kaldırıldığı için tüm alan scrubber ve kalan süreye ayrıldı) */}
+          <span className="font-mono text-[11px] sm:text-xs tabular-nums text-muted-foreground/80 whitespace-nowrap shrink-0">
             {formatRemaining(total - index - 1, wpm, chunkSize)} kaldı
           </span>
-
-          {/* Daralt / Kapat Butonu */}
-          <button
-            type="button"
-            onClick={() => {
-              setIsManuallyExpanded(false)
-              setIsHovered(false)
-            }}
-            className="ctl size-7 sm:size-8 shrink-0 rounded-md text-muted-foreground hover:text-foreground"
-            aria-label="Kontrolleri daralt"
-            title="Daralt"
-          >
-            <ChevronDown className="size-4" />
-          </button>
         </div>
       </div>
 
-      {/* 2. Minik Şeffaf Açma/Kapatma Tuşu (Pill Tab) - SAĞ ALT KÖŞEDE (iPad Siri ve Home çubuğu çakışmasını önler) */}
-      <div className="relative flex h-6 w-full items-end justify-end px-4 sm:px-6 pointer-events-auto">
+      {/* 2. Büyütülmüş Minik Şeffaf Açma/Kapatma Tuşu - OKUMA PENCERESİNİN SAĞ ALT HİZASINDA */}
+      <div className="relative flex h-7 sm:h-8 w-full max-w-4xl lg:max-w-5xl xl:max-w-6xl items-end justify-end px-4 sm:px-8 pointer-events-auto">
         <button
           type="button"
           onClick={handleToggleExpand}
-          className="ctl flex h-4 w-12 sm:w-14 items-center justify-center rounded-t-md border-t border-x border-border/40 bg-background/70 hover:bg-background/95 text-muted-foreground/70 hover:text-foreground backdrop-blur-md shadow-2xs transition-colors"
-          aria-label={isExpanded ? 'Kontrol çubuğunu gizle' : 'Kontrol çubuğunu aç'}
-          title={isExpanded ? 'Gizle' : 'Kontrolleri göster'}
+          className="ctl flex h-5 sm:h-6 w-20 sm:w-24 items-center justify-center rounded-t-lg border-t border-x border-border/50 bg-background/80 hover:bg-background/95 text-muted-foreground hover:text-foreground backdrop-blur-md shadow-xs transition-colors cursor-pointer"
+          aria-label={isExpanded ? 'İlerleme çubuğunu gizle' : 'İlerleme çubuğunu aç'}
+          title={isExpanded ? 'Gizle' : 'İlerleme çubuğunu göster'}
         >
           {isExpanded ? (
-            <ChevronDown className="size-3" />
+            <ChevronDown className="size-3.5" />
           ) : (
-            <ChevronUp className="size-3" />
+            <ChevronUp className="size-3.5" />
           )}
         </button>
       </div>
 
-      {/* 3. İncecik Progress Bar Çizgisi (Her zaman en alt sınırda, bölüm kesitleriyle YouTube tarzı) */}
+      {/* 3. İncecik Progress Bar Çizgisi (Her zaman en alt sınırda, bölüm kesitleriyle) */}
       <div className="relative h-[2.5px] w-full bg-foreground/10 overflow-hidden shrink-0">
         <div
           className="h-full bg-primary transition-[width] duration-150 ease-out"

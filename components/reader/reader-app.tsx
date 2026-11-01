@@ -124,6 +124,35 @@ export function ReaderApp() {
     [lastIndex],
   )
 
+  // Mobil Ekran Kilidi (Screen Lock / Sleep) ve Sekme Değişimi Algılama:
+  // Okuma esnasında ekran kilitlenirse arka planda devam etmeyip otomatik duraklar;
+  // ekran kilidi açıldığında kaldığı yerden tıklamaya gerek kalmadan akıcı şekilde devam eder.
+  const wasPlayingBeforeLockRef = useRef(false)
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.hidden || document.visibilityState === 'hidden') {
+        if (playing) {
+          wasPlayingBeforeLockRef.current = true
+          setPlaying(false)
+        }
+      } else if (document.visibilityState === 'visible') {
+        if (wasPlayingBeforeLockRef.current) {
+          wasPlayingBeforeLockRef.current = false
+          // Kilit açıldığında gözün konumu yakalaması için minik bir gecikmeyle (150ms) akıcı devam et
+          setTimeout(() => {
+            setPlaying(true)
+          }, 150)
+        }
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
+  }, [playing])
+
   // 1 & 2. KURAL: Akıllı Cümle Başı Parlama (Pulse / Jump) Animasyonu
   const [isPulsing, setIsPulsing] = useState(false)
   const pulseTimerRef = useRef<NodeJS.Timeout | null>(null)
@@ -299,11 +328,20 @@ export function ReaderApp() {
       }
     }
 
+    const onNativeWheel = (e: WheelEvent) => {
+      e.preventDefault()
+      if (Math.abs(e.deltaY) > 10) {
+        changeWpm(e.deltaY < 0 ? WPM_STEP : -WPM_STEP)
+      }
+    }
+
     el.addEventListener('touchmove', onNativeTouchMove, { passive: false })
+    el.addEventListener('wheel', onNativeWheel, { passive: false })
     return () => {
       el.removeEventListener('touchmove', onNativeTouchMove)
+      el.removeEventListener('wheel', onNativeWheel)
     }
-  }, [setWpmDirect, zen])
+  }, [changeWpm, setWpmDirect, zen])
 
   const handleZenTouchEnd = () => {
     if (!zenTouchStateRef.current) return
@@ -651,6 +689,12 @@ export function ReaderApp() {
           onTouchStart={handleZenTouchStart}
           onTouchMove={handleZenTouchMove}
           onTouchEnd={handleZenTouchEnd}
+          onWheel={(e) => {
+            e.preventDefault()
+            if (Math.abs(e.deltaY) > 10) {
+              changeWpm(e.deltaY < 0 ? WPM_STEP : -WPM_STEP)
+            }
+          }}
           className="fixed inset-0 z-20 flex select-none pointer-events-auto touch-none overscroll-none"
         >
           {/* Sol %25: Akıllı cümle başı geri sar */}

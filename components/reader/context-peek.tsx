@@ -73,11 +73,8 @@ export function ContextPeek({
         visible ? 'opacity-100' : 'pointer-events-none hidden opacity-0',
       )}
     >
-      {/* Üst Bilgi Başlığı (Bağlam ve Konum Göstergesi) */}
-      <div className="flex items-center justify-between mb-1 px-1 shrink-0 landscape-short:mb-0.5">
-        <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground/80">
-          Bağlam
-        </p>
+      {/* Üst Bilgi Başlığı (Konum Göstergesi) */}
+      <div className="flex items-center justify-end mb-1 px-1 shrink-0 landscape-short:mb-0.5">
         {words.length > 0 && (
           <span className="text-[11px] font-mono tabular-nums text-muted-foreground/60">
             {start + 1} - {end} / {words.length}

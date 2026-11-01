@@ -1183,7 +1183,8 @@ function isHeadingLine(lineObj: PdfLine, medianFontSize: number, lineIdx: number
   // 2. Açık ana bölüm kelimeleri (BÖLÜM 1, 1. Bölüm, GİRİŞ, ÖNSÖZ, ÖZET YÖNETİCİ RAPORU, SONUÇ vb.)
   if (isExplicitChapterStart(t) && words.length <= 12) {
     if (t.includes(':')) {
-      const after = t.split(':', 1)[1]?.trim() || ''
+      const colonIdx = t.indexOf(':')
+      const after = colonIdx !== -1 ? t.slice(colonIdx + 1).trim() : ''
       const afterLetters = after.replace(/[^a-zA-ZçğıöşüÇĞİÖŞÜ]/g, '')
       if (afterLetters && afterLetters !== afterLetters.toUpperCase() && after.split(/\s+/).length > 3) {
         return false
@@ -1200,7 +1201,8 @@ function isHeadingLine(lineObj: PdfLine, medianFontSize: number, lineIdx: number
     const restLetters = rest.replace(/[^a-zA-ZçğıöşüÇĞİÖŞÜ]/g, '')
     if (restLetters.length >= 3 && restLetters === restLetters.toUpperCase()) {
       if (rest.includes(':')) {
-        const after = rest.split(':', 1)[1]?.trim() || ''
+        const colonIdx = rest.indexOf(':')
+        const after = colonIdx !== -1 ? rest.slice(colonIdx + 1).trim() : ''
         const afterLetters = after.replace(/[^a-zA-ZçğıöşüÇĞİÖŞÜ]/g, '')
         if (afterLetters && afterLetters === afterLetters.toUpperCase()) {
           return true
@@ -1212,28 +1214,45 @@ function isHeadingLine(lineObj: PdfLine, medianFontSize: number, lineIdx: number
     return false
   }
 
-  // 4. Tamamı BÜYÜK HARF olan bağımsız ana başlıklar (Belge Başlığı, ÖZET, SONUÇ vb.)
+  // 4. Çok satırlı ana başlık devam satırı (örn: 1. bölümün devamı olan "BÜTÜNLÜK")
   const lettersOnly = t.replace(/[^a-zA-ZçğıöşüÇĞİÖŞÜ]/g, '')
-  if (lettersOnly.length >= 4 && lettersOnly === lettersOnly.toUpperCase() && words.length <= 16) {
-    if (t.includes(':')) {
-      const after = t.split(':', 1)[1]?.trim() || ''
-      const afterLetters = after.replace(/[^a-zA-ZçğıöşüÇĞİÖŞÜ]/g, '')
-      if (afterLetters && afterLetters === afterLetters.toUpperCase()) {
+  if (lettersOnly.length >= 2 && lettersOnly === lettersOnly.toUpperCase() && words.length <= 6) {
+    if (allLines && lineIdx > 0) {
+      const prev = allLines[lineIdx - 1].text.trim()
+      const prevNum = prev.match(/^(?:(\d{1,2}|[IVXLC]{1,5})\.)\s+([A-ZÇĞİÖŞÜ].*)$/)
+      if (prevNum) {
+        const prevLetters = prevNum[2].replace(/[^a-zA-ZçğıöşüÇĞİÖŞÜ]/g, '')
+        if (prevLetters.length >= 3 && prevLetters === prevLetters.toUpperCase()) {
+          return true
+        }
+      }
+      if (isExplicitChapterStart(prev)) {
         return true
       }
-    } else {
-      return true
     }
   }
 
-  // 5. Belirgin derecede büyük fontlu başlık (Gövde fontundan en az %25 büyük ve sayfa başında)
+  // 5. Belirgin derecede büyük fontlu başlık (Gövde fontundan en az %25 büyük ve sayfa başında - roman vb. için)
   if (
     lineObj.fontSize &&
     medianFontSize &&
     lineObj.fontSize >= medianFontSize * 1.25 &&
     words.length <= 8 &&
-    (lineIdx === 0 || (allLines && allLines.length <= 3)) &&
     !t.includes(':')
+  ) {
+    if (lineIdx === 0) return true
+    if (lineIdx === 1 && allLines && /^\d+$/.test(allLines[0].text.trim())) return true
+  }
+
+  // 6. Sayfa başında tek başına yer alan kısa BÜYÜK HARFLİ roman bölüm başlığı (font bilgisi olmayan PDF'ler için)
+  if (
+    (lineIdx === 0 || (lineIdx === 1 && allLines && /^\d+$/.test(allLines[0].text.trim()))) &&
+    words.length >= 1 &&
+    words.length <= 6 &&
+    !t.includes(':') &&
+    lettersOnly.length >= 4 &&
+    lettersOnly === lettersOnly.toUpperCase() &&
+    !/^(bölüm|kısım|sayfa|içindekiler)/i.test(t)
   ) {
     return true
   }
@@ -1987,10 +2006,37 @@ export async function parsePdfDocument(
     throw new Error('PDF dosyasından okunabilir metin çıkarılamadı.')
   }
 
-  const cleanTitle = filename.replace(/\.pdf$/i, '').replace(/[-_]/g, ' ')
+  // Belgenin en başındaki ana başlığı / kitap adını tespit et
+  let detectedDocTitle = ''
+  if (preparedPages.length > 0) {
+    const firstPageLines = preparedPages[0].lines
+    const titleCandidates: string[] = []
+    for (const l of firstPageLines) {
+      if (l.isHeading) break
+      const txt = l.text.trim()
+      if (!txt) continue
+      const letters = txt.replace(/[^a-zA-ZçğıöşüÇĞİÖŞÜ]/g, '')
+      if (letters.length >= 3 && letters === letters.toUpperCase() && txt.split(/\s+/).length <= 15) {
+        titleCandidates.push(txt)
+      } else {
+        break
+      }
+    }
+    if (titleCandidates.length > 0 && titleCandidates.length <= 4) {
+      detectedDocTitle = titleCandidates.join(' ').replace(/\s+/g, ' ').trim()
+    }
+  }
+
+  const cleanFilenameTitle = filename.replace(/\.pdf$/i, '').replace(/[-_]/g, ' ')
+  const useDocTitle =
+    detectedDocTitle &&
+    (cleanFilenameTitle.length <= 4 ||
+      /^(gyk|doc|document|file|metin|adsiz|untitled|media[\-_]\w+)/i.test(cleanFilenameTitle))
+
+  const finalTitle = useDocTitle ? detectedDocTitle : cleanFilenameTitle
 
   return {
-    title: cleanTitle,
+    title: finalTitle,
     text: cleanedText,
     totalPages: numPages,
     wordCount,

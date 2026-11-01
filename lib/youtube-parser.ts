@@ -9,11 +9,22 @@
  * 5. Müzik notaları (♪, ♫), [Müzik], (Alkış) ve tekrarlanan rolling altyazı satırlarını ayıklar.
  */
 
+export type YouTubeChapter = {
+  title: string
+  start: number
+}
+
+export type TranscriptPhrase = {
+  text: string
+  start?: number
+}
+
 export type ExtractedYouTube = {
   title: string
   text: string
   videoId: string
   wordCount: number
+  chapters?: YouTubeChapter[]
 }
 
 export function extractYouTubeId(url: string): string | null {
@@ -60,16 +71,47 @@ async function fetchVideoTitle(videoId: string): Promise<string> {
 }
 
 /**
- * WEBVTT, TTML, XML veya JSON3 formatındaki transkript verisini temiz metne çevirir.
+ * Video açıklamasındaki zaman damgalı bölümleri tespit eder (örn: "00:00 Giriş", "02:15 Kuantum Fiziği").
  */
-export function parseTranscriptData(rawContent: string): string {
+export function parseChaptersFromDescription(desc: string, durationSec?: number): YouTubeChapter[] {
+  if (!desc) return []
+  const lines = desc.split(/\r?\n/)
+  const chapters: YouTubeChapter[] = []
+  const timestampRegex = /(?:^|\s)\[?\(?(?:(\d{1,2}):)?(\d{2}):(\d{2})\)?\]?\s*[-–—:]?\s*(.+)$/
+
+  for (const line of lines) {
+    const trimmed = line.trim()
+    const match = trimmed.match(timestampRegex)
+    if (match) {
+      const hours = match[1] ? parseInt(match[1], 10) : 0
+      const minutes = parseInt(match[2], 10)
+      const seconds = parseInt(match[3], 10)
+      const totalSeconds = hours * 3600 + minutes * 60 + seconds
+      const title = match[4].trim().replace(/^[-–—:]\s*/, '')
+      if (title && (!durationSec || totalSeconds <= durationSec)) {
+        chapters.push({ title, start: totalSeconds })
+      }
+    }
+  }
+
+  if (chapters.length >= 2) {
+    return chapters.sort((a, b) => a.start - b.start)
+  }
+  return []
+}
+
+/**
+ * WEBVTT, TTML, XML veya JSON3 formatındaki transkript verisini temiz metne çevirir.
+ * Hazır video bölümleri varsa metne "# Bölüm Başlığı" şeklinde iliştirir.
+ */
+export function parseTranscriptData(rawContent: string, chapters: YouTubeChapter[] = []): string {
   if (!rawContent || !rawContent.trim()) return ''
 
   const raw = rawContent.trim()
-  const cleanPhrases: string[] = []
+  const cleanPhrases: TranscriptPhrase[] = []
   const seenRecent: string[] = []
 
-  const addPhrase = (phrase: string) => {
+  const addPhrase = (phrase: string, startSec?: number) => {
     let t = decodeHtmlEntities(phrase)
     // Ses efektlerini ve müzik işaretlerini temizle
     t = t
@@ -88,7 +130,7 @@ export function parseTranscriptData(rawContent: string): string {
     seenRecent.push(lower)
     if (seenRecent.length > 5) seenRecent.shift()
 
-    cleanPhrases.push(t)
+    cleanPhrases.push({ text: t, start: startSec })
   }
 
   // 1. FORMAT: JSON3 (YouTube Innertube Player formatı)
@@ -97,17 +139,18 @@ export function parseTranscriptData(rawContent: string): string {
       const data = JSON.parse(raw)
       const events = data.events || []
       for (const ev of events) {
+        const startSec = typeof ev.tStartMs === 'number' ? ev.tStartMs / 1000 : undefined
         if (ev.segs && Array.isArray(ev.segs)) {
           for (const seg of ev.segs) {
             const segText = seg.utf8 || ''
             if (segText && segText !== '\n') {
-              addPhrase(segText)
+              addPhrase(segText, startSec)
             }
           }
         }
       }
       if (cleanPhrases.length > 0) {
-        return formatPhrasesIntoParagraphs(cleanPhrases)
+        return formatPhrasesIntoParagraphs(cleanPhrases, chapters)
       }
     } catch {}
   }
@@ -115,6 +158,8 @@ export function parseTranscriptData(rawContent: string): string {
   // 2. FORMAT: WEBVTT (.vtt formatı)
   if (raw.includes('WEBVTT') || /-->/.test(raw)) {
     const lines = raw.split(/\r?\n/)
+    let currentStartSec: number | undefined = undefined
+
     for (const line of lines) {
       const l = line.trim()
       if (!l) continue
@@ -128,18 +173,24 @@ export function parseTranscriptData(rawContent: string): string {
       ) {
         continue
       }
-      // Zaman damgalarını atla (Örn: "00:00:01.360 --> 00:00:03.040")
-      if (/\d{1,2}:\d{2}(?::\d{2})?[.,]\d{3}\s*-->\s*\d{1,2}:\d{2}(?::\d{2})?[.,]\d{3}/.test(l)) {
+      // Zaman damgalarını yakala (Örn: "00:00:01.360 --> 00:00:03.040" veya "01:23.450 --> 01:25.000")
+      const timeMatch = l.match(/(?:(\d{1,2}):)?(\d{2}):(\d{2})[.,](\d{3})\s*-->/)
+      if (timeMatch) {
+        const hours = timeMatch[1] ? parseInt(timeMatch[1], 10) : 0
+        const mins = parseInt(timeMatch[2], 10)
+        const secs = parseInt(timeMatch[3], 10)
+        const ms = parseInt(timeMatch[4], 10)
+        currentStartSec = hours * 3600 + mins * 60 + secs + ms / 1000
         continue
       }
       // Cue numaralarını atla (Yalnızca rakamlardan oluşan satırlar)
       if (/^\d+$/.test(l)) {
         continue
       }
-      addPhrase(l)
+      addPhrase(l, currentStartSec)
     }
     if (cleanPhrases.length > 0) {
-      return formatPhrasesIntoParagraphs(cleanPhrases)
+      return formatPhrasesIntoParagraphs(cleanPhrases, chapters)
     }
   }
 
@@ -150,48 +201,64 @@ export function parseTranscriptData(rawContent: string): string {
       const xmlDoc = parser.parseFromString(raw, 'text/xml')
       const nodes = xmlDoc.querySelectorAll('p, text, s')
       nodes.forEach((node) => {
-        addPhrase(node.textContent || '')
+        const startAttr = node.getAttribute('start')
+        const startSec = startAttr ? parseFloat(startAttr) : undefined
+        addPhrase(node.textContent || '', startSec)
       })
       if (cleanPhrases.length > 0) {
-        return formatPhrasesIntoParagraphs(cleanPhrases)
+        return formatPhrasesIntoParagraphs(cleanPhrases, chapters)
       }
     } catch {}
   }
 
   // 4. FORMAT: Regex Fallback (XML etiketlerini doğrudan yakala)
-  const xmlMatches = raw.matchAll(/<(?:text|p|s)[^>]*>(.*?)<\/(?:text|p|s)>/gi)
+  const xmlMatches = raw.matchAll(/<(?:text|p|s)[^>]*?(?:start=["']([\d\.]+)["'])?[^>]*>(.*?)<\/(?:text|p|s)>/gi)
   for (const m of xmlMatches) {
-    addPhrase(m[1])
+    const startSec = m[1] ? parseFloat(m[1]) : undefined
+    addPhrase(m[2], startSec)
   }
 
-  return formatPhrasesIntoParagraphs(cleanPhrases)
+  return formatPhrasesIntoParagraphs(cleanPhrases, chapters)
 }
 
 /**
- * Ayrıştırılan konuşma cümlelerini doğal, akıcı paragraflar haline getirir.
+ * Ayrıştırılan konuşma cümlelerini doğal, akıcı paragraflar ve bölüm başlıkları (# ...) haline getirir.
  */
-function formatPhrasesIntoParagraphs(phrases: string[]): string {
+function formatPhrasesIntoParagraphs(phrases: TranscriptPhrase[], chapters: YouTubeChapter[] = []): string {
   if (!phrases.length) return ''
-  const full = phrases.join(' ').replace(/\s+/g, ' ').trim()
 
-  // Cümle sonlarına göre (nokta, ünlem, soru işareti) 3-4 cümlede bir paragraf oluştur
-  const sentences = full.match(/[^.!?]+[.!?]+["”’»)]*|\S+$/g) || [full]
-  const paragraphs: string[] = []
+  const sortedChapters = [...chapters].sort((a, b) => a.start - b.start)
+  let chIdx = 0
+  const resultBlocks: string[] = []
   let currentGroup: string[] = []
 
-  for (const sentence of sentences) {
-    currentGroup.push(sentence.trim())
-    if (currentGroup.length >= 4 || currentGroup.join(' ').split(/\s+/).length >= 60) {
-      paragraphs.push(currentGroup.join(' '))
+  const flushGroup = () => {
+    if (currentGroup.length > 0) {
+      resultBlocks.push(currentGroup.join(' '))
       currentGroup = []
     }
   }
 
-  if (currentGroup.length > 0) {
-    paragraphs.push(currentGroup.join(' '))
+  for (const phrase of phrases) {
+    if (
+      sortedChapters.length > 0 &&
+      chIdx < sortedChapters.length &&
+      typeof phrase.start === 'number' &&
+      phrase.start >= sortedChapters[chIdx].start
+    ) {
+      flushGroup()
+      resultBlocks.push(`# ${sortedChapters[chIdx].title}`)
+      chIdx++
+    }
+
+    currentGroup.push(phrase.text)
+    if (currentGroup.length >= 4 || currentGroup.join(' ').split(/\s+/).length >= 60) {
+      flushGroup()
+    }
   }
 
-  return paragraphs.join('\n\n')
+  flushGroup()
+  return resultBlocks.join('\n\n')
 }
 
 /**
@@ -212,6 +279,7 @@ export async function fetchYouTubeTranscript(
   onProgress?.('Konuşma metni (altyazı) taranıyor...')
 
   let transcriptText = ''
+  let detectedChapters: YouTubeChapter[] = []
 
   // STRATEJİ 1: CORS Uyumlu Piped API Sağlayıcıları
   // YouTube transkriptlerini TTML/XML formatında doğrudan ve yüksek hızda sunar
@@ -229,6 +297,20 @@ export async function fetchYouTubeTranscript(
       })
       if (!res.ok) continue
       const data = await res.json()
+
+      // Hazır YouTube bölümlerini (Chapters) tespit et
+      if (Array.isArray(data?.chapters) && data.chapters.length >= 2) {
+        detectedChapters = data.chapters
+          .map((c: any) => ({
+            title: decodeHtmlEntities(String(c.title || '')).trim(),
+            start: typeof c.start === 'number' ? c.start : Number(c.start || 0),
+          }))
+          .filter((c: any) => c.title)
+      }
+      if (detectedChapters.length < 2 && data?.description) {
+        detectedChapters = parseChaptersFromDescription(data.description)
+      }
+
       const subs = data?.subtitles
       if (Array.isArray(subs) && subs.length > 0) {
         // Türkçe altyazıyı önceliklendir (tr veya tr-TR)
@@ -241,7 +323,7 @@ export async function fetchYouTubeTranscript(
           const subRes = await fetch(chosen.url, { signal: AbortSignal.timeout(5000) })
           if (subRes.ok) {
             const body = await subRes.text()
-            transcriptText = parseTranscriptData(body)
+            transcriptText = parseTranscriptData(body, detectedChapters)
             if (transcriptText.split(/\s+/).filter(Boolean).length >= 15) {
               break
             }
@@ -260,6 +342,19 @@ export async function fetchYouTubeTranscript(
       })
       if (invRes.ok) {
         const invData = await invRes.json()
+
+        if (detectedChapters.length < 2 && Array.isArray(invData?.chapters) && invData.chapters.length >= 2) {
+          detectedChapters = invData.chapters
+            .map((c: any) => ({
+              title: decodeHtmlEntities(String(c.title || '')).trim(),
+              start: typeof c.start === 'number' ? c.start : Number(c.start || 0),
+            }))
+            .filter((c: any) => c.title)
+        }
+        if (detectedChapters.length < 2 && invData?.description) {
+          detectedChapters = parseChaptersFromDescription(invData.description)
+        }
+
         const caps = invData?.captions
         if (Array.isArray(caps) && caps.length > 0) {
           const trCap = caps.find((c: any) => c.languageCode === 'tr' || c.languageCode === 'tr-TR')
@@ -273,7 +368,7 @@ export async function fetchYouTubeTranscript(
             })
             if (subRes.ok) {
               const body = await subRes.text()
-              transcriptText = parseTranscriptData(body)
+              transcriptText = parseTranscriptData(body, detectedChapters)
             }
           }
         }
@@ -312,6 +407,11 @@ export async function fetchYouTubeTranscript(
 
       if (res.ok) {
         const data = await res.json()
+
+        if (detectedChapters.length < 2 && data?.videoDetails?.shortDescription) {
+          detectedChapters = parseChaptersFromDescription(data.videoDetails.shortDescription)
+        }
+
         const tracks = data?.captions?.playerCaptionsTracklistRenderer?.captionTracks
         if (Array.isArray(tracks) && tracks.length > 0) {
           const trTrack = tracks.find((t: any) => t.languageCode === 'tr')
@@ -324,7 +424,7 @@ export async function fetchYouTubeTranscript(
             const subRes = await fetch(subProxyUrl, { signal: AbortSignal.timeout(6000) })
             if (subRes.ok) {
               const subBody = await subRes.text()
-              transcriptText = parseTranscriptData(subBody)
+              transcriptText = parseTranscriptData(subBody, detectedChapters)
             }
           }
         }
@@ -345,5 +445,6 @@ export async function fetchYouTubeTranscript(
     text: transcriptText,
     videoId,
     wordCount,
+    chapters: detectedChapters.length > 0 ? detectedChapters : undefined,
   }
 }

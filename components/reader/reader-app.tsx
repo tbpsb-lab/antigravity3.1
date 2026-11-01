@@ -149,14 +149,37 @@ export function ReaderApp() {
   const [isFullscreen, setIsFullscreen] = useState(false)
 
   useEffect(() => {
+    const resetViewportScroll = () => {
+      window.scrollTo(0, 0)
+      if (document.body) {
+        document.body.scrollLeft = 0
+        document.body.scrollTop = 0
+        document.body.style.width = '100%'
+      }
+      if (document.documentElement) {
+        document.documentElement.scrollLeft = 0
+        document.documentElement.scrollTop = 0
+        document.documentElement.style.width = '100%'
+      }
+    }
+
     const handleFullscreenChange = () => {
       const isFs = Boolean(document.fullscreenElement || (document as any).webkitFullscreenElement)
       setIsFullscreen(isFs)
+      resetViewportScroll()
+      setTimeout(() => {
+        resetViewportScroll()
+        window.dispatchEvent(new Event('resize'))
+      }, 50)
     }
 
     const handleOrientationChange = () => {
-      // Cihaz dikey/yatay döndürüldüğünde ekran düzenini anında tazele
-      window.dispatchEvent(new Event('resize'))
+      // Cihaz dikey/yatay döndürüldüğünde scroll ve düzeni anında sıfırla
+      resetViewportScroll()
+      setTimeout(() => {
+        resetViewportScroll()
+        window.dispatchEvent(new Event('resize'))
+      }, 80)
     }
 
     document.addEventListener('fullscreenchange', handleFullscreenChange)

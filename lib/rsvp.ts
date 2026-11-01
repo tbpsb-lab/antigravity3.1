@@ -462,9 +462,11 @@ export function calculateWordDelay(
   const isHeading = typeof word === 'object' ? word.isHeading : text.startsWith('#')
   const baseDelay = 60000 / Math.max(1, baseWpm)
 
-  // Bölüm başlıkları için bütünlüklü okuma süresi
+  // Bölüm başlıkları için kelime sayısıyla orantılı rahat okuma süresi
   if (isHeading) {
-    return Math.max(Math.round(baseDelay * 3.5 + 450), 1250)
+    const wordCount = typeof word === 'object' && word.words ? word.words.length : text.split(/\s+/).length
+    const wordDelayTotal = wordCount * (baseDelay * 1.1)
+    return Math.max(Math.round(wordDelayTotal + 550), 1350)
   }
 
   // 1. Kelimenin noktalamasız harf sayısını (cleanLength) bul

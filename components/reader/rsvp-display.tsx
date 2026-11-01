@@ -195,8 +195,20 @@ export function RsvpDisplay({
 
   const finalScale = fontScale * autoFitScale
 
+  // Başlıklar için dinamik font boyutu: Başlık uzunluğuna göre akıllı küçültme (Mobilde taşmayı kesinlikle önler)
+  let headingBaseSize = 'clamp(1.15rem, 4.2cqi, 2.1rem)'
+  if (isHeading) {
+    if (cleanDisplayText.length > 55) {
+      headingBaseSize = 'clamp(0.9rem, 2.8cqi, 1.25rem)'
+    } else if (cleanDisplayText.length > 30) {
+      headingBaseSize = 'clamp(1rem, 3.5cqi, 1.6rem)'
+    }
+  }
+
   const wordStyle = {
-    fontSize: `calc(var(--word-base) * ${finalScale})`,
+    fontSize: isHeading
+      ? `calc(${headingBaseSize} * ${fontScale})`
+      : `calc(var(--word-base) * ${finalScale})`,
     fontFamily: fontFamily || 'var(--reader-font)',
     fontVariantNumeric: 'tabular-nums',
     fontFeatureSettings: '"tnum", "zero"',
@@ -312,13 +324,21 @@ export function RsvpDisplay({
               aria-live="off"
               style={wordStyle}
               className={cn(
-                'reader-word relative flex w-full items-baseline justify-center gap-x-[0.3em] py-[0.08em] leading-[1.3] text-center transition-[font-size] duration-100 ease-out [--word-base:clamp(1.75rem,5.2cqi,3.5rem)] landscape-short:[--word-base:clamp(1.4rem,8vh,2.5rem)]',
-                isHeading && 'font-extrabold tracking-tight text-primary drop-shadow-xs transition-all sm:scale-[1.03]',
-                isFootnote && 'italic text-amber-600/90 dark:text-amber-300/90',
+                'reader-word relative flex w-full items-center justify-center py-[0.08em] text-center transition-[font-size] duration-100 ease-out select-none max-w-full',
+                isHeading
+                  ? 'flex-wrap gap-x-[0.28em] gap-y-[0.1em] font-extrabold tracking-tight text-primary drop-shadow-xs leading-snug px-3 text-balance break-words'
+                  : 'flex-nowrap gap-x-[0.3em] items-baseline leading-[1.3] [--word-base:clamp(1.75rem,5.2cqi,3.5rem)] landscape-short:[--word-base:clamp(1.4rem,8vh,2.5rem)]',
+                isFootnote && 'italic text-amber-600/90 dark:text-amber-300/90 flex-wrap text-balance',
               )}
             >
               {displayWords.map((w, idx) => (
-                <span key={idx} className="inline-block whitespace-nowrap">
+                <span
+                  key={idx}
+                  className={cn(
+                    'inline-block',
+                    isHeading ? 'whitespace-normal' : 'whitespace-nowrap',
+                  )}
+                >
                   {w}
                 </span>
               ))}

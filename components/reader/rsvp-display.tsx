@@ -170,21 +170,42 @@ export function RsvpDisplay({
   const containerWidth = containerSize.width || 0
 
   if (containerWidth > 0) {
-    const padding = containerWidth < 540 ? 20 : 36
+    const padding = containerWidth < 540 ? 16 : 32
     const availableHalfWidth = Math.max(80, containerWidth / 2 - padding)
     const availableFullWidth = Math.max(160, containerWidth - padding * 2)
 
-    const estimatedBasePx = Math.min(56, Math.max(26, containerWidth * 0.052))
-    const currentPx = estimatedBasePx * fontScale
+    if (isHeading) {
+      // Başlık modunda: Konteyner genişliğine göre akıllı küçültme (Mobilde yatay taşmayı %100 önler)
+      const totalChars = cleanDisplayText.length
+      const longestWordLength = Math.max(...displayWords.map((w) => w.length), 1)
+      const baseHeadingPx = containerWidth < 480 ? 19 : 24
+      const currentHeadingPx = baseHeadingPx * fontScale
 
-    if (isSingleWordMode) {
+      // 1. En uzun kelimenin tek başına satırı taşırmasını engelle
+      const wordRequiredWidth = longestWordLength * currentHeadingPx * 0.62
+      const wordScale = wordRequiredWidth > availableFullWidth ? availableFullWidth / wordRequiredWidth : 1
+
+      // 2. Başlığın toplam karakter hacmine göre ölçekleme (en fazla 2 satırda sığdırma hedefi)
+      let totalScale = 1
+      const maxAllowedWidth = availableFullWidth * (containerWidth < 480 ? 1.65 : 2.2)
+      const estimatedTotalWidth = totalChars * currentHeadingPx * 0.52
+      if (estimatedTotalWidth > maxAllowedWidth) {
+        totalScale = maxAllowedWidth / estimatedTotalWidth
+      }
+
+      autoFitScale = Math.min(1, Math.max(0.42, Math.min(wordScale, totalScale)))
+    } else if (isSingleWordMode) {
       // Tek kelime modu: Merkeze göre kanat hesabı (monospace 0.60ch çarpanı)
+      const estimatedBasePx = Math.min(56, Math.max(26, containerWidth * 0.052))
+      const currentPx = estimatedBasePx * fontScale
       const requiredHalfWidth = maxSideChars * currentPx * 0.6
       if (requiredHalfWidth > availableHalfWidth) {
         autoFitScale = Math.min(1, Math.max(0.38, availableHalfWidth / requiredHalfWidth))
       }
     } else {
       // Çoklu kelime modu: Tüm öbeğin genişliği hesabı
+      const estimatedBasePx = Math.min(56, Math.max(26, containerWidth * 0.052))
+      const currentPx = estimatedBasePx * fontScale
       const totalChars = cleanDisplayText.length
       const requiredFullWidth = totalChars * currentPx * 0.52
       if (requiredFullWidth > availableFullWidth) {
@@ -196,18 +217,18 @@ export function RsvpDisplay({
   const finalScale = fontScale * autoFitScale
 
   // Başlıklar için dinamik font boyutu: Başlık uzunluğuna göre akıllı küçültme (Mobilde taşmayı kesinlikle önler)
-  let headingBaseSize = 'clamp(1.15rem, 4.2cqi, 2.1rem)'
+  let headingBaseSize = 'clamp(1rem, 3.4cqi, 1.85rem)'
   if (isHeading) {
-    if (cleanDisplayText.length > 55) {
-      headingBaseSize = 'clamp(0.9rem, 2.8cqi, 1.25rem)'
-    } else if (cleanDisplayText.length > 30) {
-      headingBaseSize = 'clamp(1rem, 3.5cqi, 1.6rem)'
+    if (cleanDisplayText.length > 50) {
+      headingBaseSize = 'clamp(0.85rem, 2.5cqi, 1.2rem)'
+    } else if (cleanDisplayText.length > 25) {
+      headingBaseSize = 'clamp(0.95rem, 2.9cqi, 1.45rem)'
     }
   }
 
   const wordStyle = {
     fontSize: isHeading
-      ? `calc(${headingBaseSize} * ${fontScale})`
+      ? `calc(${headingBaseSize} * ${finalScale})`
       : `calc(var(--word-base) * ${finalScale})`,
     fontFamily: fontFamily || 'var(--reader-font)',
     fontVariantNumeric: 'tabular-nums',
@@ -224,7 +245,7 @@ export function RsvpDisplay({
         onTouchEnd={handleTouchEnd}
         onWheel={handleWheel}
         className={cn(
-          'rsvp-stage group relative block w-full overflow-hidden px-4 py-4 text-left outline-none transition-all duration-500 sm:px-8 sm:py-6 [@media(max-height:640px)]:py-3 landscape-short:py-1.5 select-none touch-none overscroll-none',
+          'rsvp-stage group relative flex flex-col justify-center min-h-[96px] sm:min-h-[110px] w-full overflow-hidden px-4 py-3.5 text-left outline-none transition-all duration-500 sm:px-8 sm:py-5 [@media(max-height:640px)]:py-2.5 landscape-short:py-1.5 select-none touch-none overscroll-none',
           isPulsing && 'pulse-jump',
           playing
             ? 'border-transparent bg-transparent shadow-none'
@@ -326,7 +347,7 @@ export function RsvpDisplay({
               className={cn(
                 'reader-word relative flex w-full items-center justify-center py-[0.08em] text-center transition-[font-size] duration-100 ease-out select-none max-w-full',
                 isHeading
-                  ? 'flex-wrap gap-x-[0.28em] gap-y-[0.1em] font-extrabold tracking-tight text-primary drop-shadow-xs leading-snug px-3 text-balance break-words'
+                  ? 'flex-wrap gap-x-[0.25em] gap-y-[0.1em] font-extrabold tracking-tight text-primary drop-shadow-xs leading-snug px-2 text-balance break-words'
                   : 'flex-nowrap gap-x-[0.3em] items-baseline leading-[1.3] [--word-base:clamp(1.75rem,5.2cqi,3.5rem)] landscape-short:[--word-base:clamp(1.4rem,8vh,2.5rem)]',
                 isFootnote && 'italic text-amber-600/90 dark:text-amber-300/90 flex-wrap text-balance',
               )}
@@ -335,8 +356,8 @@ export function RsvpDisplay({
                 <span
                   key={idx}
                   className={cn(
-                    'inline-block',
-                    isHeading ? 'whitespace-normal' : 'whitespace-nowrap',
+                    'inline-block max-w-full',
+                    isHeading ? 'whitespace-normal break-words' : 'whitespace-nowrap',
                   )}
                 >
                   {w}

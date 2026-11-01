@@ -154,41 +154,55 @@ export function ReaderApp() {
       if (document.body) {
         document.body.scrollLeft = 0
         document.body.scrollTop = 0
-        document.body.style.width = '100%'
+        document.body.style.width = '100vw'
+        document.body.style.maxWidth = '100vw'
+        document.body.style.height = '100dvh'
       }
       if (document.documentElement) {
         document.documentElement.scrollLeft = 0
         document.documentElement.scrollTop = 0
-        document.documentElement.style.width = '100%'
+        document.documentElement.style.width = '100vw'
+        document.documentElement.style.maxWidth = '100vw'
+        document.documentElement.style.height = '100dvh'
+      }
+      window.dispatchEvent(new Event('resize'))
+    }
+
+    const scheduleViewportResets = () => {
+      resetViewportScroll()
+      const t1 = setTimeout(resetViewportScroll, 60)
+      const t2 = setTimeout(resetViewportScroll, 200)
+      const t3 = setTimeout(resetViewportScroll, 450)
+      return () => {
+        clearTimeout(t1)
+        clearTimeout(t2)
+        clearTimeout(t3)
       }
     }
 
     const handleFullscreenChange = () => {
       const isFs = Boolean(document.fullscreenElement || (document as any).webkitFullscreenElement)
       setIsFullscreen(isFs)
-      resetViewportScroll()
-      setTimeout(() => {
-        resetViewportScroll()
-        window.dispatchEvent(new Event('resize'))
-      }, 50)
+      scheduleViewportResets()
     }
 
     const handleOrientationChange = () => {
-      // Cihaz dikey/yatay döndürüldüğünde scroll ve düzeni anında sıfırla
-      resetViewportScroll()
-      setTimeout(() => {
-        resetViewportScroll()
-        window.dispatchEvent(new Event('resize'))
-      }, 80)
+      // Tablet/mobil dikey-yatay döndürüldüğünde Safari/WebKit ekran kaymasını tamamen önle
+      scheduleViewportResets()
     }
 
     document.addEventListener('fullscreenchange', handleFullscreenChange)
     document.addEventListener('webkitfullscreenchange', handleFullscreenChange)
     window.addEventListener('orientationchange', handleOrientationChange)
+    window.addEventListener('resize', resetViewportScroll)
+    window.visualViewport?.addEventListener('resize', resetViewportScroll)
+
     return () => {
       document.removeEventListener('fullscreenchange', handleFullscreenChange)
       document.removeEventListener('webkitfullscreenchange', handleFullscreenChange)
       window.removeEventListener('orientationchange', handleOrientationChange)
+      window.removeEventListener('resize', resetViewportScroll)
+      window.visualViewport?.removeEventListener('resize', resetViewportScroll)
     }
   }, [])
 

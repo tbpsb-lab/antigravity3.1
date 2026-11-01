@@ -54,33 +54,38 @@ export function ControlDock({
   }, [playing])
 
   // Masaüstü fare ve Apple Pencil hover desteği (Dokunmatik cihazlarda hover ile kilitlenmeyi engelle)
+  const isTouchDevice = () => {
+    if (typeof window === 'undefined') return false
+    return 'ontouchstart' in window || navigator.maxTouchPoints > 0 || window.matchMedia('(pointer: coarse)').matches
+  }
+
   const handleMouseEnter = () => {
-    if (typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches) {
-      return
-    }
+    if (isTouchDevice()) return
     if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current)
     setIsHovered(true)
   }
 
   const handleMouseLeave = () => {
+    if (isTouchDevice()) return
     if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current)
     hoverTimeoutRef.current = setTimeout(() => {
       setIsHovered(false)
     }, 600)
   }
 
-  // Dokunmatik / tık ile açma kapama (Kapatırken hover bayrağını da kesinlikle temizler)
+  // Dokunmatik / tık ile açma kapama (Mobilde çift tıklamayı ve hover kilitlenmesini kesinlikle engeller)
+  const lastToggleTimeRef = useRef(0)
   const handleToggleExpand = (e?: React.SyntheticEvent) => {
     if (e) {
       e.stopPropagation()
     }
+    const now = Date.now()
+    if (now - lastToggleTimeRef.current < 350) return
+    lastToggleTimeRef.current = now
+
     if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current)
-    if (isExpanded) {
-      setIsHovered(false)
-      setIsManuallyExpanded(false)
-    } else {
-      setIsManuallyExpanded(true)
-    }
+    setIsHovered(false)
+    setIsManuallyExpanded((prev) => !prev)
   }
 
   // Alt sınırdan herhangi bir yerden yukarı/aşağı kaydırma jesti
@@ -294,15 +299,7 @@ export function ControlDock({
         <button
           type="button"
           onClick={handleToggleExpand}
-          onTouchStart={(e) => {
-            e.stopPropagation()
-          }}
-          onTouchEnd={(e) => {
-            e.stopPropagation()
-            e.preventDefault()
-            handleToggleExpand(e)
-          }}
-          className="ctl flex h-5 sm:h-6 w-20 sm:w-24 items-center justify-center rounded-t-lg border-t border-x border-border/50 bg-background/80 hover:bg-background/95 text-muted-foreground hover:text-foreground backdrop-blur-md shadow-xs transition-colors cursor-pointer"
+          className="ctl relative flex h-6 sm:h-7 w-20 sm:w-24 items-center justify-center rounded-t-lg border-t border-x border-border/50 bg-background/85 hover:bg-background/95 text-muted-foreground hover:text-foreground backdrop-blur-md shadow-xs transition-colors cursor-pointer touch-manipulation before:absolute before:-top-3.5 before:-bottom-2 before:-left-4 before:-right-4 before:content-['']"
           aria-label={isExpanded ? 'İlerleme çubuğunu gizle' : 'İlerleme çubuğunu aç'}
           title={isExpanded ? 'Gizle' : 'İlerleme çubuğunu göster'}
         >

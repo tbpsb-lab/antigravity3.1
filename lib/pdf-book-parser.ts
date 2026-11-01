@@ -58,107 +58,6 @@ const SUPERSCRIPT_MAP: Record<string, string> = {
   '⁰': '0',
 }
 
-const KUNYE_KEYWORDS = [
-  'isbn',
-  'issn',
-  'yayınevi',
-  'yayınları',
-  'yayıncılık',
-  'okuyan us',
-  'basım',
-  'baskı',
-  'matbaa',
-  'matbaacılık',
-  'dizgi ve baskı',
-  'yaylacık matbaası',
-  'felsefi kitaplar',
-  'ofset',
-  'sertifika no',
-  'telif hakkı',
-  'tüm hakları',
-  'tıim hakları',
-  'all rights reserved',
-  'copyright',
-  'kapak tasarımı',
-  'sayfa düzeni',
-  'yayın yönetmeni',
-  'orijinal adı',
-  'özgün adı',
-  'çeviren',
-  'çeviri:',
-  'editör',
-  'dağıtım',
-  'kütüphane bilgi kartı',
-  'cataloging-in-publication',
-  'printed in',
-  'tic. ltd',
-  'san. ve tic',
-  'e-posta:',
-  'www.',
-  '.com.tr',
-]
-
-const TOC_KEYWORDS = [
-  'içindekiler',
-  'içindeki ler',
-  'içindeki  ler',
-  'i̇çi̇ndeki̇ ler',
-  'table of contents',
-  'contents',
-  'bölümler',
-]
-
-const BACKMATTER_KEYWORDS = [
-  'kaynakça',
-  'bibliyografya',
-  'kaynaklar',
-  'references',
-  'bibliography',
-  'dizin',
-  'index',
-  'notlar ve kaynaklar',
-  'yazarın diğer kitapları',
-  'yazarm diğer kitapları',
-  'diğer kitapları',
-  'yazarın yapıtları',
-]
-
-const AUTHOR_BIO_KEYWORDS = [
-  'romanlarının yazarıdır',
-  'romanının yazarıdır',
-  'kitaplarının yazarıdır',
-  'yazar hakkında',
-  'biyografi',
-  'biyografisi',
-  'özgeçmiş',
-  'kitapları bugüne kadar',
-  'dile çevrilen',
-  'ödülü\'nü kazanmış',
-  'madalyası\'na aday',
-  'yazarın hayatı',
-  'yazarın yapıtları',
-]
-
-const PRAISE_KEYWORDS = [
-  'övgüler',
-  'hakkında ne dediler',
-  'hakkında söylenenler',
-  'praise for',
-  'acclaim for',
-  'sunday times',
-  'the guardian',
-  'daily telegraph',
-  'stylist',
-  'bbc radio',
-  'new york times',
-  'the times',
-  'booklist',
-  'harika bir hikaye',
-  'çok sürükleyici',
-  'dahi bir hikaye',
-  'duygudaşlığın profesörü',
-]
-
 // Türkçe'de tek başına kelime olmayan, kerning/OCR hatasıyla kelimeden kopmuş ek parçaları
 const BROKEN_SUFFIX_SET = new Set([
   // Şahıs, ek fiil ve zaman ekleri
@@ -776,18 +675,29 @@ export function cleanLatexAndDiagrams(text: string): string {
   let t = text
 
   // 1. LaTeX ok ve formül sembollerini okunabilir Unicode karakterlere çevir
-  t = t.replace(/\\+\s*(?:longrightarrow|rightarrow|to)/gi, ' → ')
-  t = t.replace(/\\+\s*(?:longleftarrow|leftarrow)/gi, ' ← ')
-  t = t.replace(/\\+\s*(?:iff|Leftrightarrow)/gi, ' ↔ ')
-  t = t.replace(/\\+\s*(?:implies|Rightarrow)/gi, ' ⇒ ')
+  t = t.replace(/\\+\s*(?:longrightarrow|rightarrow|to)\b/gi, ' → ')
+  t = t.replace(/\\+\s*(?:longleftarrow|leftarrow)\b/gi, ' ← ')
+  t = t.replace(/\\+\s*(?:iff|Leftrightarrow)\b/gi, ' ↔ ')
+  t = t.replace(/\\+\s*(?:implies|Rightarrow)\b/gi, ' ⇒ ')
+  t = t.replace(/\\+\s*(?:cdot)\b/gi, ' · ')
+  t = t.replace(/\\+\s*(?:times)\b/gi, ' × ')
+  t = t.replace(/\\+\s*(?:approx|sim)\b/gi, ' ≈ ')
+  t = t.replace(/\\+\s*(?:neq?)\b/gi, ' ≠ ')
+  t = t.replace(/\\+\s*(?:leq?)\b/gi, ' ≤ ')
+  t = t.replace(/\\+\s*(?:geq?)\b/gi, ' ≥ ')
+  t = t.replace(/\\+\s*(?:pm)\b/gi, ' ± ')
   t = t.replace(/──>/g, ' → ')
   t = t.replace(/-->/g, ' → ')
 
-  // 2. LaTeX \text{...}, \textbf{...}, \textit{...} etiketlerinin açılması
-  t = t.replace(/\\+\s*te?x[\s\r\n]*t(?:bf|it|rm)?\s*\{([^}]+)\}/gi, '$1')
+  // 2. LaTeX \text{...}, \textbf{...}, \textit{...}, \mathrm{...} etiketlerinin açılması (multi-pass)
+  for (let pass = 0; pass < 3; pass++) {
+    t = t.replace(/\\+\s*(?:te?x[\s\r\n]*t(?:bf|it|rm|sc|sf)?|mathrm|mathbf|mathit)\s*\{([^}]+)\}/gi, '$1')
+  }
 
-  // 3. Matematik blok ayraçları ($$, $)
+  // 3. Matematik blok ve satır içi ayraçları ($$, $)
   t = t.replace(/\$\$/g, ' ')
+  t = t.replace(/(^|\s)\$([^$\n]+)\$(\s|$)/g, '$1$2$3')
+  t = t.replace(/\$/g, '')
 
   // 4. Şema / Diyagram çerçeve çizgilerinin ayıklanması
   const lines = t.split('\n')
@@ -1532,153 +1442,19 @@ export function isOcrGarbage(text: string): boolean {
 }
 
 /**
- * Bir sayfanın künye, yazar bio, içindekiler, önsöz veya kaynakça olup olmadığını analiz eder
+ * Kullanıcı tercihi: PDF sayfaları yorumsuz, tam ve eksiksiz alınır.
+ * Sayfa kırpma, atlama ve eleme özellikleri kaldırılmıştır; tüm metin olduğu gibi korunur.
+ * Yalnızca metin içermeyen tamamen boş sayfalar filtrelenir.
  */
 export function classifyPageBoilerplate(
   page: { pageNumber: number; lines: PdfLine[] },
   totalPages: number,
   context: { mainContentStarted?: boolean; inPreface?: boolean } = {},
 ): { isBoilerplate: boolean; reason: string; inPreface?: boolean } {
-  let { mainContentStarted = false, inPreface = false } = context
-  const rawLines = page.lines.map((l) => collapseSpacedLetters(l.text.trim())).filter(Boolean)
-  const fullText = rawLines.join('\n')
-  const lower = fullText.toLowerCase().replace(/\u0307/g, '')
-  const words = fullText.split(/\s+/).filter(Boolean)
-  const wordCount = words.length
-
-  // 1. Tamamen boş sayfalar
-  if (wordCount === 0) {
+  const words = page.lines.map((l) => l.text.trim()).join(' ').split(/\s+/).filter(Boolean)
+  if (words.length === 0) {
     return { isBoilerplate: true, reason: 'Boş Sayfa', inPreface: false }
   }
-
-  // 2. OCR gürültüsü ve halüsinasyon kontrolü
-  if (isOcrGarbage(fullText)) {
-    return { isBoilerplate: true, reason: 'Görsel / OCR Gürültüsü', inPreface: false }
-  }
-
-  // 3. Bilgi dolu ilk sayfa koruması: Rapor, makale veya bilgilendirici metinlerin ilk sayfası ASLA kapak kabul edilmez!
-  if (page.pageNumber === 1 && wordCount >= 50) {
-    return { isBoilerplate: false, reason: 'Ana Metin (Bilgi Dolu İlk Sayfa / Rapor)', inPreface: false }
-  }
-
-  // Ana metin başlamadan önce 1-4 kelimelik başlık/numara sayfaları
-  if (!mainContentStarted && wordCount < 5) {
-    return { isBoilerplate: true, reason: 'Ön Sayfa (Boş / Başlık)', inPreface }
-  }
-
-  // 4. Ana metin başladıktan sonra sadece tek bir sayı veya noktalama içeren sayfalar
-  if (mainContentStarted && wordCount <= 2 && /^\d{1,4}\.?$/.test(fullText.trim())) {
-    return { isBoilerplate: true, reason: 'Yalnız Sayfa Numarası', inPreface: false }
-  }
-
-  const topLinesText = rawLines.slice(0, 4).join(' ').toLowerCase().replace(/\u0307/g, '')
-  const hasHeading = page.lines.some((l) => l.isHeading)
-
-  const isChapterStart =
-    hasHeading ||
-    isExplicitChapterStart(rawLines[0] || '') ||
-    isExplicitChapterStart(topLinesText) ||
-    /^(birinci\s+bölüm|1\.\s*bölüm|bölüm\s*1|kısım\s*1|probleme\s*giriş|1\s*[\-\.]\s*değer|giriş|chapter\s*1)(?![a-zA-ZçğıöşüÇĞİÖŞÜ0-9])/i.test(
-      rawLines[0]?.toLowerCase().replace(/\u0307/g, '') || '',
-    ) ||
-    /^(birinci\s+bölüm|1\.\s*bölüm|bölüm\s*1|kısım\s*1|probleme\s*giriş|1\s*[\-\.]\s*değer|chapter\s*1)/i.test(
-      topLinesText,
-    )
-
-  if (isChapterStart) {
-    inPreface = false
-  }
-
-  // 5. Önsöz / Sunuş Filtresi (Kitap başındaki önsöz ve devam sayfalarını otomatik atla)
-  if (page.pageNumber <= Math.min(25, Math.floor(totalPages * 0.25)) && !mainContentStarted) {
-    const isPrefaceStart =
-      /^(önsöz|sunuş|yazarın\s*önsözü|çevirenin\s*önsözü|takdim|foreword|preface)(?![a-zA-ZçğıöşüÇĞİÖŞÜ0-9])/i.test(
-        rawLines[0]?.toLowerCase().replace(/\u0307/g, '') || '',
-      ) ||
-      /(?<![a-zA-ZçğıöşüÇĞİÖŞÜ0-9])(önsöz|sunuş|yazarın\s*önsözü)(?![a-zA-ZçğıöşüÇĞİÖŞÜ0-9])/i.test(topLinesText)
-
-    if (isPrefaceStart && !isChapterStart) {
-      inPreface = true
-    }
-
-    if (inPreface && !isChapterStart) {
-      return { isBoilerplate: true, reason: 'Önsöz / Sunuş (Ön Bilgi)', inPreface: true }
-    }
-  }
-
-  // 6. İçindekiler Tablosu
-  const firstLinesLower = rawLines
-    .slice(0, 4)
-    .map((l) => l.toLowerCase().replace(/\u0307/g, ''))
-    .join(' ')
-  const hasTocHeader = TOC_KEYWORDS.some((kw) => {
-    const cleanKw = kw.toLowerCase().replace(/\u0307/g, '')
-    return lower.includes(cleanKw) || firstLinesLower.includes(cleanKw)
-  })
-  const dottedOrNumberedLines = rawLines.filter((l) =>
-    /(\.{2,}|\s{2,}|[-–—]{1,2})\s*\d{1,4}$|\.{2,}\d{1,4}$|\b\d{1,3}\s*[-–—]+\s*\d{1,3}\b/.test(l),
-  ).length
-
-  if (
-    (hasTocHeader && dottedOrNumberedLines >= 1) ||
-    (rawLines.length >= 4 && dottedOrNumberedLines / rawLines.length >= 0.4)
-  ) {
-    return { isBoilerplate: true, reason: 'İçindekiler Tablosu', inPreface: false }
-  }
-
-  // 7. Künye / Yayınevi ve Basım Bilgileri
-  if (page.pageNumber <= Math.min(20, Math.max(5, totalPages)) || (totalPages >= 5 && page.pageNumber >= totalPages - 2)) {
-    let kunyeHits = 0
-    for (const kw of KUNYE_KEYWORDS) {
-      if (lower.includes(kw)) kunyeHits++
-    }
-    if (fullText.includes('©')) kunyeHits++
-    if (/978[\-\s]?\d/.test(fullText)) kunyeHits += 2
-    if (/sertifika\s*no|baskı\s*ve\s*cilt|basım\s*yeri|özgün\s*(adı|ismi)|t[üıi]m\s*haklar[ıi]/i.test(fullText)) kunyeHits += 2
-
-    if (kunyeHits >= 2 && wordCount < 380 && !isChapterStart) {
-      return { isBoilerplate: true, reason: 'Künye / Yayınevi ve Telif Bilgileri', inPreface: false }
-    }
-  }
-
-  // 8. Kitap başındaki ön sayfalar (Kapak, yazar biyografisi, basın övgüleri, ithaf, epigraf)
-  const isFrontZone = totalPages >= 5 && page.pageNumber <= Math.min(25, Math.floor(totalPages * 0.25))
-  if (isFrontZone && !mainContentStarted && !isChapterStart) {
-    // Yazar Biyografisi kontrolü: Sayfa başında açıkça biyografi başlığı bulunmalı ve sayfa bölüm başlığı içermemelidir
-    const isBioHeader = /^(yazar\s+hakkında|yazarın\s+biyografisi|yazar\s+biyografisi|biyografi|özgeçmiş|yazarın\s+özgeçmişi|about\s+the\s+author)\b/i.test(topLinesText)
-    if (isBioHeader && wordCount < 300 && !hasHeading) {
-      return { isBoilerplate: true, reason: 'Yazar Biyografisi', inPreface: false }
-    }
-
-    // Basın ve Okur Övgüleri
-    const isPraiseHeader = /^(övgüler|basından\s+övgüler|kitap\s+hakkında\s+övgüler|praise\s+for)\b/i.test(topLinesText)
-    const praiseHits = PRAISE_KEYWORDS.filter((kw) => lower.includes(kw)).length
-    if ((isPraiseHeader || (fullText.includes('"') && praiseHits >= 2)) && wordCount < 280 && !hasHeading) {
-      return { isBoilerplate: true, reason: 'Basın ve Okur Övgüleri', inPreface: false }
-    }
-
-    // Kısa ön sayfalar (Yarım başlık, ithaf, epigraf vb. - yalnızca 1-45 kelime)
-    if (wordCount < 45 && !hasHeading) {
-      return { isBoilerplate: true, reason: 'Ön Sayfa (Kapak / İthaf / Tanıtım)', inPreface: false }
-    }
-  }
-
-  // 9. Son sayfalarda Kaynakça / Dizin / Yazarın Diğer Kitapları
-  if (totalPages >= 5 && page.pageNumber >= Math.max(1, totalPages - 10)) {
-    const isBackHeader = BACKMATTER_KEYWORDS.some((kw) => lower.includes(kw.toLowerCase().replace(/\u0307/g, '')))
-    if (
-      isBackHeader &&
-      (lower.includes('pp.') ||
-        lower.includes('s.') ||
-        lower.includes('19') ||
-        lower.includes('20') ||
-        lower.includes('kitap') ||
-        lower.includes('yayın'))
-    ) {
-      return { isBoilerplate: true, reason: 'Kaynakça / Yazarın Kitapları / Dizin', inPreface: false }
-    }
-  }
-
   return { isBoilerplate: false, reason: 'Ana Metin', inPreface: false }
 }
 

@@ -117,8 +117,8 @@ function SpeedTestBody({ onClose, onApplySpeed }: Omit<SpeedTestModalProps, 'ope
         {/* Üst Başlık ve Kapatma Butonu */}
         <div className="flex items-center justify-between border-b border-border/60 pb-3">
           <div className="flex items-center gap-2.5">
-            <div className="flex size-8 items-center justify-center rounded-full bg-amber-500/15 text-amber-500">
-              <Zap className="size-4 fill-amber-500/30" />
+            <div className="flex size-8 items-center justify-center rounded-full bg-foreground/10 text-foreground">
+              <Zap className="size-4" />
             </div>
             <div>
               <h2 id="speed-test-title" className="text-sm sm:text-base font-bold tracking-tight">

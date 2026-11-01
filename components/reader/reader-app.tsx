@@ -807,7 +807,7 @@ export function ReaderApp() {
                   }}
                   className="flex flex-1 min-w-0 items-center gap-2 text-xs sm:text-sm font-medium text-foreground hover:text-primary transition-colors cursor-pointer text-left truncate"
                 >
-                  <Zap className="size-3.5 text-amber-500 fill-amber-500/25 shrink-0" />
+                  <Zap className="size-3.5 text-foreground/75 shrink-0" />
                   <span className="truncate">Okuma hızınızı test edip ideal RSVP hızınızı kalibre edin</span>
                   <span className="shrink-0 text-[11px] font-semibold text-primary underline underline-offset-2 ml-1">
                     Başla →

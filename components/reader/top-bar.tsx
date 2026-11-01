@@ -1,7 +1,7 @@
 'use client'
 
 import { FileText, Maximize, Minimize, Zap } from 'lucide-react'
-import type { ReactNode, Ref } from 'react'
+import { useEffect, useState, type ReactNode, type Ref } from 'react'
 import { cn } from '@/lib/utils'
 import { THEMES, type ThemeId } from '@/lib/rsvp'
 
@@ -18,6 +18,40 @@ type TopBarProps = {
   onToggleFullscreen?: () => void
 }
 
+// 1. Gerçek saydam cam lens (Yazısız, saf cam ve specular parlama)
+function CamShape() {
+  return (
+    <span
+      className="relative block size-6 sm:size-7 rounded-full backdrop-blur-md border border-white/70 dark:border-white/30 bg-gradient-to-br from-white/50 via-white/15 to-white/5 dark:from-white/20 dark:via-white/5 dark:to-transparent shadow-[inset_0_1px_1.5px_rgba(255,255,255,0.8),0_2px_6px_rgba(0,0,0,0.06)] shrink-0 transition-transform duration-300"
+    >
+      <span className="absolute top-0.5 left-1/2 -translate-x-1/2 w-2.5 h-[1.5px] rounded-full bg-white/90 dark:bg-white/60 pointer-events-none" />
+    </span>
+  )
+}
+
+// 2. Derin siyah elips ve canlı neon ışık çizgisi
+function NeonShape() {
+  return (
+    <span
+      className="relative block w-7.5 sm:w-8.5 h-4.5 sm:h-5 rounded-full bg-black/95 dark:bg-[#08080a] border border-purple-500/80 shadow-[0_0_10px_rgba(168,85,247,0.5),inset_0_0_6px_rgba(168,85,247,0.3)] flex items-center justify-center shrink-0 transition-transform duration-300"
+    >
+      <span className="w-3.5 h-1 rounded-full bg-purple-400 shadow-[0_0_6px_#c084fc] pointer-events-none" />
+    </span>
+  )
+}
+
+// 3. Sıcak parşömen / kitap kağıdı dokulu yuvarlak kare
+function KagitShape() {
+  return (
+    <span
+      className="relative block size-5.5 sm:size-6.5 rounded-md sm:rounded-lg bg-[#fbf0d9] dark:bg-[#2e261d] border border-[#cfbe96] dark:border-[#524433] shadow-[0_1px_3px_rgba(0,0,0,0.12),inset_0_1px_0_rgba(255,255,255,0.4)] flex flex-col items-center justify-center gap-[2.5px] shrink-0 transition-transform duration-300"
+    >
+      <span className="w-2.5 sm:w-3 h-[1px] bg-[#998664]/60 dark:bg-[#857357]/60 rounded-full pointer-events-none" />
+      <span className="w-2 sm:w-2.5 h-[1px] bg-[#998664]/60 dark:bg-[#857357]/60 rounded-full pointer-events-none" />
+    </span>
+  )
+}
+
 export function TopBar({
   ref,
   theme,
@@ -30,14 +64,24 @@ export function TopBar({
   isFullscreen,
   onToggleFullscreen,
 }: TopBarProps) {
-  // 3 Temayı tek bir döngüsel butonda topla (Cam -> Neon -> Kağıt -> Cam)
+  // Sayfa ilk yüklendiğinde 3 tema yan yana gösterilir (1.8s), ardından tekli butona birleşir
+  const [isMerged, setIsMerged] = useState(false)
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsMerged(true)
+    }, 1800)
+    return () => clearTimeout(timer)
+  }, [])
+
   const currentIdx = THEMES.findIndex((t) => t.id === theme)
-  const currentTheme = THEMES[currentIdx >= 0 ? currentIdx : 0]
   const nextTheme = THEMES[((currentIdx >= 0 ? currentIdx : 0) + 1) % THEMES.length]
 
   const handleCycleTheme = () => {
     onThemeChange(nextTheme.id)
   }
+
+  const currentThemeLabel = theme === 'ios' ? 'Cam' : theme === 'linear' ? 'Neon' : 'Kağıt'
 
   return (
     <header
@@ -66,44 +110,101 @@ export function TopBar({
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Hız Testi (Kalibrasyon) Butonu */}
+          {/* Hız Testi (Kalibrasyon) Butonu - Sade Nötr Renk */}
           {onOpenSpeedTest && (
             <button
               type="button"
               onClick={onOpenSpeedTest}
-              className="ctl panel size-10 landscape-short:size-9 text-muted-foreground hover:text-amber-500 hover:border-amber-500/40 transition-colors cursor-pointer"
+              className="ctl panel size-10 landscape-short:size-9 text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
               aria-label="Okuma Hızı Testi"
-              title="Okuma Hızı Testi & Kalibrasyon"
+              title="Okuma Hızı Testi"
             >
-              <Zap className="size-4 text-amber-500 fill-amber-500/25" />
+              <Zap className="size-4" />
             </button>
           )}
 
-          {/* Tekil Döngüsel Tema Butonu (Cam: Daire, Neon: Elips, Kağıt: Kare) */}
-          <button
-            type="button"
-            onClick={handleCycleTheme}
+          {/* Temalar: Yüklendiğinde 3'ü yan yana açılır, ardından tekte birleşir. Üzerine gelince sadece mevcut tema adı çıkar */}
+          <div
+            role="group"
+            aria-label="Tasarım teması"
+            onClick={isMerged ? handleCycleTheme : undefined}
+            title={isMerged ? currentThemeLabel : undefined}
             className={cn(
-              'ctl panel flex h-10 items-center gap-1.5 px-3 text-xs font-semibold tracking-tight cursor-pointer transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] select-none landscape-short:h-9 landscape-short:px-2.5',
-              theme === 'ios' && 'rounded-full border-sky-400/40 bg-sky-500/10 text-sky-700 dark:text-sky-300 shadow-[0_0_12px_rgba(56,189,248,0.15)]',
-              theme === 'linear' && 'rounded-full border-purple-500/50 bg-purple-950/40 text-purple-300 shadow-[0_0_12px_rgba(168,85,247,0.25)] px-3.5',
-              theme === 'kindle' && 'rounded-xl border-amber-600/40 bg-amber-500/10 text-amber-800 dark:text-amber-200 shadow-xs',
+              'panel flex items-center justify-center overflow-hidden transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] select-none',
+              !isMerged
+                ? 'h-10 px-2.5 gap-2 max-w-[140px] opacity-100 landscape-short:h-9'
+                : 'h-10 px-2 gap-0 max-w-[52px] landscape-short:h-9 cursor-pointer hover:scale-105 active:scale-95'
             )}
-            title={`Mevcut Tema: ${currentTheme.label} (Tıkla: ${nextTheme.label}) [Kısayol: 1, 2, 3]`}
-            aria-label={`Temayı değiştir: ${currentTheme.label}`}
           >
-            {/* Şekilsel Tema Göstergesi */}
-            {theme === 'ios' && (
-              <span className="size-2.5 rounded-full bg-sky-500 shadow-[0_0_6px_rgba(14,165,233,0.8)]" />
-            )}
-            {theme === 'linear' && (
-              <span className="h-2 w-3.5 rounded-full bg-purple-500 shadow-[0_0_8px_rgba(168,85,247,0.9)]" />
-            )}
-            {theme === 'kindle' && (
-              <span className="size-2.5 rounded-xs bg-amber-700 dark:bg-amber-400 shadow-xs" />
-            )}
-            <span>{currentTheme.label}</span>
-          </button>
+            {/* Cam Butonu (Yuvarlak Lens) */}
+            <button
+              type="button"
+              onClick={(e) => {
+                if (!isMerged) {
+                  e.stopPropagation()
+                  onThemeChange('ios')
+                }
+              }}
+              className={cn(
+                'flex items-center justify-center transition-all duration-500 ease-out outline-none cursor-pointer',
+                theme === 'ios'
+                  ? 'scale-100 opacity-100 shrink-0'
+                  : isMerged
+                  ? 'w-0 opacity-0 scale-50 pointer-events-none -mx-0 overflow-hidden'
+                  : 'scale-90 opacity-55 hover:opacity-100 shrink-0'
+              )}
+              title="Cam"
+              aria-label="Cam"
+            >
+              <CamShape />
+            </button>
+
+            {/* Neon Butonu (Elips) */}
+            <button
+              type="button"
+              onClick={(e) => {
+                if (!isMerged) {
+                  e.stopPropagation()
+                  onThemeChange('linear')
+                }
+              }}
+              className={cn(
+                'flex items-center justify-center transition-all duration-500 ease-out outline-none cursor-pointer',
+                theme === 'linear'
+                  ? 'scale-100 opacity-100 shrink-0'
+                  : isMerged
+                  ? 'w-0 opacity-0 scale-50 pointer-events-none -mx-0 overflow-hidden'
+                  : 'scale-90 opacity-55 hover:opacity-100 shrink-0'
+              )}
+              title="Neon"
+              aria-label="Neon"
+            >
+              <NeonShape />
+            </button>
+
+            {/* Kağıt Butonu (Yuvarlak Kare) */}
+            <button
+              type="button"
+              onClick={(e) => {
+                if (!isMerged) {
+                  e.stopPropagation()
+                  onThemeChange('kindle')
+                }
+              }}
+              className={cn(
+                'flex items-center justify-center transition-all duration-500 ease-out outline-none cursor-pointer',
+                theme === 'kindle'
+                  ? 'scale-100 opacity-100 shrink-0'
+                  : isMerged
+                  ? 'w-0 opacity-0 scale-50 pointer-events-none -mx-0 overflow-hidden'
+                  : 'scale-90 opacity-55 hover:opacity-100 shrink-0'
+              )}
+              title="Kağıt"
+              aria-label="Kağıt"
+            >
+              <KagitShape />
+            </button>
+          </div>
 
           {fontControl}
 

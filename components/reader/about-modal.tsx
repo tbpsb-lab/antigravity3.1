@@ -2,12 +2,19 @@
 
 import {
   BookOpen,
-  Check,
+  Bookmark,
+  Compass,
   Eye,
+  FileText,
   Keyboard,
   Layers,
+  Maximize,
+  MousePointer,
+  RotateCcw,
   ShieldCheck,
+  Smartphone,
   Sparkles,
+  Touchpad,
   X,
   Zap,
 } from 'lucide-react'
@@ -394,7 +401,7 @@ function LargeThemedLogo({ theme }: { theme: ThemeId }) {
 }
 
 export function AboutModal({ open, onClose, theme }: AboutModalProps) {
-  const [activeTab, setActiveTab] = useState<'rsvp' | 'features' | 'shortcuts' | 'colophon'>('rsvp')
+  const [activeTab, setActiveTab] = useState<'rsvp' | 'features' | 'controls' | 'colophon'>('rsvp')
 
   // ESC ile kapatma
   useEffect(() => {
@@ -413,18 +420,18 @@ export function AboutModal({ open, onClose, theme }: AboutModalProps) {
       role="dialog"
       aria-modal="true"
       aria-labelledby="about-modal-title"
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/65 backdrop-blur-md animate-in fade-in duration-300"
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/70 backdrop-blur-md animate-in fade-in duration-300"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose()
       }}
     >
       <div
         className={cn(
-          'panel relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl p-5 sm:p-8 shadow-2xl',
-          'flex flex-col gap-6 border transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] animate-in zoom-in-95',
-          theme === 'linear' && 'border-purple-500/30 shadow-[0_0_40px_rgba(168,85,247,0.25)] bg-[#07060b]/95 text-slate-100',
+          'panel theme-scrollbar relative w-full max-w-2xl max-h-[88vh] overflow-y-auto rounded-3xl p-5 sm:p-8 shadow-2xl',
+          'flex flex-col gap-5 border transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] animate-in zoom-in-95',
+          theme === 'linear' && 'border-purple-500/40 shadow-[0_0_40px_rgba(168,85,247,0.3)] bg-[#07060b]/95 text-slate-100',
           theme === 'kindle' && 'border-[#cfbe96] shadow-[0_8px_30px_rgba(0,0,0,0.15)] bg-[#fcf8ee] text-[#332a1f]',
-          theme === 'ios' && 'border-white/80 dark:border-white/20 shadow-[0_8px_32px_rgba(56,189,248,0.15)] backdrop-blur-xl'
+          theme === 'ios' && 'border-white/80 dark:border-white/20 shadow-[0_8px_32px_rgba(56,189,248,0.2)] backdrop-blur-xl'
         )}
       >
         {/* Kapat Butonu */}
@@ -438,7 +445,7 @@ export function AboutModal({ open, onClose, theme }: AboutModalProps) {
         </button>
 
         {/* Üst Alan: Yüksek Çözünürlüklü Büyük Tema Rozeti & Başlık */}
-        <div className="flex flex-col items-center text-center gap-3 pt-1">
+        <div className="flex flex-col items-center text-center gap-2 pt-1">
           <LargeThemedLogo theme={theme} />
           <div>
             <h2 id="about-modal-title" className="text-xl sm:text-2xl font-bold tracking-tight">
@@ -450,233 +457,327 @@ export function AboutModal({ open, onClose, theme }: AboutModalProps) {
           </div>
         </div>
 
-        {/* Sekme Butonları (Pill Tabs) */}
-        <div className="flex items-center justify-center gap-1.5 p-1 rounded-2xl bg-muted/60 backdrop-blur-sm overflow-x-auto select-none border border-border/40">
+        {/* Ferah Sekme Butonları (Grid Layout: Asla Sıkışmaz ve Taşmaz) */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 w-full select-none">
           <button
             type="button"
             onClick={() => setActiveTab('rsvp')}
             className={cn(
-              'flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-medium transition-all cursor-pointer shrink-0',
+              'flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs sm:text-sm font-medium transition-all cursor-pointer border',
               activeTab === 'rsvp'
-                ? 'bg-background text-foreground shadow-sm'
-                : 'text-muted-foreground hover:text-foreground'
+                ? theme === 'linear'
+                  ? 'bg-purple-950/70 text-purple-200 border-purple-400/80 shadow-[0_0_12px_rgba(168,85,247,0.4)]'
+                  : theme === 'kindle'
+                  ? 'bg-[#ede3cf] dark:bg-[#3d3326] text-[#3d2f21] dark:text-[#f3ede1] border-[#b8a783]'
+                  : 'bg-white/90 dark:bg-white/20 text-slate-900 dark:text-white border-white/80 shadow-sm ring-1 ring-sky-400/30'
+                : 'panel text-muted-foreground hover:text-foreground opacity-75 hover:opacity-100 border-border/40'
             )}
           >
-            <Zap className="size-3.5 text-pivot" />
-            <span>RSVP & Bilim</span>
+            <Zap className="size-4 text-pivot shrink-0" />
+            <span className="truncate">RSVP & Bilim</span>
           </button>
 
           <button
             type="button"
             onClick={() => setActiveTab('features')}
             className={cn(
-              'flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-medium transition-all cursor-pointer shrink-0',
+              'flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs sm:text-sm font-medium transition-all cursor-pointer border',
               activeTab === 'features'
-                ? 'bg-background text-foreground shadow-sm'
-                : 'text-muted-foreground hover:text-foreground'
+                ? theme === 'linear'
+                  ? 'bg-purple-950/70 text-purple-200 border-purple-400/80 shadow-[0_0_12px_rgba(168,85,247,0.4)]'
+                  : theme === 'kindle'
+                  ? 'bg-[#ede3cf] dark:bg-[#3d3326] text-[#3d2f21] dark:text-[#f3ede1] border-[#b8a783]'
+                  : 'bg-white/90 dark:bg-white/20 text-slate-900 dark:text-white border-white/80 shadow-sm ring-1 ring-sky-400/30'
+                : 'panel text-muted-foreground hover:text-foreground opacity-75 hover:opacity-100 border-border/40'
             )}
           >
-            <Sparkles className="size-3.5 text-sky-500" />
-            <span>Özellikler</span>
+            <Sparkles className="size-4 text-sky-500 shrink-0" />
+            <span className="truncate">Özellikler</span>
           </button>
 
           <button
             type="button"
-            onClick={() => setActiveTab('shortcuts')}
+            onClick={() => setActiveTab('controls')}
             className={cn(
-              'flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-medium transition-all cursor-pointer shrink-0',
-              activeTab === 'shortcuts'
-                ? 'bg-background text-foreground shadow-sm'
-                : 'text-muted-foreground hover:text-foreground'
+              'flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs sm:text-sm font-medium transition-all cursor-pointer border',
+              activeTab === 'controls'
+                ? theme === 'linear'
+                  ? 'bg-purple-950/70 text-purple-200 border-purple-400/80 shadow-[0_0_12px_rgba(168,85,247,0.4)]'
+                  : theme === 'kindle'
+                  ? 'bg-[#ede3cf] dark:bg-[#3d3326] text-[#3d2f21] dark:text-[#f3ede1] border-[#b8a783]'
+                  : 'bg-white/90 dark:bg-white/20 text-slate-900 dark:text-white border-white/80 shadow-sm ring-1 ring-sky-400/30'
+                : 'panel text-muted-foreground hover:text-foreground opacity-75 hover:opacity-100 border-border/40'
             )}
           >
-            <Keyboard className="size-3.5 text-purple-500" />
-            <span>Kısayollar</span>
+            <Keyboard className="size-4 text-purple-500 shrink-0" />
+            <span className="truncate">Kullanım & Tuşlar</span>
           </button>
 
           <button
             type="button"
             onClick={() => setActiveTab('colophon')}
             className={cn(
-              'flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-medium transition-all cursor-pointer shrink-0',
+              'flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs sm:text-sm font-medium transition-all cursor-pointer border',
               activeTab === 'colophon'
-                ? 'bg-background text-foreground shadow-sm'
-                : 'text-muted-foreground hover:text-foreground'
+                ? theme === 'linear'
+                  ? 'bg-purple-950/70 text-purple-200 border-purple-400/80 shadow-[0_0_12px_rgba(168,85,247,0.4)]'
+                  : theme === 'kindle'
+                  ? 'bg-[#ede3cf] dark:bg-[#3d3326] text-[#3d2f21] dark:text-[#f3ede1] border-[#b8a783]'
+                  : 'bg-white/90 dark:bg-white/20 text-slate-900 dark:text-white border-white/80 shadow-sm ring-1 ring-sky-400/30'
+                : 'panel text-muted-foreground hover:text-foreground opacity-75 hover:opacity-100 border-border/40'
             )}
           >
-            <ShieldCheck className="size-3.5 text-emerald-500" />
-            <span>Künye & Gizlilik</span>
+            <ShieldCheck className="size-4 text-emerald-500 shrink-0" />
+            <span className="truncate">Künye & Hikâye</span>
           </button>
         </div>
 
         {/* Sekme İçerikleri */}
-        <div className="text-sm leading-relaxed min-h-[260px]">
+        <div className="text-sm leading-relaxed min-h-[300px]">
           {/* 1. RSVP & Bilim */}
           {activeTab === 'rsvp' && (
             <div className="flex flex-col gap-4 animate-in fade-in duration-300">
-              <div className="panel p-4 rounded-2xl border border-border/50">
-                <div className="flex items-center gap-2 font-semibold text-foreground mb-1.5">
-                  <Eye className="size-4 text-pivot" />
-                  <h4>Sakkad Hareketlerini Sıfırlama</h4>
+              <div className="panel p-4 sm:p-5 rounded-2xl border border-border/50">
+                <div className="flex items-center gap-2.5 font-semibold text-foreground mb-2">
+                  <Eye className="size-4.5 text-pivot shrink-0" />
+                  <h4 className="text-base">Sakkad ve Regresyon Hareketlerini Sıfırlama</h4>
                 </div>
-                <p className="text-muted-foreground text-xs sm:text-sm">
-                  Geleneksel okumada gözlerimiz satır üzerinde sürekli sağa-sola sıçrar (sakkad) ve istemsiz geriye dönüşlerle (regresyon) duraklar. Bu mekanik hareket, toplam okuma sürenizin yaklaşık %70&apos;ini boşa harcar. Odak, kelimeleri gözünüzün tam önüne getirerek göz kaslarını tamamen dinlendirir.
+                <p className="text-muted-foreground text-xs sm:text-sm leading-relaxed">
+                  Geleneksel okumada insan gözü satır üzerinde düz bir hat izlemez; her kelimede mikro sıçramalar (<strong>sakkad</strong>) yapar ve istemsiz geriye dönüşlerle (<strong>regresyon</strong>) duraksar. Göz kaslarının bu yorucu mekanik hareketi, toplam okuma sürenizin <strong>%70 ila %80&apos;ini</strong> sessizce tüketir. Odak, kelimeleri doğrudan gözünüzün odaklandığı sabit noktaya taşıyarak göz kası yorgunluğunu sıfıra indirir.
                 </p>
               </div>
 
-              <div className="panel p-4 rounded-2xl border border-border/50">
-                <div className="flex items-center gap-2 font-semibold text-foreground mb-1.5">
-                  <div className="size-2 rounded-full bg-pivot pivot-glow" />
-                  <h4>ORP (Optimal Recognition Point / Optimal Tanıma Noktası)</h4>
+              <div className="panel p-4 sm:p-5 rounded-2xl border border-border/50">
+                <div className="flex items-center gap-2.5 font-semibold text-foreground mb-2">
+                  <div className="size-2.5 rounded-full bg-pivot pivot-glow shrink-0" />
+                  <h4 className="text-base">ORP (Optimal Tanıma Noktası) & Kırmızı Lazer</h4>
                 </div>
-                <p className="text-muted-foreground text-xs sm:text-sm">
-                  İnsan beyni bir kelimeyi ilk harfinden tanımaz; kelimenin ağırlık merkezindeki en ayırt edici harfe kilitlenerek kelimeyi bir bütün olarak algılar. Kırmızı dikey lazer eksenimiz, her kelimenin ORP harfini aynı yatay koordinata milimetrik sabitler.
+                <p className="text-muted-foreground text-xs sm:text-sm leading-relaxed">
+                  Bilişsel psikoloji araştırmaları, beynin bir kelimeyi ilk harfinden itibaren heceleyerek değil; kelimenin ağırlık merkezindeki en karakteristik harfe (genellikle kelimenin 1/3&apos;lük sol-orta noktası) kilitlenerek tanıdığını kanıtlamıştır. Platformdaki <strong>kırmızı dikey nirengi çizgisi</strong>, her kelimenin ORP harfini piksel hassasiyetiyle aynı dikey eksene hizalar. Gözünüz sabit kalır, algılama eşiği minimuma iner.
                 </p>
               </div>
 
-              <div className="panel p-4 rounded-2xl border border-border/50">
-                <div className="flex items-center gap-2 font-semibold text-foreground mb-1.5">
-                  <Zap className="size-4 text-amber-500" />
-                  <h4>İç Seslendirmeyi (Subvocalization) Kırma</h4>
+              <div className="panel p-4 sm:p-5 rounded-2xl border border-border/50">
+                <div className="flex items-center gap-2.5 font-semibold text-foreground mb-2">
+                  <Zap className="size-4.5 text-amber-500 shrink-0" />
+                  <h4 className="text-base">İç Seslendirme (Subvocalization) Bariyerini Aşma</h4>
                 </div>
-                <p className="text-muted-foreground text-xs sm:text-sm">
-                  Kafamızın içinde kelimeleri fısıldama alışkanlığı bizi konuşma hızına (dakikada ~200-250 kelime) kilitler. RSVP ile hızınızı kademeli olarak 400-600 WPM seviyesine çıkardığınızda, iç ses susar ve doğrudan görsel kavrama devreye girer.
+                <p className="text-muted-foreground text-xs sm:text-sm leading-relaxed">
+                  Pek çok okur, okurken kelimeleri zihninde fısıldar. Bu alışkanlık okuma hızınızı konuşma sınırına (dakikada ~200-250 kelime) kilitler. RSVP ile hızınızı kademeli olarak 400-600 WPM seviyesine çıkardığınızda, iç ses susar; zihniniz doğrudan görsel kavramaya geçer ve düşünce hızınızla okuma hızınız eşitlenir.
                 </p>
               </div>
             </div>
           )}
 
-          {/* 2. Özellikler */}
+          {/* 2. Derin Özellikler */}
           {activeTab === 'features' && (
-            <div className="flex flex-col gap-4 animate-in fade-in duration-300">
+            <div className="flex flex-col gap-3.5 animate-in fade-in duration-300">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="panel p-4 rounded-2xl border border-border/50">
-                  <h4 className="font-semibold text-foreground flex items-center gap-2 mb-1">
-                    <Layers className="size-4 text-sky-500" />
-                    3 Fiziksel Dünya Teması
+                  <h4 className="font-semibold text-foreground flex items-center gap-2 mb-1.5 text-sm sm:text-base">
+                    <Bookmark className="size-4 text-amber-500 shrink-0" />
+                    Bölüm & Başlık Algılama
                   </h4>
-                  <p className="text-muted-foreground text-xs">
-                    <strong>Cam:</strong> Saydam mineral lens derinliği.<br />
-                    <strong>Neon:</strong> Gece ve OLED için derin siyah & mor neon.<br />
-                    <strong>Kağıt:</strong> E-kitap ve sıcak kitap parşömeni.
+                  <p className="text-muted-foreground text-xs leading-relaxed">
+                    PDF, EPUB veya metinlerdeki tüm bölüm başlıklarını, Roma rakamlarını ve hiyerarşik başlıkları akıllı regex motoruyla otomatik tespit eder.
                   </p>
                 </div>
 
                 <div className="panel p-4 rounded-2xl border border-border/50">
-                  <h4 className="font-semibold text-foreground flex items-center gap-2 mb-1">
-                    <BookOpen className="size-4 text-emerald-500" />
-                    Tüm Dosya Formatları
+                  <h4 className="font-semibold text-foreground flex items-center gap-2 mb-1.5 text-sm sm:text-base">
+                    <Compass className="size-4 text-sky-500 shrink-0" />
+                    İlerleme Çubuğunda Başlık İmleri
                   </h4>
-                  <p className="text-muted-foreground text-xs">
-                    PDF, EPUB, TXT veya doğrudan panodan kopyala-yapıştır metinler. Kesilen kelimeler, sayfa sonları ve dipnotlar otomatik olarak pürüzsüzleştirilir.
+                  <p className="text-muted-foreground text-xs leading-relaxed">
+                    Alt ilerleme çubuğunda (scrubber) her bölümün konumunda özel dikey imler bulunur. Tıklayarak veya <kbd className="px-1 py-0.5 rounded bg-muted text-[10px]">Shift+←/→</kbd> ile bölümler arasında sıçrayabilirsiniz.
                   </p>
                 </div>
 
                 <div className="panel p-4 rounded-2xl border border-border/50">
-                  <h4 className="font-semibold text-foreground flex items-center gap-2 mb-1">
-                    <Sparkles className="size-4 text-amber-500" />
-                    Akıllı Ritmik Duraksama
+                  <h4 className="font-semibold text-foreground flex items-center gap-2 mb-1.5 text-sm sm:text-base">
+                    <RotateCcw className="size-4 text-emerald-500 shrink-0" />
+                    Akıllı Cümle Başı & Context Peek
                   </h4>
-                  <p className="text-muted-foreground text-xs">
-                    Nokta, soru işareti, iki nokta, virgül ve uzun teknik kelimelerde doğal nefes alma mikro-duraklamaları uygulanarak anlama kaybı engellenir.
+                  <p className="text-muted-foreground text-xs leading-relaxed">
+                    Duraklatıldığında okunan cümlenin bağlamını (peek) sunar; geri sarma tuşuna basıldığında kelime kelime değil, akıllıca doğrudan cümlenin başına döner.
                   </p>
                 </div>
 
                 <div className="panel p-4 rounded-2xl border border-border/50">
-                  <h4 className="font-semibold text-foreground flex items-center gap-2 mb-1">
-                    <Zap className="size-4 text-pivot" />
-                    Nirengi Hız Kalibrasyonu
+                  <h4 className="font-semibold text-foreground flex items-center gap-2 mb-1.5 text-sm sm:text-base">
+                    <Layers className="size-4 text-purple-500 shrink-0" />
+                    Kelime Bloklama (Chunking - &apos;C&apos;)
                   </h4>
-                  <p className="text-muted-foreground text-xs">
-                    Üst bardaki şimşek simgesiyle 60 saniyede doğal okuma hızınızı ölçün; platform ideal RSVP başlangıç hızınızı otomatik hesaplar.
+                  <p className="text-muted-foreground text-xs leading-relaxed">
+                    İleri düzey okuma için kelimeleri 1&apos;li, 2&apos;li, 3&apos;lü veya 4&apos;lü bloklar halinde akıtma imkanı. Tek tuşla (<kbd className="px-1 py-0.5 rounded bg-muted text-[10px]">C</kbd>) blok boyutunu değiştirebilirsiniz.
                   </p>
                 </div>
+
+                <div className="panel p-4 rounded-2xl border border-border/50">
+                  <h4 className="font-semibold text-foreground flex items-center gap-2 mb-1.5 text-sm sm:text-base">
+                    <MousePointer className="size-4 text-cyan-500 shrink-0" />
+                    Çift Yönlü 25 WPM Hassas Scroll
+                  </h4>
+                  <p className="text-muted-foreground text-xs leading-relaxed">
+                    Farenin tekerleğiyle gerek masaüstü modunda gerekse okuma akışı devam ederken ritmi hiç bozmadan 25&apos;er kelimelik hassas hız kontrolü.
+                  </p>
+                </div>
+
+                <div className="panel p-4 rounded-2xl border border-border/50">
+                  <h4 className="font-semibold text-foreground flex items-center gap-2 mb-1.5 text-sm sm:text-base">
+                    <Sparkles className="size-4 text-pink-500 shrink-0" />
+                    Ritmik Nefes Alma Algoritması
+                  </h4>
+                  <p className="text-muted-foreground text-xs leading-relaxed">
+                    Nokta, soru işareti, iki nokta, virgül ve uzun teknik kelimelerde doğal mikro-duraklamalar eklenerek okuma akışının edebi ritmi korunur.
+                  </p>
+                </div>
+              </div>
+
+              <div className="panel p-3.5 rounded-2xl border border-border/50 flex items-center gap-3">
+                <FileText className="size-5 text-muted-foreground shrink-0" />
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  <strong>Akıllı Metin Temizleme:</strong> Satır sonlarında kesilen kelimeleri (<span className="font-mono">ör- / nek → örnek</span>) otomatik birleştirir, sayfa numaralarını ve başlık artıklarını arındırır, dipnotları isteğe göre akışa katar.
+                </p>
               </div>
             </div>
           )}
 
-          {/* 3. Kısayollar & Rehber */}
-          {activeTab === 'shortcuts' && (
-            <div className="flex flex-col gap-3 animate-in fade-in duration-300">
-              <div className="panel p-4 rounded-2xl border border-border/50">
-                <h4 className="font-semibold text-foreground mb-3 flex items-center gap-2">
-                  <Keyboard className="size-4 text-purple-500" />
-                  Klavye & Fareyle Tam Kontrol
+          {/* 3. Kullanım & Tuşlar (Masaüstü ve Mobil Ayrıntılı) */}
+          {activeTab === 'controls' && (
+            <div className="flex flex-col gap-4 animate-in fade-in duration-300">
+              {/* Masaüstü Klavye ve Fare */}
+              <div className="panel p-4 sm:p-5 rounded-2xl border border-border/50">
+                <h4 className="font-semibold text-foreground mb-3 flex items-center gap-2 text-sm sm:text-base">
+                  <Keyboard className="size-4.5 text-purple-500" />
+                  Masaüstü: Klavye ve Fare Kısayolları
                 </h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs sm:text-sm">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs sm:text-sm">
                   <div className="flex items-center justify-between p-2 rounded-xl bg-muted/40">
                     <span className="text-muted-foreground">Başlat / Duraklat</span>
                     <kbd className="px-2 py-0.5 rounded-md bg-background border border-border/60 text-xs font-mono font-semibold">Boşluk (Space)</kbd>
                   </div>
                   <div className="flex items-center justify-between p-2 rounded-xl bg-muted/40">
-                    <span className="text-muted-foreground">Hız Değiştir (±25 WPM)</span>
+                    <span className="text-muted-foreground">Hız Kontrolü (±25 WPM)</span>
                     <kbd className="px-2 py-0.5 rounded-md bg-background border border-border/60 text-xs font-mono font-semibold">↑ / ↓ veya Scroll</kbd>
                   </div>
                   <div className="flex items-center justify-between p-2 rounded-xl bg-muted/40">
-                    <span className="text-muted-foreground">1 Cümle Geri / İleri</span>
-                    <kbd className="px-2 py-0.5 rounded-md bg-background border border-border/60 text-xs font-mono font-semibold">← / →</kbd>
+                    <span className="text-muted-foreground">Akıllı Cümle Başına Sar</span>
+                    <kbd className="px-2 py-0.5 rounded-md bg-background border border-border/60 text-xs font-mono font-semibold">← (Sol Ok)</kbd>
                   </div>
                   <div className="flex items-center justify-between p-2 rounded-xl bg-muted/40">
-                    <span className="text-muted-foreground">1 Paragraf Atla</span>
-                    <kbd className="px-2 py-0.5 rounded-md bg-background border border-border/60 text-xs font-mono font-semibold">Shift + ← / →</kbd>
+                    <span className="text-muted-foreground">Önceki Başlığa / Bölüme Atla</span>
+                    <kbd className="px-2 py-0.5 rounded-md bg-background border border-border/60 text-xs font-mono font-semibold">Shift + ←</kbd>
                   </div>
                   <div className="flex items-center justify-between p-2 rounded-xl bg-muted/40">
-                    <span className="text-muted-foreground">Temaları Değiştir</span>
-                    <kbd className="px-2 py-0.5 rounded-md bg-background border border-border/60 text-xs font-mono font-semibold">1, 2, 3</kbd>
+                    <span className="text-muted-foreground">1 Kelime İleri Sar</span>
+                    <kbd className="px-2 py-0.5 rounded-md bg-background border border-border/60 text-xs font-mono font-semibold">→ (Sağ Ok)</kbd>
                   </div>
                   <div className="flex items-center justify-between p-2 rounded-xl bg-muted/40">
-                    <span className="text-muted-foreground">Tam Ekran</span>
-                    <kbd className="px-2 py-0.5 rounded-md bg-background border border-border/60 text-xs font-mono font-semibold">F</kbd>
+                    <span className="text-muted-foreground">Sonraki Başlığa / Bölüme Atla</span>
+                    <kbd className="px-2 py-0.5 rounded-md bg-background border border-border/60 text-xs font-mono font-semibold">Shift + →</kbd>
+                  </div>
+                  <div className="flex items-center justify-between p-2 rounded-xl bg-muted/40">
+                    <span className="text-muted-foreground">Kelime Bloklama (1, 2, 3, 4)</span>
+                    <kbd className="px-2 py-0.5 rounded-md bg-background border border-border/60 text-xs font-mono font-semibold">C Tuşu</kbd>
+                  </div>
+                  <div className="flex items-center justify-between p-2 rounded-xl bg-muted/40">
+                    <span className="text-muted-foreground">Temaları Değiştir (Cam, Neon, Kağıt)</span>
+                    <kbd className="px-2 py-0.5 rounded-md bg-background border border-border/60 text-xs font-mono font-semibold">1, 2, 3 Tuşları</kbd>
+                  </div>
+                  <div className="flex items-center justify-between p-2 rounded-xl bg-muted/40">
+                    <span className="text-muted-foreground flex items-center gap-1.5">
+                      <Maximize className="size-3.5 text-muted-foreground" />
+                      Tam Ekran Modu
+                    </span>
+                    <kbd className="px-2 py-0.5 rounded-md bg-background border border-border/60 text-xs font-mono font-semibold">F Tuşu</kbd>
+                  </div>
+                  <div className="flex items-center justify-between p-2 rounded-xl bg-muted/40">
+                    <span className="text-muted-foreground">Durdur / Pencereleri Kapat</span>
+                    <kbd className="px-2 py-0.5 rounded-md bg-background border border-border/60 text-xs font-mono font-semibold">ESC Tuşu</kbd>
                   </div>
                 </div>
               </div>
 
-              <p className="text-xs text-muted-foreground text-center">
-                İpucu: Okuma akarken dahi farenin tekerleğini ileri/geri kaydırarak hızınızı 25&apos;er kelime değiştirebilirsiniz.
-              </p>
+              {/* Mobil ve Tablet Dokunmatik Kullanım Rehberi */}
+              <div className="panel p-4 sm:p-5 rounded-2xl border border-border/50">
+                <h4 className="font-semibold text-foreground mb-3 flex items-center gap-2 text-sm sm:text-base">
+                  <Smartphone className="size-4.5 text-sky-500" />
+                  Mobil ve Tablet: Dokunmatik Ekran Kullanımı
+                </h4>
+                <div className="flex flex-col gap-2.5 text-xs sm:text-sm">
+                  <div className="p-3 rounded-xl bg-muted/30 border border-border/40">
+                    <div className="font-semibold text-foreground flex items-center gap-2 mb-1">
+                      <Touchpad className="size-4 text-emerald-500" />
+                      3 Görünmez Dokunma Bölgesi (Tap Zones)
+                    </div>
+                    <ul className="text-muted-foreground text-xs space-y-1 pl-4 list-disc">
+                      <li><strong>Ekranın Sol %25&apos;i:</strong> Cümlenin başına geri sarar.</li>
+                      <li><strong>Ekranın Orta %50&apos;si:</strong> Okumayı anında başlatır veya duraklatır.</li>
+                      <li><strong>Ekranın Sağ %25&apos;i:</strong> 1 kelime ileri atlar.</li>
+                    </ul>
+                  </div>
+
+                  <div className="p-3 rounded-xl bg-muted/30 border border-border/40">
+                    <div className="font-semibold text-foreground flex items-center gap-2 mb-1">
+                      <Zap className="size-4 text-amber-500" />
+                      Dikey Kaydırma (Vertical Swipe) Hız Ayarı
+                    </div>
+                    <p className="text-muted-foreground text-xs leading-relaxed">
+                      Okuma alanı üzerinde parmağınızı <strong>yukarı kaydırdığınızda</strong> hızınız 25&apos;er kelime artar, <strong>aşağı kaydırdığınızda</strong> azalır. Sayfanın yanlışlıkla yenilenmesini önleyen özel dokunmatik kilit mekanizması bulunur.
+                    </p>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 
-          {/* 4. Künye & Gizlilik */}
+          {/* 4. Künye & Geliştirici Hikâyesi */}
           {activeTab === 'colophon' && (
             <div className="flex flex-col gap-4 animate-in fade-in duration-300">
-              <div className="panel p-4 rounded-2xl border border-border/50">
-                <div className="flex items-center gap-2 font-semibold text-foreground mb-1.5">
-                  <ShieldCheck className="size-4 text-emerald-500" />
-                  <h4>%100 Cihaz İçi Gizlilik (Yerel İşleme)</h4>
+              <div className="panel p-5 sm:p-6 rounded-2xl border border-border/50 flex flex-col gap-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 border-b border-border/40 pb-3">
+                  <div>
+                    <h4 className="font-bold text-base text-foreground">Alper BEYAZ</h4>
+                    <p className="text-xs text-muted-foreground">1 Kasım 2016 • Marmaris</p>
+                  </div>
+                  <span className="text-xs px-2.5 py-1 rounded-full bg-primary/10 text-primary font-medium w-fit">
+                    Kişisel Tasarım & Geliştirme Notu
+                  </span>
                 </div>
-                <p className="text-muted-foreground text-xs sm:text-sm">
-                  Yüklediğiniz kitaplar, özel PDF&apos;ler veya çalışma metinleriniz <strong>kesinlikle hiçbir sunucuya yüklenmez</strong>. Tüm metin ayıklama, kelime dizimi ve RSVP motoru doğrudan tarayıcınızın kendi belleğinde (in-memory) çalışır. İnternet bağlantınızı kesseniz dahi kusursuz çalışmaya devam eder.
-                </p>
+
+                <div className="text-xs sm:text-sm text-foreground/90 space-y-3 leading-relaxed">
+                  <p>
+                    <em>&ldquo;Bu platformu, aktif üyesi olduğum kitap kulübümde kişisel okuma hızımı, anlama kapasitemi ve dikkat odaklanma süremi geliştirmek amacıyla tasarladım.</em>
+                  </p>
+                  <p>
+                    <em>İnternette mevcut hızlı okuma araçlarını ve RSVP sitelerini uzun süre incelediğimde; çoğunun kullanıcı dostu olmaktan uzak, arayüz olarak hantal, gözü yoran reklamlarla dolu ya da Türkçe dilinin hece, ek ve kök yapısına uygunsuz olduğunu gördüm.</em>
+                  </p>
+                  <p>
+                    <em>Bu arayış sonucunda; zihni hiçbir gereksiz unsurla meşgul etmeyen, göz kaslarının fiziksel sıçrama eforunu sıfırlayan, Türkçenin hece ritmine uyumlu ORP (Optimal Tanıma Noktası) dengesine sahip ve estetik açıdan kusursuz bir okuma vahası inşa etmeye karar verdim.</em>
+                  </p>
+                  <p>
+                    <em>Odak; sayfalar dolusu düşünceye, zamandan bağımsız olarak en duru haliyle odaklanma sanatıdır.&rdquo;</em>
+                  </p>
+                </div>
               </div>
 
               <div className="panel p-4 rounded-2xl border border-border/50">
-                <div className="flex items-center gap-2 font-semibold text-foreground mb-1.5">
-                  <Check className="size-4 text-sky-500" />
-                  <h4>Teknoloji & Mimari</h4>
+                <div className="flex items-center gap-2 font-semibold text-foreground mb-1.5 text-xs sm:text-sm">
+                  <ShieldCheck className="size-4 text-emerald-500 shrink-0" />
+                  <h4>%100 Cihaz İçi Gizlilik (Yerel Bellek)</h4>
                 </div>
-                <p className="text-muted-foreground text-xs sm:text-sm">
-                  Next.js, React, TypeScript, Tailwind CSS, Web Streams ve PDF.js kullanılarak yüksek tazeleme hızı (60fps/120fps) ve pürüzsüz animasyonlar için optimize edilmiştir.
+                <p className="text-muted-foreground text-xs leading-relaxed">
+                  Yüklediğiniz kitaplar, özel PDF&apos;ler veya çalışma notlarınız <strong>kesinlikle hiçbir sunucuya iletilmez</strong>. Tüm ayrıştırma, indeksleme ve RSVP akışı doğrudan cihazınızın tarayıcı belleğinde (in-memory) gerçekleşir. İnternetiniz kapalıyken bile tam performans çalışır.
                 </p>
               </div>
 
-              <div className="flex items-center justify-between text-xs text-muted-foreground px-1">
-                <span>Sürüm 3.1 • Açık Kaynak Odak Motoru</span>
-                <span>PWA • Masaüstü ve Mobil Uyumlu</span>
+              <div className="flex flex-col sm:flex-row items-center justify-between text-xs text-muted-foreground px-1 gap-1">
+                <span>Mimari: Next.js • React • Tailwind CSS • Web Streams • PDF.js</span>
+                <span>PWA • Masaüstü, Android ve iPad Uyumlu</span>
               </div>
             </div>
           )}
-        </div>
-
-        {/* Alt Kapatma Çubuğu */}
-        <div className="flex items-center justify-end pt-2 border-t border-border/40">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-5 py-2.5 rounded-xl font-medium text-xs sm:text-sm bg-foreground text-background hover:opacity-90 transition-opacity cursor-pointer shadow-md"
-          >
-            Anladım, Okumaya Devam Et
-          </button>
         </div>
       </div>
     </div>

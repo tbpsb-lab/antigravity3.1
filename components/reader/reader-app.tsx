@@ -612,6 +612,10 @@ export function ReaderApp() {
         e.preventDefault()
         handleChunkSizeChange(chunkSize >= 4 ? 1 : chunkSize + 1)
         break
+      case 'KeyF':
+        e.preventDefault()
+        toggleFullscreen()
+        break
       case 'Digit1':
       case 'Digit2':
       case 'Digit3': {

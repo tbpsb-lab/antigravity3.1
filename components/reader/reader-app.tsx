@@ -26,7 +26,7 @@ import {
   findChunkIndexForWord,
 } from '@/lib/reading-progress'
 import { loadReaderSettings, saveReaderSettings } from '@/lib/reader-settings'
-import { AtmosphericReticle } from './atmospheric-reticle'
+import { AmbientAura } from './ambient-aura'
 import { TopBar } from './top-bar'
 import { RsvpDisplay } from './rsvp-display'
 import { ContextPeek } from './context-peek'
@@ -769,6 +769,9 @@ export function ReaderApp() {
       data-theme={theme}
       className="app-bg relative h-dvh w-full touch-manipulation overscroll-none overflow-hidden font-sans text-foreground transition-colors duration-500 selection:bg-primary/25"
     >
+      {/* 3. Öneri: Ambient Aura / Tematik Işıma Katmanı (Yazısız & Çizgisiz Atmosferik Derinlik) */}
+      <AmbientAura theme={theme} playing={playing} />
+
       <TopBar
         ref={headerRef}
         docTitle={docTitle}
@@ -814,23 +817,8 @@ export function ReaderApp() {
           {/* Üst Dengeleyici: Temiz, ferah ve nefes alan negatif alan (Apple & Minimalist mimari) */}
           <div className="flex-1 w-full min-h-0 pointer-events-none select-none" />
 
-          {/* Okuma Penceresi & Arkadaki Merkezi Bilimsel Vizör Derinliği */}
-          <div className="w-full shrink-0 flex flex-col items-center relative">
-            {/* 1. Öneri: Merkezi Vizör Derinliği (Atmospheric Reticle HUD Background) */}
-            <div
-              aria-hidden="true"
-              className={cn(
-                'absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none select-none transition-all duration-700 ease-out z-0',
-                'w-[92vw] max-w-[660px] sm:max-w-[760px] md:max-w-[860px] h-[210px] sm:h-[250px] md:h-[280px]',
-                playing
-                  ? 'opacity-[0.035] scale-98'
-                  : 'opacity-[0.075] sm:opacity-[0.09] scale-100',
-                theme === 'linear' && (playing ? 'opacity-[0.08]' : 'opacity-[0.16] drop-shadow-[0_0_20px_rgba(56,189,248,0.25)]')
-              )}
-            >
-              <AtmosphericReticle theme={theme} />
-            </div>
-
+          {/* Okuma Penceresi: Ekranın tam ortasında sabit, temiz ve ferah */}
+          <div className="w-full shrink-0 flex flex-col items-center">
             {/* İlk Giriş Hız Testi Davet Şeridi (Zarif, tek satır, temaya uyumlu) */}
             {showSpeedTestBanner && !zen && (
               <div className="mb-2 sm:mb-3 flex w-full max-w-lg items-center justify-between gap-2 rounded-full border border-primary/25 bg-background/80 px-3.5 py-1.5 shadow-sm backdrop-blur-md animate-in fade-in slide-in-from-top-2 duration-300">

@@ -348,11 +348,13 @@ export function TopBar({
             aria-label="odak Hakkında, RSVP Mantığı ve Kılavuz"
           >
             <ThemedAppLogo theme={theme} className="group-hover:scale-105" />
-            <div className="leading-tight max-[359px]:sr-only max-w-[140px] min-[400px]:max-w-[200px] sm:max-w-xs md:max-w-sm truncate">
-              <p className="text-sm font-semibold tracking-tight truncate group-hover:text-primary transition-colors" title={docTitle || 'odak'}>
-                {docTitle || 'odak'}
+            <div className="min-w-0 max-[359px]:sr-only max-w-[150px] min-[400px]:max-w-[220px] sm:max-w-xs md:max-w-sm truncate">
+              <p
+                className="text-xs sm:text-sm font-medium tracking-tight text-foreground/85 group-hover:text-primary transition-colors truncate"
+                title={docTitle && docTitle !== 'odak' ? docTitle : 'Hızlı okuma penceresi'}
+              >
+                {docTitle && docTitle !== 'odak' ? docTitle : 'Hızlı okuma penceresi'}
               </p>
-              <p className="hidden text-xs text-muted-foreground sm:block">Hızlı okuma penceresi</p>
             </div>
           </button>
         </div>

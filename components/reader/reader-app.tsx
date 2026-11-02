@@ -26,9 +26,7 @@ import {
   findChunkIndexForWord,
 } from '@/lib/reading-progress'
 import { loadReaderSettings, saveReaderSettings } from '@/lib/reader-settings'
-import Image from 'next/image'
-import logoVectorDarkTrans from '@/assets/logos/odak-vector-dark-trans.png'
-import logoVectorLightTrans from '@/assets/logos/odak-vector-light-trans.png'
+import { AtmosphericReticle } from './atmospheric-reticle'
 import { TopBar } from './top-bar'
 import { RsvpDisplay } from './rsvp-display'
 import { ContextPeek } from './context-peek'
@@ -813,32 +811,26 @@ export function ReaderApp() {
         }}
       >
         <div className="relative flex h-full w-full max-w-4xl lg:max-w-5xl xl:max-w-6xl flex-col items-center justify-between py-1 sm:py-2 transition-[max-width] duration-300 min-h-0">
-          {/* Üst Dengeleyici: Metin okuma kutusunun üst kısmındaki boşlukta arka plana gömülmüş filigran vektörel logo */}
-          <div className="flex-1 w-full min-h-0 flex items-center justify-center relative p-2 sm:p-3 pointer-events-none select-none overflow-visible">
+          {/* Üst Dengeleyici: Temiz, ferah ve nefes alan negatif alan (Apple & Minimalist mimari) */}
+          <div className="flex-1 w-full min-h-0 pointer-events-none select-none" />
+
+          {/* Okuma Penceresi & Arkadaki Merkezi Bilimsel Vizör Derinliği */}
+          <div className="w-full shrink-0 flex flex-col items-center relative">
+            {/* 1. Öneri: Merkezi Vizör Derinliği (Atmospheric Reticle HUD Background) */}
             <div
               aria-hidden="true"
               className={cn(
-                'pointer-events-none select-none transition-all duration-700 ease-out flex items-center justify-center',
-                'w-full h-full max-h-[150px] sm:max-h-[190px] md:max-h-[220px] max-w-[420px]',
+                'absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none select-none transition-all duration-700 ease-out z-0',
+                'w-[92vw] max-w-[660px] sm:max-w-[760px] md:max-w-[860px] h-[210px] sm:h-[250px] md:h-[280px]',
                 playing
-                  ? 'opacity-[0.05] sm:opacity-[0.07] scale-95'
-                  : 'opacity-[0.14] sm:opacity-[0.18] scale-100',
-                theme === 'linear' && 'drop-shadow-[0_0_26px_rgba(168,85,247,0.3)]'
+                  ? 'opacity-[0.035] scale-98'
+                  : 'opacity-[0.075] sm:opacity-[0.09] scale-100',
+                theme === 'linear' && (playing ? 'opacity-[0.08]' : 'opacity-[0.16] drop-shadow-[0_0_20px_rgba(56,189,248,0.25)]')
               )}
             >
-              <Image
-                src={theme === 'linear' ? logoVectorDarkTrans : logoVectorLightTrans}
-                alt=""
-                width={360}
-                height={240}
-                priority
-                className="w-full h-full object-contain pointer-events-none select-none"
-              />
+              <AtmosphericReticle theme={theme} />
             </div>
-          </div>
 
-          {/* Okuma Penceresi: Ekranın tam ortasında sabit kalır, duraklatıldığında yukarı itilmez */}
-          <div className="w-full shrink-0 flex flex-col items-center">
             {/* İlk Giriş Hız Testi Davet Şeridi (Zarif, tek satır, temaya uyumlu) */}
             {showSpeedTestBanner && !zen && (
               <div className="mb-2 sm:mb-3 flex w-full max-w-lg items-center justify-between gap-2 rounded-full border border-primary/25 bg-background/80 px-3.5 py-1.5 shadow-sm backdrop-blur-md animate-in fade-in slide-in-from-top-2 duration-300">

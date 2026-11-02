@@ -425,15 +425,14 @@ export function ReaderApp() {
   )
 
   // Esnek Bağlam Penceresi ve Sayfalama (Görünen kelime adedi ve alttaki <> buton adımı)
-  const [contextPageSize, setContextPageSize] = useState(60)
+  const [contextPageSize, setContextPageSize] = useState(24)
 
   const handleStepPrev = useCallback(() => {
     rampStepRef.current = 0
     const currentWordIdx = currentChunk?.startIndex ?? 0
     const pageSize = Math.max(1, contextPageSize)
     const pageIdx = Math.floor(currentWordIdx / pageSize)
-    const startWordIdx = pageIdx * pageSize
-    const targetWordIdx = currentWordIdx > startWordIdx ? startWordIdx : Math.max(0, startWordIdx - pageSize)
+    const targetWordIdx = Math.max(0, (pageIdx - 1) * pageSize)
     const targetChunkIdx = chunks.findIndex(
       (c, cIdx) =>
         targetWordIdx >= c.startIndex &&
@@ -451,8 +450,7 @@ export function ReaderApp() {
     const currentWordIdx = currentChunk?.startIndex ?? 0
     const pageSize = Math.max(1, contextPageSize)
     const pageIdx = Math.floor(currentWordIdx / pageSize)
-    const nextStartWordIdx = (pageIdx + 1) * pageSize
-    const targetWordIdx = Math.min(words.length - 1, nextStartWordIdx)
+    const targetWordIdx = Math.min(words.length - 1, (pageIdx + 1) * pageSize)
     const targetChunkIdx = chunks.findIndex(
       (c, cIdx) =>
         targetWordIdx >= c.startIndex &&

@@ -35,19 +35,31 @@ export function ContextPeek({
   const [containerRef, containerSize] = useElementSize<HTMLDivElement>()
 
   // Konteyner boyutuna göre ekranda dikey ve yatay eksende ne kadar kelime alabileceğini dinamik hesapla.
-  // Scrollbar çıkmasını %100 önlemek için güvenli satır yüksekliği ve kelime genişliği kullanılır.
+  // 3 satırın taşmadan, kelime kırpılmadan %100 ekrana sığmasını ve her sayfanın ardışık olmasını sağlar.
   const capacity = useMemo(() => {
     if (!containerSize.width) {
-      return 36 // İlk yükleme / SSR için dengeli varsayılan
+      return 21 // İlk yükleme / SSR için dengeli varsayılan
     }
-    // Tüm cihazlarda (dikey telefon, yatay telefon, iPad tablet ve masaüstü) KESİNLİKLE 3 SATIR
-    const lines = 3
     // İki yandaki butonlar ve boşluklar düşülmüş metin alanı
-    const availableWidth = Math.max(140, containerSize.width - 64)
-    // Ortalama kelime genişliğine göre 1 satıra sığacak kelime sayısını hesapla (Mobilde ~40px, tablette ~50px)
-    const wordWidthPx = containerSize.width >= 640 ? 50 : 40
-    const wordsPerLine = Math.max(7, Math.ceil(availableWidth / wordWidthPx))
-    return Math.max(18, lines * wordsPerLine)
+    const buttonSpace = containerSize.width >= 768 ? 96 : 72
+    let availableWidth = Math.max(120, containerSize.width - buttonSpace)
+    if (containerSize.width >= 768) {
+      availableWidth = Math.min(availableWidth, 768 - buttonSpace)
+    }
+
+    // Türkçede 1 kelimenin ortalama kapladığı alan (harf genişliği + boşluk + buton padding)
+    // Math.floor ile garanti altına alınarak satır taşması ve kelime kırpılması sıfırlanır.
+    let wordSlotPx = 60
+    if (containerSize.width >= 768) {
+      wordSlotPx = 76
+    } else if (containerSize.width >= 600) {
+      wordSlotPx = 66
+    } else {
+      wordSlotPx = 58
+    }
+
+    const wordsPerLine = Math.max(4, Math.floor(availableWidth / wordSlotPx))
+    return Math.max(12, 3 * wordsPerLine)
   }, [containerSize.width])
 
   // Kapasite değiştikçe ana bileşene bildir
@@ -58,32 +70,27 @@ export function ContextPeek({
   }, [capacity, onVisibleCountChange])
 
   // Sayfa bazlı dilimleme:
-  // Okuma esnasında kelimeler sürekli kayıp titremez; vurgu stabil akarken,
-  // yandaki <> butonlarına basıldığında tam bu ekranda görünen blok (capacity) kadar ileri/geri atlar.
+  // Sayfada tam capacity kadar kelime yer alır.
+  // > butonuna basıldığında EXACTLY capacity kadar ilerler.
+  // Görünen son kelime (words[end - 1]) ile bir sonraki sayfanın ilk kelimesi (words[end]) DAİMA ARDIŞIKTIR.
   const pageIndex = Math.floor(index / capacity)
   const start = pageIndex * capacity
   const end = Math.min(words.length, start + capacity)
   const slice = words.slice(start, end)
 
-  const canGoPrev = start > 0 || index > start
+  const canGoPrev = start > 0
   const canGoNext = end < words.length
 
   const handlePrev = () => {
-    if (onStepPrev) {
-      onStepPrev()
-    } else {
-      const targetWordIdx = index > start ? start : Math.max(0, start - capacity)
-      onJump(targetWordIdx)
-    }
+    if (!canGoPrev) return
+    const targetWordIdx = Math.max(0, start - capacity)
+    onJump(targetWordIdx)
   }
 
   const handleNext = () => {
-    if (onStepNext) {
-      onStepNext()
-    } else {
-      const targetWordIdx = Math.min(words.length - 1, end)
-      onJump(targetWordIdx)
-    }
+    if (!canGoNext) return
+    const targetWordIdx = Math.min(words.length - 1, start + capacity)
+    onJump(targetWordIdx)
   }
 
   return (
@@ -133,8 +140,7 @@ export function ContextPeek({
 
         {/* Ortadaki Metin Alanı: Scrollbar kesinlikle görünmez (scrollbar-none), tüm ekranlarda (mobil, tablet, masaüstü) KESİNLİKLE 3 SATIR */}
         <div className="flex-1 min-h-0 h-full overflow-hidden [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden flex items-start">
-          <p className="text-pretty text-xs sm:text-[13.5px] md:text-[15.5px] leading-[1.32] sm:leading-[1.38] md:leading-[1.45] text-muted-foreground w-full line-clamp-3 select-none m-0 p-0">
-            {start > 0 && <span aria-hidden="true" className="opacity-40">… </span>}
+          <p className="text-pretty text-xs sm:text-[13px] md:text-[14.5px] leading-[1.32] sm:leading-[1.38] md:leading-[1.42] text-muted-foreground w-full select-none m-0 p-0">
             {slice.map((w, i) => {
               const absolute = start + i
               const current = absolute >= index && absolute < index + chunkSize
@@ -154,7 +160,6 @@ export function ContextPeek({
                 </span>
               )
             })}
-            {end < words.length && <span aria-hidden="true" className="opacity-40">…</span>}
           </p>
         </div>
 

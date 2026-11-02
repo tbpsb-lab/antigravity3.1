@@ -37,17 +37,18 @@ export function ContextPeek({
   // Konteyner boyutuna göre ekranda dikey ve yatay eksende ne kadar kelime alabileceğini dinamik hesapla.
   // Scrollbar çıkmasını %100 önlemek için güvenli satır yüksekliği ve kelime genişliği kullanılır.
   const capacity = useMemo(() => {
-    if (!containerSize.width || !containerSize.height) {
+    if (!containerSize.width) {
       return 36 // İlk yükleme / SSR için dengeli varsayılan
     }
-    const isMobile = containerSize.width < 640
-    // Mobilde kesinlikle 2 satır, masaüstünde 3 satır
-    const lines = isMobile ? 2 : 3
-    // İki yandaki butonlar ve boşluklar düşülmüş metin alanı (~48-56px kelime başı ortalama)
+    // Tüm cihazlarda (dikey telefon, yatay telefon, iPad tablet ve masaüstü) KESİNLİKLE 3 SATIR
+    const lines = 3
+    // İki yandaki butonlar ve boşluklar düşülmüş metin alanı
     const availableWidth = Math.max(140, containerSize.width - 64)
-    const wordsPerLine = Math.max(4, Math.floor(availableWidth / (isMobile ? 48 : 56)))
-    return Math.max(8, lines * wordsPerLine)
-  }, [containerSize.width, containerSize.height])
+    // Ortalama kelime genişliğine göre 1 satıra sığacak kelime sayısını hesapla (Mobilde ~40px, tablette ~50px)
+    const wordWidthPx = containerSize.width >= 640 ? 50 : 40
+    const wordsPerLine = Math.max(7, Math.ceil(availableWidth / wordWidthPx))
+    return Math.max(18, lines * wordsPerLine)
+  }, [containerSize.width])
 
   // Kapasite değiştikçe ana bileşene bildir
   useEffect(() => {
@@ -100,18 +101,18 @@ export function ContextPeek({
           onClick={onStepPrev}
           disabled={!hasPrev}
           className={cn(
-            'ctl size-7 sm:size-8 shrink-0 rounded-full border border-border/40 bg-foreground/5 hover:bg-foreground/15 text-muted-foreground hover:text-foreground backdrop-blur-xs transition-all flex items-center justify-center cursor-pointer shadow-2xs',
+            'ctl size-7 sm:size-8 md:size-10 shrink-0 rounded-full border border-border/40 bg-foreground/5 hover:bg-foreground/15 text-muted-foreground hover:text-foreground backdrop-blur-xs transition-all flex items-center justify-center cursor-pointer shadow-2xs',
             !hasPrev && 'opacity-20 pointer-events-none',
           )}
           aria-label="Önceki bağlam sayfası"
           title="Önceki bağlam (Shift + ←)"
         >
-          <ChevronLeft className="size-4" />
+          <ChevronLeft className="size-4 md:size-5" />
         </button>
 
-        {/* Ortadaki Metin Alanı: Scrollbar kesinlikle görünmez (scrollbar-none), satırlar dikeyde asla kesilmez */}
+        {/* Ortadaki Metin Alanı: Scrollbar kesinlikle görünmez (scrollbar-none), tüm ekranlarda (mobil, tablet, masaüstü) KESİNLİKLE 3 SATIR */}
         <div className="flex-1 min-h-0 h-full overflow-hidden [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden flex items-center py-0.5">
-          <p className="text-pretty text-xs sm:text-[13.5px] md:text-[14px] leading-snug sm:leading-normal text-muted-foreground w-full line-clamp-2 sm:line-clamp-3 select-none py-0.5 overflow-hidden">
+          <p className="text-pretty text-xs sm:text-[13.5px] md:text-[15.5px] leading-snug sm:leading-normal md:leading-relaxed text-muted-foreground w-full line-clamp-3 select-none py-0.5 overflow-hidden">
             {start > 0 && <span aria-hidden="true" className="opacity-40">… </span>}
             {slice.map((w, i) => {
               const absolute = start + i
@@ -136,19 +137,19 @@ export function ContextPeek({
           </p>
         </div>
 
-        {/* Sağ Sayfa İleri Atla Butonu: Minik ve şeffaf */}
+        {/* Sağ Sayfa İleri Atla Butonu */}
         <button
           type="button"
           onClick={onStepNext}
           disabled={!hasNext}
           className={cn(
-            'ctl size-7 sm:size-8 shrink-0 rounded-full border border-border/40 bg-foreground/5 hover:bg-foreground/15 text-muted-foreground hover:text-foreground backdrop-blur-xs transition-all flex items-center justify-center cursor-pointer shadow-2xs',
+            'ctl size-7 sm:size-8 md:size-10 shrink-0 rounded-full border border-border/40 bg-foreground/5 hover:bg-foreground/15 text-muted-foreground hover:text-foreground backdrop-blur-xs transition-all flex items-center justify-center cursor-pointer shadow-2xs',
             !hasNext && 'opacity-20 pointer-events-none',
           )}
           aria-label="Sonraki bağlam sayfası"
           title="Sonraki bağlam (Shift + →)"
         >
-          <ChevronRight className="size-4" />
+          <ChevronRight className="size-4 md:size-5" />
         </button>
       </div>
     </div>

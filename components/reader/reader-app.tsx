@@ -857,6 +857,8 @@ export function ReaderApp() {
           setPlaying(false)
           setAboutOpen(true)
         }}
+        isFullscreen={isFullscreen}
+        onToggleFullscreen={toggleFullscreen}
         hidden={zen}
       />
 
@@ -925,8 +927,8 @@ export function ReaderApp() {
             />
           </div>
 
-          {/* Alt Zarif Bağlam Şeridi: Ortalanmış okuma kutusunun altında hafif, ferah ve kompakt şerit (mobilde 2 satır, masaüstünde 3 satır, kesilme sıfırlandı) */}
-          <div className="w-full max-w-3xl shrink-0 mt-1 sm:mt-1.5 min-h-[58px] sm:min-h-[82px] max-h-[72px] sm:max-h-[96px] flex flex-col overflow-hidden">
+          {/* Alt Zarif Bağlam Şeridi: Ortalanmış okuma kutusunun altında hafif, ferah ve kompakt şerit (tüm cihazlarda kesintisiz 3 satır) */}
+          <div className="w-full max-w-3xl shrink-0 mt-1 sm:mt-1.5 min-h-[72px] sm:min-h-[86px] md:min-h-[105px] max-h-[88px] sm:max-h-[105px] md:max-h-[125px] flex flex-col overflow-hidden">
             <ContextPeek
               words={words}
               index={currentChunk?.startIndex ?? index}

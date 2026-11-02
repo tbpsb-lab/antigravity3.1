@@ -126,9 +126,9 @@ export function FontSettings({
         aria-controls={panelId}
         aria-label="Görünüm ve Okuma Ayarları (Aa)"
         title="Görünüm ve Okuma Ayarları (Aa)"
-        className={cn('ctl panel size-10 landscape-short:size-9 cursor-pointer', open && 'ctl-primary')}
+        className={cn('ctl panel size-10 md:size-12 landscape-short:size-9 cursor-pointer', open && 'ctl-primary')}
       >
-        <span className="font-serif font-bold text-sm tracking-tighter select-none">Aa</span>
+        <span className="font-serif font-bold text-sm md:text-base tracking-tighter select-none">Aa</span>
       </button>
 
       <div

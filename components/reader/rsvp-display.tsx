@@ -276,7 +276,7 @@ export function RsvpDisplay({
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
         className={cn(
-          'rsvp-stage group relative flex flex-col justify-center min-h-[96px] sm:min-h-[110px] w-full overflow-hidden px-4 py-3.5 text-left outline-none transition-all duration-500 sm:px-8 sm:py-5 [@media(max-height:640px)]:py-2.5 landscape-short:py-1.5 select-none touch-none overscroll-none',
+          'rsvp-stage group relative flex flex-col justify-center min-h-[96px] sm:min-h-[110px] md:min-h-[140px] w-full overflow-hidden px-4 py-3.5 text-left outline-none transition-all duration-500 sm:px-8 sm:py-5 md:px-10 md:py-6 [@media(max-height:640px)]:py-2.5 landscape-short:py-1.5 select-none touch-none overscroll-none',
           isPulsing && 'pulse-jump',
           playing
             ? 'border-transparent bg-transparent shadow-none'
@@ -338,7 +338,7 @@ export function RsvpDisplay({
             <span
               aria-live="off"
               style={wordStyle}
-              className="reader-word relative grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-baseline whitespace-pre py-[0.08em] leading-[1.3] transition-[font-size] duration-100 ease-out [--word-base:clamp(1.75rem,5.2cqi,3.5rem)] landscape-short:[--word-base:clamp(1.4rem,8vh,2.5rem)] select-none tracking-normal"
+              className="reader-word relative grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-baseline whitespace-pre py-[0.08em] leading-[1.3] transition-[font-size] duration-100 ease-out [--word-base:clamp(1.75rem,5.2cqi,3.5rem)] md:[--word-base:clamp(2.4rem,6.8cqi,4.5rem)] landscape-short:[--word-base:clamp(1.4rem,8vh,2.5rem)] select-none tracking-normal"
             >
               {/* Sol parça: Sağa yaslı */}
               <span className="min-w-0 text-right overflow-visible">
@@ -376,7 +376,7 @@ export function RsvpDisplay({
               aria-live="off"
               style={wordStyle}
               className={cn(
-                'reader-word relative flex w-full items-center justify-center py-[0.08em] text-center transition-[font-size] duration-100 ease-out select-none max-w-full flex-nowrap gap-x-[0.3em] items-baseline leading-[1.3] [--word-base:clamp(1.75rem,5.2cqi,3.5rem)] landscape-short:[--word-base:clamp(1.4rem,8vh,2.5rem)]',
+                'reader-word relative flex w-full items-center justify-center py-[0.08em] text-center transition-[font-size] duration-100 ease-out select-none max-w-full flex-nowrap gap-x-[0.3em] items-baseline leading-[1.3] [--word-base:clamp(1.75rem,5.2cqi,3.5rem)] md:[--word-base:clamp(2.4rem,6.8cqi,4.5rem)] landscape-short:[--word-base:clamp(1.4rem,8vh,2.5rem)]',
                 isFootnote && 'italic text-amber-600/90 dark:text-amber-300/90 flex-wrap text-balance',
               )}
             >
@@ -395,7 +395,7 @@ export function RsvpDisplay({
         {/* Hız ve Öbek Göstergesi */}
         <div
           className={cn(
-            'absolute right-4 top-3 flex items-center gap-2 font-mono text-[11px] tabular-nums text-muted-foreground transition-opacity duration-500 sm:right-6 sm:top-4 [@media(max-height:640px)]:top-2 z-20',
+            'absolute right-4 top-3 sm:right-6 sm:top-4 md:right-8 md:top-5 flex items-center gap-2 md:gap-3 font-mono text-[11px] md:text-xs tabular-nums text-muted-foreground transition-opacity duration-500 [@media(max-height:640px)]:top-2 z-20',
             playing ? 'opacity-0 pointer-events-none' : 'opacity-100',
           )}
         >
@@ -406,13 +406,13 @@ export function RsvpDisplay({
                 e.stopPropagation()
                 onCycleChunkSize()
               }}
-              className="rounded-full border border-foreground/15 hover:border-foreground/35 bg-foreground/[0.04] hover:bg-foreground/[0.08] px-2 py-0.5 text-[10px] font-mono font-medium text-foreground/85 transition-all cursor-pointer shadow-2xs hover:scale-105 active:scale-95 select-none"
+              className="rounded-full border border-foreground/15 hover:border-foreground/35 bg-foreground/[0.04] hover:bg-foreground/[0.08] px-2 py-0.5 md:px-2.5 md:py-1 text-[10px] md:text-xs font-mono font-medium text-foreground/85 transition-all cursor-pointer shadow-2xs hover:scale-105 active:scale-95 select-none"
               title="Kelime Öbeğini Değiştir (C) — 1K / 2K / 3K"
             >
               {chunkSize}K
             </button>
           ) : chunkSize > 1 ? (
-            <span className="rounded-full border border-foreground/15 bg-foreground/[0.04] px-2 py-0.5 text-[10px] text-foreground/85 font-mono font-medium select-none">
+            <span className="rounded-full border border-foreground/15 bg-foreground/[0.04] px-2 py-0.5 md:px-2.5 md:py-1 text-[10px] md:text-xs text-foreground/85 font-mono font-medium select-none">
               {chunkSize}K
             </span>
           ) : null}
@@ -432,7 +432,7 @@ export function RsvpDisplay({
             onPointerMove={handleProgressPointerMove}
             onPointerUp={handleProgressPointerUp}
             onPointerCancel={handleProgressPointerUp}
-            className="group absolute inset-x-0 bottom-0 h-8 flex items-end cursor-ew-resize select-none touch-none z-30"
+            className="group absolute inset-x-0 bottom-0 h-8 md:h-10 flex items-end cursor-ew-resize select-none touch-none z-30"
           >
             {/* Arka plan izi (Track) - Normalde 3px, üzerine gelindiğinde veya sürüklenirken 6px */}
             <div

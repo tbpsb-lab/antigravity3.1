@@ -37,7 +37,7 @@ function OdakModalLogo({ theme }: { theme: ThemeId }) {
   if (isNeon) {
     // 2. NEON TEMASI: Siyah fonlu vektörel logo (KOYU ZEMİN)
     return (
-      <div className="relative shrink-0 w-24 sm:w-28 h-16 sm:h-18 rounded-2xl bg-[#1d1d1d] border border-purple-500/50 shadow-[0_0_20px_rgba(168,85,247,0.35)] p-1.5 flex items-center justify-center select-none transition-transform hover:scale-105 overflow-hidden">
+      <div className="relative shrink-0 w-24 sm:w-28 landscape-short:w-16 h-16 sm:h-18 landscape-short:h-9 rounded-2xl landscape-short:rounded-xl bg-[#1d1d1d] border border-purple-500/50 shadow-[0_0_20px_rgba(168,85,247,0.35)] p-1.5 landscape-short:p-1 flex items-center justify-center select-none transition-transform hover:scale-105 overflow-hidden">
         <Image
           src={logoVectorDarkCard}
           alt="odak Koyu Zemin Vektörel Logo"
@@ -54,7 +54,7 @@ function OdakModalLogo({ theme }: { theme: ThemeId }) {
   return (
     <div
       className={cn(
-        'relative shrink-0 w-24 sm:w-28 h-16 sm:h-18 rounded-2xl bg-[#f4f4f4] p-1.5 flex items-center justify-center select-none transition-transform hover:scale-105 overflow-hidden',
+        'relative shrink-0 w-24 sm:w-28 landscape-short:w-16 h-16 sm:h-18 landscape-short:h-9 rounded-2xl landscape-short:rounded-xl bg-[#f4f4f4] p-1.5 landscape-short:p-1 flex items-center justify-center select-none transition-transform hover:scale-105 overflow-hidden',
         theme === 'ios'
           ? 'border border-white/90 dark:border-white/30 shadow-[0_4px_16px_rgba(56,189,248,0.25)]'
           : 'border border-[#cfbe96] dark:border-[#524433] shadow-[0_2px_8px_rgba(0,0,0,0.12)]'
@@ -110,8 +110,8 @@ export function AboutModal({ open, onClose, theme }: AboutModalProps) {
     >
       <div
         className={cn(
-          'panel relative w-full max-w-2xl rounded-3xl p-5 sm:p-7 shadow-2xl',
-          'flex flex-col gap-4.5 border transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] animate-in zoom-in-95',
+          'panel relative w-full max-w-2xl md:max-w-3xl rounded-3xl p-5 sm:p-7 md:p-8 landscape-short:p-3 shadow-2xl',
+          'flex flex-col gap-4 md:gap-5 landscape-short:gap-2 border transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] animate-in zoom-in-95 max-h-[92dvh] landscape-short:max-h-[98dvh]',
           theme === 'linear' && 'border-purple-500/40 shadow-[0_0_40px_rgba(168,85,247,0.3)] bg-[#07060b]/95 text-slate-100',
           theme === 'kindle' && 'border-[#cfbe96] shadow-[0_8px_30px_rgba(0,0,0,0.15)] bg-[#fcf8ee] text-[#22180e]',
           theme === 'ios' && 'border-white/90 dark:border-white/25 shadow-[0_16px_50px_rgba(56,189,248,0.25)] bg-white/85 dark:bg-slate-900/85 backdrop-blur-3xl text-slate-900 dark:text-slate-100'
@@ -121,18 +121,18 @@ export function AboutModal({ open, onClose, theme }: AboutModalProps) {
         <button
           type="button"
           onClick={onClose}
-          className="absolute top-4 right-4 sm:top-6 sm:right-6 size-9 rounded-full panel grid place-items-center text-muted-foreground hover:text-foreground transition-all hover:scale-105 active:scale-95 cursor-pointer z-30"
+          className="absolute top-4 right-4 sm:top-6 sm:right-6 md:top-7 md:right-7 landscape-short:top-2.5 landscape-short:right-2.5 size-9 landscape-short:size-7 md:size-10 rounded-full panel grid place-items-center text-muted-foreground hover:text-foreground transition-all hover:scale-105 active:scale-95 cursor-pointer z-30"
           aria-label="Kapat"
         >
-          <X className="size-4.5" />
+          <X className="size-4.5 landscape-short:size-3.5" />
         </button>
 
         {/* Üst Alan: Sol Tarafta Temaya Özel Vektör Logo Rozeti, Sağında Başlık & Açıklama */}
-        <div className="flex flex-row items-center gap-3.5 sm:gap-4.5 pb-1">
+        <div className="flex flex-row items-center gap-3.5 sm:gap-4.5 md:gap-5 landscape-short:gap-2.5 pb-1 landscape-short:pb-0">
           <OdakModalLogo theme={theme} />
 
           <div className="flex flex-col min-w-0 pr-8">
-            <h2 id="about-modal-title" className="text-lg sm:text-xl font-bold tracking-tight text-foreground flex items-center gap-1.5 flex-wrap">
+            <h2 id="about-modal-title" className="text-lg sm:text-xl md:text-2xl landscape-short:text-base font-bold tracking-tight text-foreground flex items-center gap-1.5 flex-wrap">
               <span className="font-extrabold text-foreground">odak</span>
               <span className={cn(
                 'font-black',
@@ -150,7 +150,7 @@ export function AboutModal({ open, onClose, theme }: AboutModalProps) {
               </span>
             </h2>
             <p className={cn(
-              'text-xs sm:text-sm mt-1 leading-snug font-medium',
+              'text-xs sm:text-sm md:text-base mt-1 leading-snug font-medium landscape-short:hidden',
               theme === 'ios' ? 'text-slate-600 dark:text-slate-300' : 'text-foreground/85 dark:text-foreground/80'
             )}>
               Göz kaslarının mekanik yorgunluğunu sıfırlayan, zihnin anlama hızını katlayan yeni nesil RSVP platformu.
@@ -158,8 +158,8 @@ export function AboutModal({ open, onClose, theme }: AboutModalProps) {
           </div>
         </div>
 
-        {/* Entegre Dinamik Kompakt Sekme Çubuğu (Aktif sekme tam başlıkla açılır, diğerleri '...' noktası şeklinde kalır) */}
-        <div className="flex items-center justify-between gap-1.5 p-1 rounded-2xl bg-foreground/5 border border-border/60 select-none pt-1">
+        {/* Entegre Dinamik Kompakt Sekme Çubuğu (Aktif sekme tam başlıkla açılır, diğerleri kendi simgelerini gösterir) */}
+        <div className="flex items-center justify-between gap-1.5 p-1 md:p-1.5 landscape-short:p-0.5 rounded-2xl bg-foreground/5 border border-border/60 select-none pt-1 landscape-short:pt-0.5">
           {TABS.map((tab) => {
             const Icon = tab.icon
             const isActive = activeTab === tab.id
@@ -169,21 +169,21 @@ export function AboutModal({ open, onClose, theme }: AboutModalProps) {
                 type="button"
                 onClick={() => setActiveTab(tab.id)}
                 className={cn(
-                  'flex items-center justify-center transition-all duration-300 cursor-pointer outline-none rounded-xl h-9.5',
+                  'flex items-center justify-center transition-all duration-300 cursor-pointer outline-none rounded-xl h-9.5 md:h-11 landscape-short:h-8',
                   isActive
-                    ? 'flex-1 gap-2 px-3.5 bg-background text-foreground shadow-sm font-bold border border-border/80'
-                    : 'size-9 text-muted-foreground hover:text-foreground hover:bg-foreground/10'
+                    ? 'flex-1 gap-2 px-3.5 md:px-4 landscape-short:px-2.5 bg-background text-foreground shadow-sm font-bold border border-border/80'
+                    : 'size-9 md:size-11 landscape-short:size-8 text-muted-foreground hover:text-foreground hover:bg-foreground/10'
                 )}
                 title={tab.label}
                 aria-label={tab.label}
               >
                 {isActive ? (
                   <>
-                    <Icon className={cn('size-4 shrink-0', tab.color)} />
-                    <span className="text-xs sm:text-sm font-bold truncate">{tab.label}</span>
+                    <Icon className={cn('size-4 md:size-5 landscape-short:size-3.5 shrink-0', tab.color)} />
+                    <span className="text-xs sm:text-sm md:text-base landscape-short:text-xs font-bold truncate">{tab.label}</span>
                   </>
                 ) : (
-                  <span className="size-2 rounded-full bg-foreground/35 hover:bg-foreground/75 transition-all" />
+                  <Icon className={cn('size-4 md:size-5 landscape-short:size-3.5 text-muted-foreground/75 hover:text-foreground transition-all hover:scale-115 shrink-0', tab.color)} />
                 )}
               </button>
             )
@@ -197,7 +197,7 @@ export function AboutModal({ open, onClose, theme }: AboutModalProps) {
             style={{ transform: `translateX(-${activeTabIndex * 25}%)` }}
           >
             {/* 1. SLIDE: RSVP & Bilim */}
-            <div className="w-1/4 max-h-[50vh] sm:max-h-[52vh] overflow-y-auto theme-scrollbar px-1 text-sm leading-relaxed">
+            <div className="w-1/4 max-h-[50vh] sm:max-h-[52vh] md:max-h-[58vh] landscape-short:max-h-[calc(100dvh-5.5rem)] overflow-y-auto theme-scrollbar px-1 text-sm md:text-base leading-relaxed">
               <div className="flex flex-col gap-3.5">
                 <div className={cn(
                   'p-4 sm:p-5 rounded-2xl border shadow-sm',
@@ -247,7 +247,7 @@ export function AboutModal({ open, onClose, theme }: AboutModalProps) {
             </div>
 
             {/* 2. SLIDE: Özellikler */}
-            <div className="w-1/4 max-h-[50vh] sm:max-h-[52vh] overflow-y-auto theme-scrollbar px-1 text-sm leading-relaxed">
+            <div className="w-1/4 max-h-[50vh] sm:max-h-[52vh] md:max-h-[58vh] landscape-short:max-h-[calc(100dvh-5.5rem)] overflow-y-auto theme-scrollbar px-1 text-sm md:text-base leading-relaxed">
               <div className="flex flex-col gap-3">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                   <div className={cn(
@@ -356,7 +356,7 @@ export function AboutModal({ open, onClose, theme }: AboutModalProps) {
             </div>
 
             {/* 3. SLIDE: Kullanım & Tuşlar */}
-            <div className="w-1/4 max-h-[50vh] sm:max-h-[52vh] overflow-y-auto theme-scrollbar px-1 text-sm leading-relaxed">
+            <div className="w-1/4 max-h-[50vh] sm:max-h-[52vh] md:max-h-[58vh] landscape-short:max-h-[calc(100dvh-5.5rem)] overflow-y-auto theme-scrollbar px-1 text-sm md:text-base leading-relaxed">
               <div className="flex flex-col gap-3.5">
                 {/* Masaüstü Klavye ve Fare */}
                 <div className={cn(
@@ -455,7 +455,7 @@ export function AboutModal({ open, onClose, theme }: AboutModalProps) {
             </div>
 
             {/* 4. SLIDE: Künye & Geliştirici Hikâyesi */}
-            <div className="w-1/4 max-h-[50vh] sm:max-h-[52vh] overflow-y-auto theme-scrollbar px-1 text-sm leading-relaxed">
+            <div className="w-1/4 max-h-[50vh] sm:max-h-[52vh] md:max-h-[58vh] landscape-short:max-h-[calc(100dvh-5.5rem)] overflow-y-auto theme-scrollbar px-1 text-sm md:text-base leading-relaxed">
               <div className="flex flex-col gap-3.5">
                 <div className={cn(
                   'p-5 sm:p-6 rounded-2xl border shadow-sm flex flex-col gap-3',

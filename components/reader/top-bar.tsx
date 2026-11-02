@@ -1,6 +1,6 @@
 'use client'
 
-import { FileText } from 'lucide-react'
+import { FileText, Maximize, Minimize } from 'lucide-react'
 import Image from 'next/image'
 import type { ReactNode, Ref } from 'react'
 import { cn } from '@/lib/utils'
@@ -231,6 +231,8 @@ export function TopBar({
   hidden,
   fontControl,
   docTitle,
+  isFullscreen = false,
+  onToggleFullscreen,
 }: TopBarProps) {
   return (
     <header
@@ -238,24 +240,24 @@ export function TopBar({
       aria-hidden={hidden}
       inert={hidden}
       className={cn(
-        'absolute inset-x-0 top-0 z-40 px-3 pt-[max(0.75rem,env(safe-area-inset-top))] transition-all duration-500 ease-[cubic-bezier(0.2,0.8,0.2,1)] sm:px-6 sm:pt-5 landscape-short:pt-2',
+        'absolute inset-x-0 top-0 z-40 px-3 pt-[max(0.75rem,env(safe-area-inset-top))] transition-all duration-500 ease-[cubic-bezier(0.2,0.8,0.2,1)] sm:px-6 sm:pt-5 md:px-8 md:pt-6 landscape-short:pt-2',
         hidden && 'pointer-events-none -translate-y-6 opacity-0',
       )}
     >
-      <div className="mx-auto flex max-w-5xl items-center justify-between gap-3">
+      <div className="mx-auto flex max-w-5xl md:max-w-6xl items-center justify-between gap-3">
         {/* Sol Alan: Tematik Rozet Logo ve Başlık */}
-        <div className="flex min-w-0 items-center gap-2.5 overflow-visible">
+        <div className="flex min-w-0 items-center gap-2.5 md:gap-3.5 overflow-visible">
           <button
             type="button"
             onClick={onOpenAbout}
-            className="flex min-w-0 items-center gap-2.5 text-left group cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-2xl p-1 -m-1 transition-all active:scale-95 overflow-visible"
+            className="flex min-w-0 items-center gap-2.5 md:gap-3.5 text-left group cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-2xl p-1 -m-1 transition-all active:scale-95 overflow-visible"
             title="odak Hakkında, RSVP Mantığı ve Kılavuz"
             aria-label="odak Hakkında, RSVP Mantığı ve Kılavuz"
           >
             <ThemedAppLogo theme={theme} className="group-hover:scale-105" />
             <div className="min-w-0 max-[359px]:sr-only max-w-[150px] min-[400px]:max-w-[220px] sm:max-w-xs md:max-w-sm truncate">
               <p
-                className="text-xs sm:text-sm font-medium tracking-tight text-foreground/85 group-hover:text-primary transition-colors truncate"
+                className="text-xs sm:text-sm md:text-base font-medium tracking-tight text-foreground/85 group-hover:text-primary transition-colors truncate"
                 title={docTitle && docTitle !== 'odak' ? docTitle : 'Hızlı okuma penceresi'}
               >
                 {docTitle && docTitle !== 'odak' ? docTitle : 'Hızlı okuma penceresi'}
@@ -264,8 +266,8 @@ export function TopBar({
           </button>
         </div>
 
-        {/* Sağ Alan: Sade ve Lüks 2 Buton (Apple Books Modeli: 1. Aa Görünüm, 2. Metin Yükle) */}
-        <div className="flex items-center gap-2">
+        {/* Sağ Alan: 1. Aa Görünüm, 2. Metin Yükle, 3. Tam Ekran (En Sağda) */}
+        <div className="flex items-center gap-2 md:gap-3">
           {/* 1. Görünüm & Okuma Ayarları (Aa: Tema + Tipografi + Boyut + Chunk + Dipnot + Kalibrasyon) */}
           {fontControl}
 
@@ -273,12 +275,29 @@ export function TopBar({
           <button
             type="button"
             onClick={onOpenText}
-            className="ctl panel size-10 landscape-short:size-9 text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+            className="ctl panel size-10 md:size-12 landscape-short:size-9 text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
             aria-label="Okuma ve İçerik Merkezi (Metin Yükle)"
             title="Okuma ve İçerik Merkezi (Metin Yükle)"
           >
-            <FileText className="size-4" />
+            <FileText className="size-4 md:size-5" />
           </button>
+
+          {/* 3. Tam Ekran Butonu (En Sağda) */}
+          {onToggleFullscreen && (
+            <button
+              type="button"
+              onClick={onToggleFullscreen}
+              className="ctl panel size-10 md:size-12 landscape-short:size-9 text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+              aria-label={isFullscreen ? 'Tam ekrandan çık (F)' : 'Tam ekran modu (F)'}
+              title={isFullscreen ? 'Tam ekrandan çık (F)' : 'Tam ekran modu (F)'}
+            >
+              {isFullscreen ? (
+                <Minimize className="size-4 md:size-5" />
+              ) : (
+                <Maximize className="size-4 md:size-5" />
+              )}
+            </button>
+          )}
         </div>
       </div>
     </header>

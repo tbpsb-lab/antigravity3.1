@@ -41,15 +41,12 @@ export function ContextPeek({
       return 36 // İlk yükleme / SSR için dengeli varsayılan
     }
     const isMobile = containerSize.width < 640
-    // Başlık ve boşluklar için ~22px düş
-    const availableHeight = Math.max(20, containerSize.height - 22)
     // Mobilde kesinlikle 2 satır, masaüstünde 3 satır
-    const maxAllowedLines = isMobile ? 2 : 3
-    const lines = Math.max(1, Math.min(maxAllowedLines, Math.floor(availableHeight / 22)))
-    // İki yandaki butonlar ve boşluklar düşülmüş metin alanı (~58px kelime başı ortalama)
+    const lines = isMobile ? 2 : 3
+    // İki yandaki butonlar ve boşluklar düşülmüş metin alanı (~48-56px kelime başı ortalama)
     const availableWidth = Math.max(140, containerSize.width - 64)
-    const wordsPerLine = Math.max(3, Math.floor(availableWidth / 58))
-    return Math.max(6, lines * wordsPerLine)
+    const wordsPerLine = Math.max(4, Math.floor(availableWidth / (isMobile ? 48 : 56)))
+    return Math.max(8, lines * wordsPerLine)
   }, [containerSize.width, containerSize.height])
 
   // Kapasite değiştikçe ana bileşene bildir
@@ -112,9 +109,9 @@ export function ContextPeek({
           <ChevronLeft className="size-4" />
         </button>
 
-        {/* Ortadaki Metin Alanı: Scrollbar kesinlikle görünmez (scrollbar-none ve overflow-hidden) */}
-        <div className="flex-1 min-h-0 h-full overflow-hidden [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden flex items-center">
-          <p className="text-pretty text-xs leading-relaxed text-muted-foreground sm:text-[14px] md:text-[15px] w-full line-clamp-2 sm:line-clamp-3 select-none overflow-hidden">
+        {/* Ortadaki Metin Alanı: Scrollbar kesinlikle görünmez (scrollbar-none), satırlar dikeyde asla kesilmez */}
+        <div className="flex-1 min-h-0 h-full overflow-hidden [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden flex items-center py-0.5">
+          <p className="text-pretty text-xs sm:text-[13.5px] md:text-[14px] leading-snug sm:leading-normal text-muted-foreground w-full line-clamp-2 sm:line-clamp-3 select-none py-0.5 overflow-hidden">
             {start > 0 && <span aria-hidden="true" className="opacity-40">… </span>}
             {slice.map((w, i) => {
               const absolute = start + i

@@ -39,6 +39,7 @@ import { PaperCornerCurl } from './paper-corner-curl'
 import { FONT_FACES, FontSettings, type FontFace } from './font-settings'
 import { triggerHaptic } from '@/lib/haptics'
 import { useElementHeight } from '@/lib/use-element-height'
+import { useWakeLock } from '@/lib/use-wake-lock'
 
 export function ReaderApp() {
   const [theme, setTheme] = useState<ThemeId>('ios')
@@ -60,6 +61,9 @@ export function ReaderApp() {
   const [completionOpen, setCompletionOpen] = useState(false)
   const [aboutOpen, setAboutOpen] = useState(false)
   const [showSpeedTestBanner, setShowSpeedTestBanner] = useState(false)
+
+  // Ekran Kilidi / Kararmasını Önleme (Okuma sırasında ekranın uykusunu engeller)
+  useWakeLock(playing || zen)
 
   // ~500 Kelimelik Doğal Nefes / Dinlenme Aralığı Durumu
   const [isResting, setIsResting] = useState(false)
@@ -815,33 +819,6 @@ export function ReaderApp() {
 
   const progress = chunks.length > 1 ? index / lastIndex : 0
 
-  // YouTube tarzı bölüm başlıkları (Chapters)
-  const chapters = useMemo(() => {
-    if (!chunks || chunks.length === 0) return []
-    const list: { index: number; title: string; percent: number }[] = []
-    const total = chunks.length
-    for (let i = 0; i < chunks.length; i++) {
-      const c = chunks[i]
-      const isH =
-        typeof c === 'object'
-          ? Boolean(c.isHeading || c.text.startsWith('#'))
-          : String(c).startsWith('#')
-      if (isH) {
-        const rawTitle = typeof c === 'object' ? c.text : String(c)
-        const cleanTitle = rawTitle.replace(/^#+\s*/, '').trim()
-        if (cleanTitle) {
-          const percent = total > 1 ? (i / (total - 1)) * 100 : 0
-          list.push({
-            index: i,
-            title: cleanTitle,
-            percent: Math.min(100, Math.max(0, percent)),
-          })
-        }
-      }
-    }
-    return list
-  }, [chunks])
-
   return (
     <div
       data-theme={theme}
@@ -948,8 +925,8 @@ export function ReaderApp() {
             />
           </div>
 
-          {/* Alt Zarif Bağlam Şeridi: Ortalanmış okuma kutusunun altında hafif, ferah ve kompakt şerit (mobilde 2 satır, masaüstünde 3 satır) */}
-          <div className="w-full max-w-3xl shrink-0 mt-2 sm:mt-3.5 max-h-[50px] sm:max-h-[72px] flex flex-col overflow-hidden">
+          {/* Alt Zarif Bağlam Şeridi: Ortalanmış okuma kutusunun altında hafif, ferah ve kompakt şerit (mobilde 2 satır, masaüstünde 3 satır, kesilme sıfırlandı) */}
+          <div className="w-full max-w-3xl shrink-0 mt-1 sm:mt-1.5 min-h-[58px] sm:min-h-[82px] max-h-[72px] sm:max-h-[96px] flex flex-col overflow-hidden">
             <ContextPeek
               words={words}
               index={currentChunk?.startIndex ?? index}

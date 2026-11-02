@@ -236,38 +236,13 @@ export function createChunks(
     }
 
     for (const rawLine of lines) {
-      const line = rawLine.trim()
+      // Başlık saptama kaldırıldı: Varsa Markdown # işaretleri sessizce ayıklanır, tüm kelimeler standart akışa dahil edilir
+      const line = rawLine.replace(/^#{1,6}\s+/, '').trim()
       if (!line) {
         if (curWords.length > 0) {
           flush(true, false, inFootnote, true)
         } else if (chunks.length > 0) {
           chunks[chunks.length - 1].isParagraphEnd = true
-        }
-        continue
-      }
-
-      const isHeading = /^#{1,6}\s+\S+/.test(line)
-
-      if (isHeading) {
-        if (curWords.length > 0) {
-          flush(true, false, inFootnote, true)
-        } else if (chunks.length > 0) {
-          chunks[chunks.length - 1].isParagraphEnd = true
-        }
-        const cleanLine = line.replace(/^#{1,6}\s+/, '')
-        const hWords = splitGluedTokens(cleanLine.split(/\s+/).filter(Boolean))
-        if (hWords.length > 0) {
-          const hStart = globalWordIdx
-          globalWordIdx += hWords.length
-          chunks.push({
-            text: hWords.join(' '),
-            words: hWords,
-            startIndex: hStart,
-            isSentenceEnd: true,
-            isParagraphEnd: true,
-            isHeading: true,
-            isFootnote: false,
-          })
         }
         continue
       }
@@ -352,25 +327,23 @@ export function createChunks(
       continue
     }
 
-    const startsHeading = rawWord.startsWith('#')
     const isFootnoteTag = startsFootnote || inFootnoteSpan
 
-    // Başlık veya dipnot başlangıcında önceki öbeği hemen kapat
-    if (startsHeading || (startsFootnote && currentWords.length > 0)) {
+    // Dipnot başlangıcında önceki öbeği hemen kapat
+    if (startsFootnote && currentWords.length > 0) {
       flush(false)
       currentStartIndex = i
     }
 
     if (currentWords.length === 0) {
       currentStartIndex = i
-      if (startsHeading) isCurrentHeading = true
       if (isFootnoteTag) {
         isCurrentFootnote = true
         currentFootnoteLabel = 'Dipnot'
       }
     }
 
-    const cleanWord = startsHeading ? rawWord.replace(/^#+\s*/, '') : rawWord
+    const cleanWord = rawWord.replace(/^#+\s*/, '')
     if (cleanWord) {
       currentWords.push(cleanWord)
     }
@@ -382,21 +355,17 @@ export function createChunks(
     }
 
     const isSentenceEnd = /[.!?…]["”’»)]*$/.test(rawWord)
-    const isHeadingEnd =
-      isCurrentHeading &&
-      (isSentenceEnd || currentWords.length >= 8 || i + 1 >= words.length || Boolean(words[i + 1]?.startsWith('#')))
 
     const nextStartsSpecial =
-      i + 1 < words.length && (Boolean(words[i + 1]?.startsWith('#')) || /^\[dipnot/i.test(words[i + 1]))
+      i + 1 < words.length && /^\[dipnot/i.test(words[i + 1])
 
     if (
       currentWords.length >= Math.max(1, chunkSize) ||
       isSentenceEnd ||
-      isHeadingEnd ||
       nextStartsSpecial ||
       i === words.length - 1
     ) {
-      flush(isSentenceEnd || isHeadingEnd, i === words.length - 1)
+      flush(isSentenceEnd, i === words.length - 1)
     }
   }
 
@@ -459,15 +428,7 @@ export function calculateWordDelay(
   options: { isParagraphEnd?: boolean } = {},
 ): number {
   const text = typeof word === 'string' ? word : word.text
-  const isHeading = typeof word === 'object' ? word.isHeading : text.startsWith('#')
   const baseDelay = 60000 / Math.max(1, baseWpm)
-
-  // Bölüm başlıkları için kelime sayısıyla orantılı rahat okuma süresi
-  if (isHeading) {
-    const wordCount = typeof word === 'object' && word.words ? word.words.length : text.split(/\s+/).length
-    const wordDelayTotal = wordCount * (baseDelay * 1.1)
-    return Math.max(Math.round(wordDelayTotal + 550), 1350)
-  }
 
   // 1. Kelimenin noktalamasız harf sayısını (cleanLength) bul
   const cleanWord = text.replace(/[^\wçğıöşüÇĞİÖŞÜ0-9]/g, '')
@@ -575,7 +536,7 @@ export function findCurrentSentenceStartIndex(
     const item = chunks[idx]
     if (!item) return false
     if (typeof item === 'object') {
-      if (item.isSentenceEnd || item.isParagraphEnd || item.isHeading) return true
+      if (item.isSentenceEnd || item.isParagraphEnd) return true
       return /[.!?…]["”’»)\u201D\u2019\]]*$/.test(item.text.trim())
     }
     return /[.!?…]["”’»)\u201D\u2019\]]*$/.test(String(item).trim())
@@ -619,7 +580,7 @@ export function findPreviousSentenceIndex(
     const item = chunks[idx]
     if (!item) return false
     if (typeof item === 'object') {
-      if (item.isSentenceEnd || item.isParagraphEnd || item.isHeading) return true
+      if (item.isSentenceEnd || item.isParagraphEnd) return true
       return /[.!?…]["”’»)\u201D\u2019\]]*$/.test(item.text.trim())
     }
     return /[.!?…]["”’»)\u201D\u2019\]]*$/.test(String(item).trim())
@@ -691,7 +652,7 @@ export function findNextSentenceIndex(
     const item = chunks[idx]
     if (!item) return false
     if (typeof item === 'object') {
-      if (item.isSentenceEnd || item.isParagraphEnd || item.isHeading) return true
+      if (item.isSentenceEnd || item.isParagraphEnd) return true
       return /[.!?…]["”’»)\u201D\u2019\]]*$/.test(item.text.trim())
     }
     return /[.!?…]["”’»)\u201D\u2019\]]*$/.test(String(item).trim())

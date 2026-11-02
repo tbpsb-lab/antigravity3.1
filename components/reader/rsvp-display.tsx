@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, type CSSProperties } from 'react'
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
 import { cn } from '@/lib/utils'
 import { calculateTurkishORP, WPM_STEP, type ChunkItem } from '@/lib/rsvp'
 import { triggerHaptic } from '@/lib/haptics'
@@ -168,13 +168,11 @@ export function RsvpDisplay({
   }
 
   const activeText = chunk ? chunk.text : word
-  const isHeading = chunk?.isHeading || activeText.startsWith('#')
   const isFootnote = chunk?.isFootnote || /^\[dipnot/i.test(activeText)
-  const isSingleWordMode = chunkSize === 1 && !isHeading && !isFootnote
+  const isSingleWordMode = chunkSize === 1 && !isFootnote
 
-  // Clean heading text
-  const cleanDisplayText = isHeading ? activeText.replace(/^#+\s*/, '') : activeText
-  const displayWords = chunk ? (isHeading ? cleanDisplayText.split(/\s+/) : chunk.words) : [word]
+  const cleanDisplayText = activeText
+  const displayWords = chunk ? chunk.words : [word]
 
   // Single word Turkish ORP split (Noktalamadan arındırılmış Türkçe kök odaklı ORP)
   const { leftPart, focusChar, rightPart } = calculateTurkishORP(cleanDisplayText)
@@ -189,27 +187,7 @@ export function RsvpDisplay({
     const availableHalfWidth = Math.max(80, containerWidth / 2 - padding)
     const availableFullWidth = Math.max(160, containerWidth - padding * 2)
 
-    if (isHeading) {
-      // Başlık modunda: Konteyner genişliğine göre akıllı küçültme (Mobilde yatay taşmayı %100 önler)
-      const totalChars = cleanDisplayText.length
-      const longestWordLength = Math.max(...displayWords.map((w) => w.length), 1)
-      const baseHeadingPx = containerWidth < 480 ? 19 : 24
-      const currentHeadingPx = baseHeadingPx * fontScale
-
-      // 1. En uzun kelimenin tek başına satırı taşırmasını engelle
-      const wordRequiredWidth = longestWordLength * currentHeadingPx * 0.62
-      const wordScale = wordRequiredWidth > availableFullWidth ? availableFullWidth / wordRequiredWidth : 1
-
-      // 2. Başlığın toplam karakter hacmine göre ölçekleme (en fazla 2 satırda sığdırma hedefi)
-      let totalScale = 1
-      const maxAllowedWidth = availableFullWidth * (containerWidth < 480 ? 1.65 : 2.2)
-      const estimatedTotalWidth = totalChars * currentHeadingPx * 0.52
-      if (estimatedTotalWidth > maxAllowedWidth) {
-        totalScale = maxAllowedWidth / estimatedTotalWidth
-      }
-
-      autoFitScale = Math.min(1, Math.max(0.42, Math.min(wordScale, totalScale)))
-    } else if (isSingleWordMode) {
+    if (isSingleWordMode) {
       // Tek kelime modu: Merkeze göre kanat hesabı (monospace 0.60ch çarpanı)
       const estimatedBasePx = Math.min(56, Math.max(26, containerWidth * 0.052))
       const currentPx = estimatedBasePx * fontScale
@@ -231,25 +209,64 @@ export function RsvpDisplay({
 
   const finalScale = fontScale * autoFitScale
 
-  // Başlıklar için dinamik font boyutu: Başlık uzunluğuna göre akıllı küçültme (Mobilde taşmayı kesinlikle önler)
-  let headingBaseSize = 'clamp(1rem, 3.4cqi, 1.85rem)'
-  if (isHeading) {
-    if (cleanDisplayText.length > 50) {
-      headingBaseSize = 'clamp(0.85rem, 2.5cqi, 1.2rem)'
-    } else if (cleanDisplayText.length > 25) {
-      headingBaseSize = 'clamp(0.95rem, 2.9cqi, 1.45rem)'
-    }
-  }
-
   const wordStyle = {
-    fontSize: isHeading
-      ? `calc(${headingBaseSize} * ${finalScale})`
-      : `calc(var(--word-base) * ${finalScale})`,
+    fontSize: `calc(var(--word-base) * ${finalScale})`,
     fontFamily: fontFamily || 'var(--reader-font)',
     fontVariantNumeric: 'tabular-nums',
     fontFeatureSettings: '"tnum", "zero"',
     fontVariantLigatures: 'none',
   } as CSSProperties
+
+  // İlerleme Çubuğu Sürükleme / Scrubbing Kontrolleri (Mobil Touch + Masaüstü Mouse Drag)
+  const [isScrubbing, setIsScrubbing] = useState(false)
+  const isScrubbingRef = useRef(false)
+  const progressBarRef = useRef<HTMLDivElement | null>(null)
+  const lastScrubIndexRef = useRef<number>(-1)
+
+  const seekFromPointerEvent = useCallback(
+    (clientX: number) => {
+      const el = progressBarRef.current
+      if (!el || !onSeek || total <= 1) return
+      const rect = el.getBoundingClientRect()
+      if (rect.width <= 0) return
+      const pct = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width))
+      const targetIdx = Math.round(pct * (total - 1))
+      if (targetIdx !== lastScrubIndexRef.current) {
+        lastScrubIndexRef.current = targetIdx
+        onSeek(targetIdx)
+        triggerHaptic('step')
+      }
+    },
+    [onSeek, total],
+  )
+
+  const handleProgressPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    e.stopPropagation()
+    isScrubbingRef.current = true
+    setIsScrubbing(true)
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId)
+    } catch {}
+    seekFromPointerEvent(e.clientX)
+  }
+
+  const handleProgressPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!isScrubbingRef.current) return
+    e.stopPropagation()
+    seekFromPointerEvent(e.clientX)
+  }
+
+  const handleProgressPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!isScrubbingRef.current) return
+    e.stopPropagation()
+    isScrubbingRef.current = false
+    setIsScrubbing(false)
+    lastScrubIndexRef.current = -1
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId)
+    } catch {}
+    triggerHaptic('jump')
+  }
 
   return (
     <section aria-label="Okuma penceresi" className="relative w-full">
@@ -354,25 +371,19 @@ export function RsvpDisplay({
               </span>
             </span>
           ) : (
-            /* 2. ÇOKLU KELİME (CHUNK > 1) VEYA BAŞLIK/DİPNOT MODU: Kırmızı Harfsiz, Doğal Merkezli Blok */
+            /* 2. ÇOKLU KELİME (CHUNK > 1) VEYA DİPNOT MODU */
             <span
               aria-live="off"
               style={wordStyle}
               className={cn(
-                'reader-word relative flex w-full items-center justify-center py-[0.08em] text-center transition-[font-size] duration-100 ease-out select-none max-w-full',
-                isHeading
-                  ? 'flex-wrap gap-x-[0.25em] gap-y-[0.1em] font-extrabold tracking-tight text-primary drop-shadow-xs leading-snug px-2 text-balance break-words'
-                  : 'flex-nowrap gap-x-[0.3em] items-baseline leading-[1.3] [--word-base:clamp(1.75rem,5.2cqi,3.5rem)] landscape-short:[--word-base:clamp(1.4rem,8vh,2.5rem)]',
+                'reader-word relative flex w-full items-center justify-center py-[0.08em] text-center transition-[font-size] duration-100 ease-out select-none max-w-full flex-nowrap gap-x-[0.3em] items-baseline leading-[1.3] [--word-base:clamp(1.75rem,5.2cqi,3.5rem)] landscape-short:[--word-base:clamp(1.4rem,8vh,2.5rem)]',
                 isFootnote && 'italic text-amber-600/90 dark:text-amber-300/90 flex-wrap text-balance',
               )}
             >
               {displayWords.map((w, idx) => (
                 <span
                   key={idx}
-                  className={cn(
-                    'inline-block max-w-full',
-                    isHeading ? 'whitespace-normal break-words' : 'whitespace-nowrap',
-                  )}
+                  className="inline-block max-w-full whitespace-nowrap"
                 >
                   {w}
                 </span>
@@ -395,43 +406,59 @@ export function RsvpDisplay({
                 e.stopPropagation()
                 onCycleChunkSize()
               }}
-              className="rounded bg-muted/80 hover:bg-muted px-1.5 py-0.5 text-[10px] text-foreground font-semibold cursor-pointer transition-all shadow-2xs hover:scale-105 active:scale-95"
+              className="rounded-full border border-foreground/15 hover:border-foreground/35 bg-foreground/[0.04] hover:bg-foreground/[0.08] px-2 py-0.5 text-[10px] font-mono font-medium text-foreground/85 transition-all cursor-pointer shadow-2xs hover:scale-105 active:scale-95 select-none"
               title="Kelime Öbeğini Değiştir (C) — 1K / 2K / 3K"
             >
               {chunkSize}K
             </button>
           ) : chunkSize > 1 ? (
-            <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-foreground font-medium">
+            <span className="rounded-full border border-foreground/15 bg-foreground/[0.04] px-2 py-0.5 text-[10px] text-foreground/85 font-mono font-medium select-none">
               {chunkSize}K
             </span>
           ) : null}
           <span>{wpm} k/dk</span>
         </div>
 
-        {/* Entegre Alt İlerleme Çizgisi: Sadece duraklatıldığında görünür, aktif okumada (%100 sadelik için) KESİNLİKLE GİZLENİR */}
+        {/* Entegre Alt İlerleme Çizgisi: Sadece duraklatıldığında görünür, aktif okumada KESİNLİKLE GİZLENİR */}
         {!playing && total > 0 && (
           <div
+            ref={progressBarRef}
             role="progressbar"
-            aria-label="Okuma İlerlemesi"
+            aria-label="Okuma İlerlemesi (Kaydırmak için sürükleyin)"
             aria-valuenow={index}
             aria-valuemin={0}
             aria-valuemax={Math.max(0, total - 1)}
-            className="absolute inset-x-0 bottom-0 h-1 bg-foreground/10 overflow-hidden cursor-pointer hover:h-1.5 transition-all z-20"
-            onClick={(e) => {
-              e.stopPropagation()
-              const rect = e.currentTarget.getBoundingClientRect()
-              if (rect.width > 0 && onSeek && total > 1) {
-                const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width))
-                onSeek(Math.round(pct * (total - 1)))
-              }
-            }}
+            onPointerDown={handleProgressPointerDown}
+            onPointerMove={handleProgressPointerMove}
+            onPointerUp={handleProgressPointerUp}
+            onPointerCancel={handleProgressPointerUp}
+            className="group absolute inset-x-0 bottom-0 h-8 flex items-end cursor-ew-resize select-none touch-none z-30"
           >
+            {/* Arka plan izi (Track) - Normalde 3px, üzerine gelindiğinde veya sürüklenirken 6px */}
             <div
-              className="h-full bg-primary/80 transition-[width] duration-150 ease-out"
-              style={{
-                width: `${Math.min(100, Math.max(0, ((index + 1) / total) * 100))}%`,
-              }}
-            />
+              className={cn(
+                'relative w-full overflow-hidden transition-all duration-150 rounded-b-2xl sm:rounded-b-3xl',
+                isScrubbing ? 'h-2 bg-foreground/20' : 'h-1 group-hover:h-1.5 bg-foreground/10',
+              )}
+            >
+              {/* Doluluk göstergesi */}
+              <div
+                className="h-full bg-primary/85 transition-[width] duration-75 ease-out rounded-full"
+                style={{
+                  width: `${Math.min(100, Math.max(0, ((index + 1) / total) * 100))}%`,
+                }}
+              />
+            </div>
+
+            {/* Sürükleme sırasında parmak/imleç altında beliren aktif odak noktası (Thumb Indicator) */}
+            {isScrubbing && (
+              <div
+                className="pointer-events-none absolute bottom-0.5 -translate-x-1/2 size-3.5 rounded-full bg-primary shadow-[0_0_10px_rgba(59,130,246,0.7)] border-2 border-background transition-transform"
+                style={{
+                  left: `${Math.min(100, Math.max(0, ((index + 1) / total) * 100))}%`,
+                }}
+              />
+            )}
           </div>
         )}
       </div>

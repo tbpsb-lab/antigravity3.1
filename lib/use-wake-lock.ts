@@ -2,32 +2,44 @@
 
 import { useEffect, useRef } from 'react'
 
+interface SimpleWakeLockSentinel {
+  released: boolean
+  release: () => Promise<void>
+  addEventListener?: (type: string, listener: () => void) => void
+}
+
 /**
  * Screen Wake Lock Hook (Ekranın kararmasını ve uykuya geçmesini önler)
  * Okuma sırasında (playing === true veya zen === true) ekranın açık kalmasını sağlar.
  * Destekleyen tarayıcılar: Chrome (Android/Desktop), Safari (iOS 16.4+/macOS), Edge vb.
  */
 export function useWakeLock(enabled: boolean) {
-  const wakeLockRef = useRef<WakeLockSentinel | null>(null)
+  const wakeLockRef = useRef<SimpleWakeLockSentinel | null>(null)
 
   useEffect(() => {
     let isMounted = true
 
     const requestLock = async () => {
       if (!enabled) return
-      if (typeof navigator === 'undefined' || !('wakeLock' in navigator)) return
+      if (typeof navigator === 'undefined') return
+      const nav = navigator as unknown as {
+        wakeLock?: {
+          request: (type: 'screen') => Promise<SimpleWakeLockSentinel>
+        }
+      }
+      if (!nav.wakeLock?.request) return
 
       try {
         if (wakeLockRef.current && !wakeLockRef.current.released) {
           return
         }
-        const lock = await navigator.wakeLock.request('screen')
+        const lock = await nav.wakeLock.request('screen')
         if (!isMounted) {
           await lock.release().catch(() => {})
           return
         }
         wakeLockRef.current = lock
-        lock.addEventListener('release', () => {
+        lock.addEventListener?.('release', () => {
           if (wakeLockRef.current === lock) {
             wakeLockRef.current = null
           }

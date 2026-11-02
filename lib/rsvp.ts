@@ -218,7 +218,6 @@ export function createChunks(
 
     const flush = (
       isSentenceEnd: boolean,
-      isHeading: boolean = false,
       isFootnote: boolean = false,
       isParagraphEnd: boolean = false,
     ) => {
@@ -229,7 +228,6 @@ export function createChunks(
         startIndex: curStart,
         isSentenceEnd,
         isParagraphEnd,
-        isHeading,
         isFootnote,
       })
       curWords = []
@@ -240,7 +238,7 @@ export function createChunks(
       const line = rawLine.replace(/^#{1,6}\s+/, '').trim()
       if (!line) {
         if (curWords.length > 0) {
-          flush(true, false, inFootnote, true)
+          flush(true, inFootnote, true)
         } else if (chunks.length > 0) {
           chunks[chunks.length - 1].isParagraphEnd = true
         }
@@ -268,13 +266,13 @@ export function createChunks(
         if (isFootnoteEnd) inFootnote = false
 
         if (curWords.length >= Math.max(1, chunkSize) || isSentenceEnd) {
-          flush(isSentenceEnd, false, inFootnote || /^\[dipnot/i.test(curWords[0]))
+          flush(isSentenceEnd, inFootnote || /^\[dipnot/i.test(curWords[0]))
         }
       }
     }
 
     if (curWords.length > 0) {
-      flush(true, false, inFootnote, true)
+      flush(true, inFootnote, true)
     } else if (chunks.length > 0) {
       chunks[chunks.length - 1].isParagraphEnd = true
     }
@@ -287,7 +285,6 @@ export function createChunks(
   const chunks: ChunkItem[] = []
   let currentWords: string[] = []
   let currentStartIndex = 0
-  let isCurrentHeading = false
   let isCurrentFootnote = false
   let currentFootnoteLabel: string | undefined = undefined
   let inFootnoteSpan = false
@@ -300,12 +297,10 @@ export function createChunks(
       startIndex: currentStartIndex,
       isSentenceEnd: isEnd,
       isParagraphEnd: isParaEnd,
-      isHeading: isCurrentHeading,
       isFootnote: isCurrentFootnote,
       footnoteLabel: currentFootnoteLabel,
     })
     currentWords = []
-    isCurrentHeading = false
     isCurrentFootnote = false
     currentFootnoteLabel = undefined
   }

@@ -158,8 +158,8 @@ export function AboutModal({ open, onClose, theme }: AboutModalProps) {
           </div>
         </div>
 
-        {/* Sekme Butonları (Grid Layout: Asla Sıkışmaz ve Taşmaz) */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 w-full select-none pt-1">
+        {/* Entegre Dinamik Kompakt Sekme Çubuğu (Aktif sekme tam başlıkla açılır, diğerleri '...' noktası şeklinde kalır) */}
+        <div className="flex items-center justify-between gap-1.5 p-1 rounded-2xl bg-foreground/5 border border-border/60 select-none pt-1">
           {TABS.map((tab) => {
             const Icon = tab.icon
             const isActive = activeTab === tab.id
@@ -169,20 +169,22 @@ export function AboutModal({ open, onClose, theme }: AboutModalProps) {
                 type="button"
                 onClick={() => setActiveTab(tab.id)}
                 className={cn(
-                  'flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs sm:text-sm font-medium transition-all cursor-pointer border',
+                  'flex items-center justify-center transition-all duration-300 cursor-pointer outline-none rounded-xl h-9.5',
                   isActive
-                    ? theme === 'linear'
-                      ? 'bg-purple-950/80 text-purple-200 border-purple-400 shadow-[0_0_12px_rgba(168,85,247,0.4)] font-semibold'
-                      : theme === 'kindle'
-                      ? 'bg-[#ede3cf] dark:bg-[#3d3326] text-[#2c1e10] dark:text-[#f8f3ea] border-[#b8a783] shadow-sm font-semibold'
-                      : 'bg-white/95 text-sky-950 border-sky-400 dark:bg-white/20 dark:text-white dark:border-sky-400 shadow-[0_0_12px_rgba(56,189,248,0.3)] font-bold'
-                    : theme === 'ios'
-                    ? 'bg-white/50 dark:bg-white/5 border-white/60 dark:border-white/10 text-slate-700 dark:text-slate-300 hover:bg-white/80'
-                    : 'panel text-muted-foreground hover:text-foreground opacity-75 hover:opacity-100 border-border/40'
+                    ? 'flex-1 gap-2 px-3.5 bg-background text-foreground shadow-sm font-bold border border-border/80'
+                    : 'size-9 text-muted-foreground hover:text-foreground hover:bg-foreground/10'
                 )}
+                title={tab.label}
+                aria-label={tab.label}
               >
-                <Icon className={cn('size-4 shrink-0', tab.color)} />
-                <span className="truncate">{tab.label}</span>
+                {isActive ? (
+                  <>
+                    <Icon className={cn('size-4 shrink-0', tab.color)} />
+                    <span className="text-xs sm:text-sm font-bold truncate">{tab.label}</span>
+                  </>
+                ) : (
+                  <span className="size-2 rounded-full bg-foreground/35 hover:bg-foreground/75 transition-all" />
+                )}
               </button>
             )
           })}
@@ -509,28 +511,6 @@ export function AboutModal({ open, onClose, theme }: AboutModalProps) {
               </div>
             </div>
           </div>
-        </div>
-
-        {/* Sekme Altı ooo Şeklinde Yatay Scroll / Sayfa Göstergeleri */}
-        <div className="flex items-center justify-center gap-2 pt-1 select-none" aria-label="Sayfa göstergesi">
-          {TABS.map((tab) => {
-            const isActive = activeTab === tab.id
-            return (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => setActiveTab(tab.id)}
-                className={cn(
-                  'h-2 rounded-full transition-all duration-300 cursor-pointer',
-                  isActive
-                    ? 'w-6 bg-primary shadow-sm'
-                    : 'w-2 bg-muted-foreground/35 hover:bg-muted-foreground/70'
-                )}
-                title={tab.label}
-                aria-label={tab.label}
-              ></button>
-            )
-          })}
         </div>
       </div>
     </div>

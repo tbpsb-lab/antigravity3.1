@@ -16,6 +16,7 @@ import {
   calculateWordDelay,
   chunkDelay,
   findPreviousSentenceIndex,
+  findNextSentenceIndex,
   findCurrentSentenceStartIndex,
   formatRemaining,
 } from '@/lib/rsvp'
@@ -30,7 +31,6 @@ import { AmbientAura } from './ambient-aura'
 import { TopBar } from './top-bar'
 import { RsvpDisplay } from './rsvp-display'
 import { ContextPeek } from './context-peek'
-import { ControlDock } from './control-dock'
 import { TextSheet } from './text-sheet'
 import { SpeedTestModal } from './speed-test-modal'
 import { CompletionModal } from './completion-modal'
@@ -50,7 +50,6 @@ export function ReaderApp() {
   const [resumeBadge, setResumeBadge] = useState<string | null>(null)
 
   const [headerRef, headerHeight] = useElementHeight<HTMLElement>()
-  const [dockRef, dockHeight] = useElementHeight<HTMLElement>()
   const [text, setText] = useState(SAMPLE_TEXT)
   const [docTitle, setDocTitle] = useState('odak')
   const [index, setIndex] = useState(0)
@@ -364,6 +363,20 @@ export function ReaderApp() {
     triggerHaptic('jump')
   }, [chunks, index, triggerPulse])
 
+  const handleSmartForward = useCallback(() => {
+    if (chunks.length === 0) return
+    rampStepRef.current = 0
+    const targetIndex = findNextSentenceIndex(chunks, index)
+    setIndex(targetIndex)
+    triggerPulse()
+    triggerHaptic('jump')
+  }, [chunks, index, triggerPulse])
+
+  const cycleChunkSize = useCallback(() => {
+    setChunkSize((prev) => (prev >= 3 ? 1 : prev + 1))
+    triggerHaptic('tap')
+  }, [])
+
   const jumpToPreviousSentence = handleSmartRewind
 
   // 1, 2 & 3. KURAL: Canlı WPM Toast HUD ve Zamanlayıcı Mantığı
@@ -447,12 +460,14 @@ export function ReaderApp() {
     isSwiping: boolean
     hasSwiped: boolean
   } | null>(null)
+  const zenLastHapticStepRef = useRef<number>(0)
 
   const zenOverlayRef = useRef<HTMLDivElement | null>(null)
 
   const handleZenTouchStart = (e: React.TouchEvent) => {
     if (e.touches.length !== 1) return
     const touch = e.touches[0]
+    zenLastHapticStepRef.current = 0
     zenTouchStateRef.current = {
       startY: touch.clientY,
       startX: touch.clientX,
@@ -483,6 +498,10 @@ export function ReaderApp() {
       // Aşağı kaydırma (deltaY pozitif) -> WPM azalır
       const pixelDistance = -deltaY
       const steps = Math.trunc(pixelDistance / 25)
+      if (steps !== zenLastHapticStepRef.current) {
+        zenLastHapticStepRef.current = steps
+        triggerHaptic('step')
+      }
       const targetWpm = zenTouchStateRef.current.startWpm + steps * WPM_STEP
 
       // 2. KURAL: Hız sınırları (100 - 1000 WPM)
@@ -662,7 +681,7 @@ export function ReaderApp() {
         if (e.shiftKey) {
           handleStepNext()
         } else {
-          seek(index + 1)
+          handleSmartForward()
         }
         break
       case 'ArrowUp':
@@ -675,7 +694,7 @@ export function ReaderApp() {
         break
       case 'KeyC':
         e.preventDefault()
-        handleChunkSizeChange(chunkSize >= 4 ? 1 : chunkSize + 1)
+        cycleChunkSize()
         break
       case 'KeyF':
         e.preventDefault()
@@ -868,7 +887,7 @@ export function ReaderApp() {
         className="absolute inset-0 flex flex-col items-center justify-center overflow-hidden px-4 transition-[padding] duration-500 ease-[cubic-bezier(0.2,0.8,0.2,1)] sm:px-8"
         style={{
           paddingTop: zen ? 0 : headerHeight,
-          paddingBottom: zen ? 0 : dockHeight,
+          paddingBottom: zen ? 0 : '1.25rem',
         }}
       >
         <div className="relative flex h-full w-full max-w-4xl lg:max-w-5xl xl:max-w-6xl flex-col items-center justify-between py-1 sm:py-2 transition-[max-width] duration-300 min-h-0">
@@ -877,31 +896,30 @@ export function ReaderApp() {
 
           {/* Okuma Penceresi: Ekranın tam ortasında sabit, temiz ve ferah */}
           <div className="w-full shrink-0 flex flex-col items-center">
-            {/* İlk Giriş Hız Testi Davet Şeridi (Zarif, tek satır, temaya uyumlu) */}
+            {/* İlk Giriş Hız Testi Davet Şeridi (Sade, kısa, şimşeksiz ve sakin) */}
             {showSpeedTestBanner && !zen && (
-              <div className="mb-2 sm:mb-3 flex w-full max-w-lg items-center justify-between gap-2 rounded-full border border-primary/25 bg-background/80 px-3.5 py-1.5 shadow-sm backdrop-blur-md animate-in fade-in slide-in-from-top-2 duration-300">
+              <div className="mb-2 sm:mb-2.5 flex w-full max-w-xs items-center justify-between gap-2 rounded-full border border-border/50 bg-background/50 px-3 py-1 shadow-2xs backdrop-blur-sm animate-in fade-in slide-in-from-top-1 duration-300">
                 <button
                   type="button"
                   onClick={() => {
                     setPlaying(false)
                     setSpeedTestOpen(true)
                   }}
-                  className="flex flex-1 min-w-0 items-center gap-2 text-xs sm:text-sm font-medium text-foreground hover:text-primary transition-colors cursor-pointer text-left truncate"
+                  className="flex flex-1 min-w-0 items-center justify-between text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer text-left"
                 >
-                  <Zap className="size-3.5 text-foreground/75 shrink-0" />
-                  <span className="truncate">Okuma hızınızı test edip ideal RSVP hızınızı kalibre edin</span>
-                  <span className="shrink-0 text-[11px] font-semibold text-primary underline underline-offset-2 ml-1">
+                  <span>Okuma hızını belirle</span>
+                  <span className="text-[11px] font-medium text-foreground/75 hover:text-foreground underline underline-offset-2 ml-2">
                     Başla →
                   </span>
                 </button>
                 <button
                   type="button"
                   onClick={dismissSpeedTestBanner}
-                  className="ctl size-6 shrink-0 rounded-full text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                  className="ctl size-5 shrink-0 rounded-full text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
                   aria-label="Kapat"
                   title="Kapat"
                 >
-                  <X className="size-3.5" />
+                  <X className="size-3" />
                 </button>
               </div>
             )}
@@ -914,7 +932,7 @@ export function ReaderApp() {
               isPulsing={isPulsing}
               onToggle={togglePlay}
               onPrev={handleSmartRewind}
-              onNext={() => seek(index + 1)}
+              onNext={handleSmartForward}
               onSeek={seek}
               index={index}
               total={chunks.length}
@@ -922,6 +940,7 @@ export function ReaderApp() {
               onWpmChange={changeWpm}
               onWpmSet={setWpmDirect}
               onWpmDragEnd={() => hideWpmToastWithFade(1000)}
+              onCycleChunkSize={cycleChunkSize}
               wpm={wpm}
               fontScale={fontScale}
               maxSide={maxSide}
@@ -929,8 +948,8 @@ export function ReaderApp() {
             />
           </div>
 
-          {/* Alt Zarif Bağlam Şeridi: Ortalanmış okuma kutusunun altında hafif, ferah ve kompakt şerit */}
-          <div className="w-full max-w-3xl shrink-0 mt-3 sm:mt-5 max-h-[80px] sm:max-h-[96px] flex flex-col overflow-hidden">
+          {/* Alt Zarif Bağlam Şeridi: Ortalanmış okuma kutusunun altında hafif, ferah ve kompakt şerit (mobilde 2 satır, masaüstünde 3 satır) */}
+          <div className="w-full max-w-3xl shrink-0 mt-2 sm:mt-3.5 max-h-[50px] sm:max-h-[72px] flex flex-col overflow-hidden">
             <ContextPeek
               words={words}
               index={currentChunk?.startIndex ?? index}
@@ -962,18 +981,6 @@ export function ReaderApp() {
           <div className="flex-1 w-full min-h-0 pointer-events-none select-none" />
         </div>
       </main>
-
-      <ControlDock
-        ref={dockRef}
-        hidden={zen}
-        index={index}
-        total={chunks.length}
-        wpm={wpm}
-        playing={playing}
-        chunkSize={chunkSize}
-        chapters={chapters}
-        onSeek={seek}
-      />
 
       {/* 3. KURAL: Canlı WPM Toast HUD (Dikey kaydırma sırasında canlı, touchend sonrasında 1 sn fade-out) */}
       {wpmToastVisible && (
@@ -1028,14 +1035,14 @@ export function ReaderApp() {
             }}
           />
 
-          {/* Sağ %25: 1 kelime ileri sar */}
+          {/* Sağ %25: Sonraki cümle başına atla */}
           <button
             type="button"
-            aria-label="1 kelime ileri sar"
+            aria-label="Sonraki cümle başına atla"
             className="h-full w-1/4 cursor-pointer outline-none active:bg-foreground/[0.02] touch-none"
             onClick={(e) => {
               e.stopPropagation()
-              handleZenClick(() => seek(index + 1))
+              handleZenClick(handleSmartForward)
             }}
           />
         </div>

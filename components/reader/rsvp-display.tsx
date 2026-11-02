@@ -27,6 +27,7 @@ type RsvpDisplayProps = {
   onWpmChange?: (delta: number) => void
   onWpmSet?: (newWpm: number) => void
   onWpmDragEnd?: () => void
+  onCycleChunkSize?: () => void
 }
 
 export function RsvpDisplay({
@@ -48,6 +49,7 @@ export function RsvpDisplay({
   onWpmChange,
   onWpmSet,
   onWpmDragEnd,
+  onCycleChunkSize,
 }: RsvpDisplayProps) {
   const [containerRef, containerSize] = useElementSize<HTMLDivElement>()
   const stageNodeRef = useRef<HTMLDivElement | null>(null)
@@ -288,10 +290,10 @@ export function RsvpDisplay({
             }}
           />
 
-          {/* Sağ %25: 1 kelime ileri sar */}
+          {/* Sağ %25: Sonraki Cümle Başı */}
           <button
             type="button"
-            aria-label="1 kelime ileri sar"
+            aria-label="Sonraki cümle başına atla"
             className="h-full w-1/4 cursor-pointer outline-none active:bg-foreground/[0.03] transition-colors touch-none"
             onClick={(e) => {
               e.stopPropagation()
@@ -302,16 +304,6 @@ export function RsvpDisplay({
 
         {/* İlk Açılış İçin Yarı Saydam Dokunma Rehberi (Tap Guide Overlay) */}
         <TapGuide />
-
-        {/* 0.5s Doğal Nefes ve Dinlenme Aralığı Göstergesi */}
-        {isResting && (
-          <div className="absolute inset-0 z-30 flex items-center justify-center bg-background/85 backdrop-blur-xs transition-opacity duration-300 animate-in fade-in select-none">
-            <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3.5 py-1.5 text-xs font-semibold text-primary shadow-xs">
-              <span className="inline-block size-2 rounded-full bg-primary animate-ping" />
-              <span>Nefes Al • Göz Kırp</span>
-            </div>
-          </div>
-        )}
 
         {/* Dipnot Rozeti (Bölüm Başlığı rozeti yerine başlık tipografik vurgu ile sunulur) */}
         {isFootnote && (
@@ -392,15 +384,27 @@ export function RsvpDisplay({
         {/* Hız ve Öbek Göstergesi */}
         <div
           className={cn(
-            'absolute right-4 top-3 flex items-center gap-2 font-mono text-[11px] tabular-nums text-muted-foreground transition-opacity duration-500 sm:right-6 sm:top-4 [@media(max-height:640px)]:top-2',
-            playing ? 'opacity-0' : 'opacity-100',
+            'absolute right-4 top-3 flex items-center gap-2 font-mono text-[11px] tabular-nums text-muted-foreground transition-opacity duration-500 sm:right-6 sm:top-4 [@media(max-height:640px)]:top-2 z-20',
+            playing ? 'opacity-0 pointer-events-none' : 'opacity-100',
           )}
         >
-          {chunkSize > 1 && (
+          {onCycleChunkSize ? (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                onCycleChunkSize()
+              }}
+              className="rounded bg-muted/80 hover:bg-muted px-1.5 py-0.5 text-[10px] text-foreground font-semibold cursor-pointer transition-all shadow-2xs hover:scale-105 active:scale-95"
+              title="Kelime Öbeğini Değiştir (C) — 1K / 2K / 3K"
+            >
+              {chunkSize}K
+            </button>
+          ) : chunkSize > 1 ? (
             <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-foreground font-medium">
               {chunkSize}K
             </span>
-          )}
+          ) : null}
           <span>{wpm} k/dk</span>
         </div>
 
@@ -430,27 +434,6 @@ export function RsvpDisplay({
             />
           </div>
         )}
-      </div>
-
-      {/* Klavye Kısayol İpuçları: Yalnızca duraklatıldığında çok hafif görünür, aktif okumada tamamen solar */}
-      <div
-        className={cn(
-          'mt-2.5 hidden sm:flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[11px] text-muted-foreground/60 transition-opacity duration-500 select-none',
-          playing ? 'opacity-0 pointer-events-none' : 'opacity-100',
-        )}
-      >
-        <span className="inline-flex items-center gap-1">
-          <kbd className="rounded border border-border/60 bg-muted/50 px-1.5 py-0.5 font-mono text-[10px] text-foreground/80">Boşluk</kbd> Oynat / Durdur
-        </span>
-        <span className="inline-flex items-center gap-1">
-          <kbd className="rounded border border-border/60 bg-muted/50 px-1.5 py-0.5 font-mono text-[10px] text-foreground/80">↑ / ↓</kbd> Hız
-        </span>
-        <span className="inline-flex items-center gap-1">
-          <kbd className="rounded border border-border/60 bg-muted/50 px-1.5 py-0.5 font-mono text-[10px] text-foreground/80">← / →</kbd> Cümle
-        </span>
-        <span className="inline-flex items-center gap-1">
-          <kbd className="rounded border border-border/60 bg-muted/50 px-1.5 py-0.5 font-mono text-[10px] text-foreground/80">F</kbd> Tam Ekran
-        </span>
       </div>
     </section>
   )

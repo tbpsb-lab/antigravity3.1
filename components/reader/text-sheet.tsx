@@ -147,9 +147,6 @@ function TextSheetBody({ initialText, onClose, onApply }: Omit<TextSheetProps, '
             <h2 id="text-sheet-title" className="text-base font-semibold tracking-tight">
               Okuma & İçerik Merkezi
             </h2>
-            <p className="text-xs text-muted-foreground landscape-short:hidden">
-              Metin yapıştırın, PDF kitap yükleyin, haber bağlantısı veya YouTube videosu ekleyin.
-            </p>
           </div>
           <button
             type="button"
@@ -258,30 +255,6 @@ function TextSheetBody({ initialText, onClose, onApply }: Omit<TextSheetProps, '
         {/* SEKME 1: METİN YAPIŞTIR (Sabit modern radius: rounded-2xl, köşelerde ASLA yazı kesilmez) */}
         {activeTab === 'text' && (
           <div className="flex flex-col gap-2.5">
-            {/* Hızlı Seçki Hapları */}
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
-              <span className="shrink-0 text-[11px] font-semibold text-muted-foreground mr-1">
-                Hızlı Klasikler:
-              </span>
-              {CURATED_LIBRARY.map((passage) => (
-                <button
-                  key={passage.id}
-                  type="button"
-                  onClick={() => {
-                    setDraft(passage.text)
-                    onApply(passage.text, passage.title)
-                  }}
-                  className="ctl shrink-0 h-6.5 rounded-full border border-border/80 bg-background/80 px-2.5 text-[11px] font-medium text-foreground hover:border-primary/50 hover:text-primary transition-colors cursor-pointer"
-                  title={`${passage.author} — ${passage.wordCount} kelime (~${passage.estimatedSeconds} sn)`}
-                >
-                  <span>{passage.title}</span>
-                  <span className="text-[10px] text-muted-foreground ml-1 font-mono">
-                    {passage.wordCount}k
-                  </span>
-                </button>
-              ))}
-            </div>
-
             <textarea
               id="reader-text"
               ref={textareaRef}

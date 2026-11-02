@@ -112,20 +112,20 @@ function CompletionModalBody({
         role="dialog"
         aria-modal="true"
         aria-labelledby="completion-title"
-        className="panel relative z-10 flex max-h-[92dvh] w-full max-w-lg flex-col gap-4 overflow-y-auto p-5 sm:p-7 shadow-2xl animate-in fade-in zoom-in-95 duration-200 rounded-t-3xl sm:rounded-3xl border border-border/80 text-foreground"
+        className="panel relative z-10 flex max-h-[92dvh] w-full max-w-lg flex-col gap-4 overflow-y-auto p-5 sm:p-7 shadow-[0_20px_60px_-15px_rgba(245,158,11,0.3)] animate-in fade-in zoom-in-95 duration-200 rounded-t-3xl sm:rounded-3xl border border-amber-500/30 bg-background/95 backdrop-blur-2xl text-foreground"
       >
         {/* Üst Kapatma ve Kutlama Başlığı */}
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex size-11 items-center justify-center rounded-2xl bg-amber-500/15 text-amber-500 shadow-xs ring-1 ring-amber-500/30">
+            <div className="flex size-12 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 text-white shadow-[0_4px_16px_rgba(245,158,11,0.4)]">
               <Trophy className="size-6 animate-bounce" />
             </div>
             <div>
               <div className="flex items-center gap-1.5">
-                <span className="text-[11px] font-semibold uppercase tracking-wider text-primary">Tamamlandı</span>
+                <span className="text-[11px] font-bold uppercase tracking-wider text-amber-500">Tamamlandı</span>
                 <Sparkles className="size-3.5 text-amber-500" />
               </div>
-              <h2 id="completion-title" className="text-base sm:text-lg font-bold tracking-tight">
+              <h2 id="completion-title" className="text-base sm:text-lg font-extrabold tracking-tight">
                 Tebrikler, harika bir odak!
               </h2>
             </div>
@@ -140,51 +140,51 @@ function CompletionModalBody({
           </button>
         </div>
 
-        {/* 4'lü Başarı Metrikleri Kartı */}
+        {/* 4'lü Başarı Metrikleri Kartı (Sıcak, Prestijli ve Canlı) */}
         <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
           {/* 1. Kelime Sayısı */}
-          <div className="flex flex-col rounded-2xl border border-border/60 bg-muted/20 p-3 sm:p-3.5 text-center">
-            <span className="text-[11px] font-medium text-muted-foreground">Okunan Hacim</span>
-            <span className="mt-0.5 font-mono text-xl sm:text-2xl font-extrabold tracking-tight text-foreground">
+          <div className="flex flex-col rounded-2xl border border-sky-400/30 bg-sky-500/10 p-3 sm:p-3.5 text-center shadow-xs">
+            <span className="text-[11px] font-medium text-sky-700 dark:text-sky-300">Okunan Hacim</span>
+            <span className="mt-0.5 font-mono text-xl sm:text-2xl font-black tracking-tight text-foreground">
               {wordCount}
             </span>
-            <span className="text-[10px] text-muted-foreground">kelime</span>
+            <span className="text-[10px] text-sky-700/80 dark:text-sky-300/80">kelime</span>
           </div>
 
           {/* 2. Ortalama Hız */}
-          <div className="flex flex-col rounded-2xl border border-border/60 bg-muted/20 p-3 sm:p-3.5 text-center">
-            <span className="text-[11px] font-medium text-muted-foreground">RSVP Hızı</span>
-            <span className="mt-0.5 font-mono text-xl sm:text-2xl font-extrabold tracking-tight text-primary">
+          <div className="flex flex-col rounded-2xl border border-purple-400/30 bg-purple-500/10 p-3 sm:p-3.5 text-center shadow-xs">
+            <span className="text-[11px] font-medium text-purple-700 dark:text-purple-300">RSVP Hızı</span>
+            <span className="mt-0.5 font-mono text-xl sm:text-2xl font-black tracking-tight text-primary">
               {wpm}
             </span>
-            <span className="text-[10px] text-primary/80">kelime / dakika</span>
+            <span className="text-[10px] text-purple-700/80 dark:text-purple-300/80">kelime / dakika</span>
           </div>
 
           {/* 3. Kazanılan Zaman */}
-          <div className="flex flex-col rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-3 sm:p-3.5 text-center">
-            <span className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400">Kazanılan Zaman</span>
-            <span className="mt-0.5 font-mono text-xl sm:text-2xl font-extrabold tracking-tight text-emerald-600 dark:text-emerald-400">
+          <div className="flex flex-col rounded-2xl border border-emerald-500/40 bg-emerald-500/15 p-3 sm:p-3.5 text-center shadow-xs">
+            <span className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-300">Kazanılan Zaman</span>
+            <span className="mt-0.5 font-mono text-xl sm:text-2xl font-black tracking-tight text-emerald-700 dark:text-emerald-300">
               {savedSeconds > 0 ? `+${formatDuration(savedSeconds)}` : formatDuration(actualSeconds)}
             </span>
-            <span className="text-[10px] text-emerald-600/80 dark:text-emerald-400/80">
+            <span className="text-[10px] text-emerald-700/80 dark:text-emerald-300/80">
               standart okumaya göre
             </span>
           </div>
 
           {/* 4. Dinlenen Göz Kasları */}
-          <div className="flex flex-col rounded-2xl border border-border/60 bg-muted/20 p-3 sm:p-3.5 text-center">
-            <span className="text-[11px] font-medium text-muted-foreground">Önlenen Göz Sıçraması</span>
-            <span className="mt-0.5 font-mono text-xl sm:text-2xl font-extrabold tracking-tight text-foreground">
+          <div className="flex flex-col rounded-2xl border border-amber-400/30 bg-amber-500/10 p-3 sm:p-3.5 text-center shadow-xs">
+            <span className="text-[11px] font-medium text-amber-700 dark:text-amber-300">Önlenen Göz Sıçraması</span>
+            <span className="mt-0.5 font-mono text-xl sm:text-2xl font-black tracking-tight text-foreground">
               {saccadesPrevented.toLocaleString('tr-TR')}
             </span>
-            <span className="text-[10px] text-muted-foreground">mekanik sıçrama</span>
+            <span className="text-[10px] text-amber-700/80 dark:text-amber-300/80">mekanik sıçrama</span>
           </div>
         </div>
 
         {/* Bilgilendirici Bilişsel Kart */}
-        <div className="rounded-xl border border-border/60 bg-muted/30 p-3 text-xs leading-relaxed text-muted-foreground">
+        <div className="rounded-xl border border-amber-500/25 bg-gradient-to-r from-amber-500/10 via-orange-500/5 to-transparent p-3 text-xs leading-relaxed text-foreground/85">
           <p>
-            <strong className="text-foreground">Zihinsel Dinginlik:</strong> Göz kaslarınız satır taramak yerine tek bir odak noktasına kenetlendi. Beyniniz iç seslendirmeyi hafifleterek bilgiyi doğrudan kavramsal desenler halinde kaydetti.
+            <strong className="text-amber-600 dark:text-amber-400">Zihinsel Dinginlik:</strong> Göz kaslarınız satır taramak yerine tek bir odak noktasına kenetlendi. Beyniniz iç seslendirmeyi hafifleterek bilgiyi doğrudan kavramsal desenler halinde kaydetti.
           </p>
         </div>
 
@@ -208,7 +208,7 @@ function CompletionModalBody({
               onClose()
               onOpenNewText()
             }}
-            className="ctl ctl-primary flex h-11 w-full sm:w-auto sm:flex-1 items-center justify-center gap-2 rounded-xl text-xs sm:text-sm font-semibold shadow-md transition-all cursor-pointer hover:scale-[1.01]"
+            className="ctl flex h-11 w-full sm:w-auto sm:flex-1 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white font-semibold text-xs sm:text-sm shadow-md shadow-indigo-500/25 transition-all cursor-pointer hover:opacity-95 hover:scale-[1.01]"
           >
             <Upload className="size-3.5" />
             <span>Yeni Metin Seç</span>
@@ -219,7 +219,7 @@ function CompletionModalBody({
             onClick={handleShare}
             className={cn(
               'ctl flex h-11 w-full sm:w-auto items-center justify-center gap-1.5 rounded-xl border px-3 text-xs font-medium transition-colors cursor-pointer',
-              copied ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-500' : 'border-border bg-background text-muted-foreground hover:text-foreground',
+              copied ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-500' : 'border-amber-500/30 bg-amber-500/5 text-amber-700 dark:text-amber-300 hover:bg-amber-500/10',
             )}
             title="Başarıyı Paylaş veya Kopyala"
           >

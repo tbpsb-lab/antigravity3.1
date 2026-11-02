@@ -4,16 +4,16 @@ export function triggerHaptic(type: 'step' | 'jump' | 'success' | 'tap' = 'step'
   try {
     if ('vibrate' in navigator && typeof navigator.vibrate === 'function') {
       if (type === 'step') {
-        // Hız değişimi (WPM ±25): Apple Watch Digital Crown hissi veren 10ms mikro-tık
-        navigator.vibrate(10)
+        // Hız değişimi (WPM ±25): Telefon motorunun hissedilir netlikte dönmesi için 24ms mikro-tık
+        navigator.vibrate(24)
       } else if (type === 'jump') {
-        // Cümle atlama / geri sarma: İkili hafif dokunuş
-        navigator.vibrate([8, 25, 8])
+        // Cümle atlama / geri sarma: İkili belirgin dokunuş
+        navigator.vibrate([20, 35, 20])
       } else if (type === 'success') {
         // Okuma tamamlanma / başarı ritmi
-        navigator.vibrate([15, 35, 20, 40, 30])
+        navigator.vibrate([30, 45, 30, 45, 50])
       } else if (type === 'tap') {
-        navigator.vibrate(8)
+        navigator.vibrate(18)
       }
     }
   } catch {

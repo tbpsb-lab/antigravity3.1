@@ -673,3 +673,37 @@ export function findPreviousSentenceIndex(
   return Math.max(0, currentSentenceStart)
 }
 
+/**
+ * Akıllı Sonraki Cümle Başı Atlama Algoritması:
+ * İleri atlama tetiklendiğinde (sağ %25 dokunma alanı veya sağ ok tuşu)
+ * doğrudan bir sonraki cümlenin ilk kelimesine zıplar.
+ */
+export function findNextSentenceIndex(
+  chunks: (ChunkItem | string)[],
+  currentIndex: number,
+): number {
+  if (!chunks || chunks.length === 0 || currentIndex >= chunks.length - 1) {
+    return Math.max(0, (chunks?.length || 1) - 1)
+  }
+
+  const isBoundary = (idx: number): boolean => {
+    if (idx < 0 || idx >= chunks.length) return false
+    const item = chunks[idx]
+    if (!item) return false
+    if (typeof item === 'object') {
+      if (item.isSentenceEnd || item.isParagraphEnd || item.isHeading) return true
+      return /[.!?…]["”’»)\u201D\u2019\]]*$/.test(item.text.trim())
+    }
+    return /[.!?…]["”’»)\u201D\u2019\]]*$/.test(String(item).trim())
+  }
+
+  for (let i = currentIndex; i < chunks.length - 1; i++) {
+    if (isBoundary(i)) {
+      return i + 1
+    }
+  }
+
+  return chunks.length - 1
+}
+
+

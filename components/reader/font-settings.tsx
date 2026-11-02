@@ -53,6 +53,32 @@ type FontSettingsProps = {
   onOpenSpeedTest?: () => void
 }
 
+// Temaların Özel Malzeme ve Şekil İkonları (Orijinal 3 Biçim)
+function CamShape() {
+  return (
+    <span className="relative block size-6.5 rounded-full backdrop-blur-md border border-white/80 dark:border-white/40 bg-gradient-to-br from-white/70 via-white/20 to-white/5 dark:from-white/25 dark:via-white/10 dark:to-transparent shadow-[inset_0_1px_1.5px_rgba(255,255,255,0.9),0_2px_6px_rgba(0,0,0,0.08)] shrink-0">
+      <span className="absolute top-0.5 left-1/2 -translate-x-1/2 w-2.5 h-[1.5px] rounded-full bg-white/95 dark:bg-white/70 pointer-events-none" />
+    </span>
+  )
+}
+
+function NeonShape() {
+  return (
+    <span className="relative block w-7.5 h-4.5 rounded-full bg-black/95 dark:bg-[#08080a] border border-purple-500/80 shadow-[0_0_10px_rgba(168,85,247,0.5),inset_0_0_6px_rgba(168,85,247,0.3)] flex items-center justify-center shrink-0">
+      <span className="w-3.5 h-1 rounded-full bg-purple-400 shadow-[0_0_6px_#c084fc] pointer-events-none" />
+    </span>
+  )
+}
+
+function KagitShape() {
+  return (
+    <span className="relative block size-6 rounded-md bg-[#fbf0d9] dark:bg-[#2e261d] border border-[#cfbe96] dark:border-[#524433] shadow-[0_1px_3px_rgba(0,0,0,0.12),inset_0_1px_0_rgba(255,255,255,0.4)] flex flex-col items-center justify-center gap-[2px] shrink-0">
+      <span className="w-2.5 h-[1px] bg-[#998664]/70 dark:bg-[#857357]/70 rounded-full pointer-events-none" />
+      <span className="w-2 h-[1px] bg-[#998664]/70 dark:bg-[#857357]/70 rounded-full pointer-events-none" />
+    </span>
+  )
+}
+
 export function FontSettings({
   theme = 'ios',
   onThemeChange,
@@ -137,9 +163,9 @@ export function FontSettings({
                     : 'border-border/60 hover:border-border hover:bg-muted/40 text-muted-foreground'
                 )}
               >
-                <span className="size-6 rounded-full border border-sky-400/50 bg-gradient-to-br from-white/90 via-sky-100/60 to-sky-300/30 shadow-[0_0_8px_rgba(56,189,248,0.4)] flex items-center justify-center">
-                  <span className="size-2 rounded-full bg-sky-500/80" />
-                </span>
+                <div className="h-7 flex items-center justify-center">
+                  <CamShape />
+                </div>
                 <span className="text-[11px] font-medium">Cam</span>
               </button>
 
@@ -156,9 +182,9 @@ export function FontSettings({
                     : 'border-border/60 hover:border-border hover:bg-muted/40 text-muted-foreground'
                 )}
               >
-                <span className="size-6 rounded-full border border-purple-500/60 bg-[#07060b] shadow-[0_0_8px_rgba(168,85,247,0.5)] flex items-center justify-center">
-                  <span className="size-2 rounded-full bg-cyan-400 shadow-[0_0_4px_#38bdf8]" />
-                </span>
+                <div className="h-7 flex items-center justify-center">
+                  <NeonShape />
+                </div>
                 <span className="text-[11px] font-medium">Neon</span>
               </button>
 
@@ -175,9 +201,9 @@ export function FontSettings({
                     : 'border-border/60 hover:border-border hover:bg-muted/40 text-muted-foreground'
                 )}
               >
-                <span className="size-6 rounded-md border border-[#cbba92] bg-[#fbf0d9] dark:bg-[#2b241c] shadow-[0_1px_4px_rgba(0,0,0,0.15)] flex items-center justify-center">
-                  <span className="text-[9px] font-serif font-bold text-[#5c452d] dark:text-[#d7c3a0]">A</span>
-                </span>
+                <div className="h-7 flex items-center justify-center">
+                  <KagitShape />
+                </div>
                 <span className="text-[11px] font-medium">Kağıt</span>
               </button>
             </div>

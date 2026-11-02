@@ -111,20 +111,20 @@ export function ContextPeek({
         </button>
 
         {/* Ortadaki Metin Alanı: Scrollbar kesinlikle görünmez (scrollbar-none), tüm ekranlarda (mobil, tablet, masaüstü) KESİNLİKLE 3 SATIR */}
-        <div className="flex-1 min-h-0 h-full overflow-hidden [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden flex items-center py-0.5">
-          <p className="text-pretty text-xs sm:text-[13.5px] md:text-[15.5px] leading-snug sm:leading-normal md:leading-relaxed text-muted-foreground w-full line-clamp-3 select-none py-0.5 overflow-hidden">
+        <div className="flex-1 min-h-0 h-full overflow-hidden [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden flex items-start">
+          <p className="text-pretty text-xs sm:text-[13.5px] md:text-[15.5px] leading-[1.32] sm:leading-[1.38] md:leading-[1.45] text-muted-foreground w-full line-clamp-3 select-none m-0 p-0">
             {start > 0 && <span aria-hidden="true" className="opacity-40">… </span>}
             {slice.map((w, i) => {
               const absolute = start + i
               const current = absolute >= index && absolute < index + chunkSize
               return (
-                <span key={absolute}>
+                <span key={absolute} className="inline">
                   <button
                     type="button"
                     onClick={() => onJump(absolute)}
                     aria-current={current ? 'true' : undefined}
                     className={cn(
-                      'rounded-[4px] px-0.5 transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring cursor-pointer',
+                      'inline rounded-[3px] px-0.5 py-0 leading-inherit transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring cursor-pointer',
                       current && 'bg-pivot/15 font-medium text-foreground',
                     )}
                   >

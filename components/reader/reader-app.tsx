@@ -863,13 +863,15 @@ export function ReaderApp() {
       />
 
       <main
-        className="absolute inset-0 flex flex-col items-center justify-center overflow-hidden px-4 transition-[padding] duration-500 ease-[cubic-bezier(0.2,0.8,0.2,1)] sm:px-8"
+        className={cn(
+          'absolute inset-0 flex flex-col items-center justify-center overflow-hidden px-4 transition-[padding] duration-500 ease-[cubic-bezier(0.2,0.8,0.2,1)] sm:px-8 landscape-short:px-3',
+          zen ? 'pb-0' : 'pb-5 landscape-short:pb-1.5',
+        )}
         style={{
           paddingTop: zen ? 0 : headerHeight,
-          paddingBottom: zen ? 0 : '1.25rem',
         }}
       >
-        <div className="relative flex h-full w-full max-w-4xl lg:max-w-5xl xl:max-w-6xl flex-col items-center justify-between py-1 sm:py-2 transition-[max-width] duration-300 min-h-0">
+        <div className="relative flex h-full w-full max-w-4xl lg:max-w-5xl xl:max-w-6xl flex-col items-center justify-between py-1 sm:py-2 landscape-short:py-0.5 transition-[max-width] duration-300 min-h-0">
           {/* Üst Dengeleyici: Temiz, ferah ve nefes alan negatif alan (Apple & Minimalist mimari) */}
           <div className="flex-1 w-full min-h-0 pointer-events-none select-none" />
 
@@ -928,7 +930,7 @@ export function ReaderApp() {
           </div>
 
           {/* Alt Zarif Bağlam Şeridi: Ortalanmış okuma kutusunun altında hafif, ferah ve kompakt şerit (tüm cihazlarda kesintisiz 3 satır) */}
-          <div className="w-full max-w-3xl shrink-0 mt-1 sm:mt-1.5 min-h-[72px] sm:min-h-[86px] md:min-h-[105px] max-h-[88px] sm:max-h-[105px] md:max-h-[125px] flex flex-col overflow-hidden">
+          <div className="w-full max-w-3xl shrink-0 mt-1 sm:mt-1.5 landscape-short:mt-0.5 min-h-[76px] sm:min-h-[90px] md:min-h-[110px] max-h-[94px] sm:max-h-[112px] md:max-h-[132px] landscape-short:min-h-[72px] landscape-short:max-h-[84px] flex flex-col overflow-hidden">
             <ContextPeek
               words={words}
               index={currentChunk?.startIndex ?? index}

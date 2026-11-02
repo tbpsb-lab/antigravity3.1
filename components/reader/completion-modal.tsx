@@ -112,7 +112,7 @@ function CompletionModalBody({
         role="dialog"
         aria-modal="true"
         aria-labelledby="completion-title"
-        className="panel relative z-10 flex max-h-[92dvh] w-full max-w-lg flex-col gap-4 overflow-y-auto p-5 sm:p-7 shadow-[0_20px_60px_-15px_rgba(245,158,11,0.3)] animate-in fade-in zoom-in-95 duration-200 rounded-t-3xl sm:rounded-3xl border border-amber-500/30 bg-background/95 backdrop-blur-2xl text-foreground"
+        className="panel relative z-10 flex max-h-[92dvh] w-full max-w-lg flex-col gap-4 overflow-y-auto p-5 sm:p-7 shadow-[0_20px_60px_-15px_rgba(245,158,11,0.35)] animate-in fade-in zoom-in-95 duration-200 rounded-t-3xl sm:rounded-3xl border border-amber-500/30 bg-gradient-to-b from-amber-500/[0.08] via-background/95 to-background backdrop-blur-2xl text-foreground"
       >
         {/* Üst Kapatma ve Kutlama Başlığı */}
         <div className="flex items-start justify-between">

@@ -62,9 +62,6 @@ export function ReaderApp() {
   const [aboutOpen, setAboutOpen] = useState(false)
   const [showSpeedTestBanner, setShowSpeedTestBanner] = useState(false)
 
-  // Ekran Kilidi / Kararmasını Önleme (Okuma sırasında ekranın uykusunu engeller)
-  useWakeLock(playing || zen)
-
   // ~500 Kelimelik Doğal Nefes / Dinlenme Aralığı Durumu
   const [isResting, setIsResting] = useState(false)
   const wordsReadSinceRestRef = useRef(0)
@@ -111,6 +108,9 @@ export function ReaderApp() {
   const lastIndex = Math.max(0, chunks.length - 1)
   const currentChunk = chunks[index]
   const zen = playing
+
+  // Ekran Kilidi / Kararmasını Önleme (Okuma sırasında ekranın uykusunu engeller)
+  useWakeLock(zen)
 
   // 3. KURAL: Yumuşak Kalkış (Ramp-Up / Warm-up) sayacı
   const rampStepRef = useRef(0)

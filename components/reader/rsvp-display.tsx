@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useRef, useState, type CSSProperties, type PointerEvent, type TouchEvent } from 'react'
 import { cn } from '@/lib/utils'
 import { calculateTurkishORP, WPM_STEP, type ChunkItem } from '@/lib/rsvp'
 import { triggerHaptic } from '@/lib/haptics'
@@ -72,7 +72,7 @@ export function RsvpDisplay({
     hasSwiped: boolean
   } | null>(null)
 
-  const handleTouchStart = (e: React.TouchEvent) => {
+  const handleTouchStart = (e: TouchEvent) => {
     if (e.touches.length !== 1) return
     const touch = e.touches[0]
     lastHapticStepRef.current = 0
@@ -85,7 +85,7 @@ export function RsvpDisplay({
     }
   }
 
-  const handleTouchMove = (e: React.TouchEvent) => {
+  const handleTouchMove = (e: TouchEvent) => {
     if (!touchStateRef.current || e.touches.length !== 1) return
     const touch = e.touches[0]
     const deltaY = touch.clientY - touchStateRef.current.startY
@@ -240,7 +240,7 @@ export function RsvpDisplay({
     [onSeek, total],
   )
 
-  const handleProgressPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+  const handleProgressPointerDown = (e: PointerEvent<HTMLDivElement>) => {
     e.stopPropagation()
     isScrubbingRef.current = true
     setIsScrubbing(true)
@@ -250,13 +250,13 @@ export function RsvpDisplay({
     seekFromPointerEvent(e.clientX)
   }
 
-  const handleProgressPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+  const handleProgressPointerMove = (e: PointerEvent<HTMLDivElement>) => {
     if (!isScrubbingRef.current) return
     e.stopPropagation()
     seekFromPointerEvent(e.clientX)
   }
 
-  const handleProgressPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+  const handleProgressPointerUp = (e: PointerEvent<HTMLDivElement>) => {
     if (!isScrubbingRef.current) return
     e.stopPropagation()
     isScrubbingRef.current = false

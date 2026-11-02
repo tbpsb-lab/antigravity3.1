@@ -40,13 +40,13 @@ export function ContextPeek({
     if (!containerSize.width || !containerSize.height) {
       return 50 // İlk yükleme / SSR için dengeli varsayılan
     }
-    // Başlık ve boşluklar için ~26px düş
-    const availableHeight = Math.max(20, containerSize.height - 26)
-    // 14-15px yazı boyutu ve leading-relaxed (~25px satır yüksekliği)
-    const lines = Math.max(1, Math.floor(availableHeight / 25))
-    // İki yandaki butonlar ve boşluklar düşülmüş metin alanı (~60px kelime başı ortalama)
+    // Başlık ve boşluklar için ~24px düş
+    const availableHeight = Math.max(20, containerSize.height - 24)
+    // En fazla 2-3 satırlık zarif ve kompakt şerit tut (ekranı asla kaplamaz)
+    const lines = Math.max(1, Math.min(3, Math.floor(availableHeight / 24)))
+    // İki yandaki butonlar ve boşluklar düşülmüş metin alanı (~58px kelime başı ortalama)
     const availableWidth = Math.max(140, containerSize.width - 64)
-    const wordsPerLine = Math.max(3, Math.floor(availableWidth / 60))
+    const wordsPerLine = Math.max(3, Math.floor(availableWidth / 58))
     return Math.max(6, lines * wordsPerLine)
   }, [containerSize.width, containerSize.height])
 

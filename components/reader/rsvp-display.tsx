@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, type CSSProperties } from 'react'
 import { cn } from '@/lib/utils'
 import { calculateTurkishORP, WPM_STEP, type ChunkItem } from '@/lib/rsvp'
+import { triggerHaptic } from '@/lib/haptics'
 import { useElementSize } from '@/lib/use-element-size'
 import { TapGuide } from './tap-guide'
 
@@ -12,6 +13,9 @@ type RsvpDisplayProps = {
   chunkSize?: number
   playing: boolean
   wpm: number
+  index?: number
+  total?: number
+  isResting?: boolean
   fontFamily?: string
   fontScale: number
   maxSide: number
@@ -19,6 +23,7 @@ type RsvpDisplayProps = {
   onToggle: () => void
   onPrev?: () => void
   onNext?: () => void
+  onSeek?: (index: number) => void
   onWpmChange?: (delta: number) => void
   onWpmSet?: (newWpm: number) => void
   onWpmDragEnd?: () => void
@@ -30,18 +35,23 @@ export function RsvpDisplay({
   chunkSize = 1,
   playing,
   wpm,
+  index = 0,
+  total = 0,
+  isResting = false,
   fontFamily,
   fontScale,
   isPulsing = false,
   onToggle,
   onPrev,
   onNext,
+  onSeek,
   onWpmChange,
   onWpmSet,
   onWpmDragEnd,
 }: RsvpDisplayProps) {
   const [containerRef, containerSize] = useElementSize<HTMLDivElement>()
   const stageNodeRef = useRef<HTMLDivElement | null>(null)
+  const lastHapticStepRef = useRef<number>(0)
 
   const setStageRef = useCallback(
     (node: HTMLDivElement | null) => {
@@ -63,6 +73,7 @@ export function RsvpDisplay({
   const handleTouchStart = (e: React.TouchEvent) => {
     if (e.touches.length !== 1) return
     const touch = e.touches[0]
+    lastHapticStepRef.current = 0
     touchStateRef.current = {
       startY: touch.clientY,
       startX: touch.clientX,
@@ -90,6 +101,10 @@ export function RsvpDisplay({
       // Dikey eksendeki her 25 piksel = 1 kademe (25 WPM)
       const pixelDistance = -deltaY // Yukarı = pozitif
       const steps = Math.trunc(pixelDistance / 25)
+      if (steps !== lastHapticStepRef.current) {
+        lastHapticStepRef.current = steps
+        triggerHaptic('step')
+      }
       const targetWpm = touchStateRef.current.startWpm + steps * WPM_STEP
       onWpmSet?.(targetWpm)
     }
@@ -118,6 +133,10 @@ export function RsvpDisplay({
         }
         const pixelDistance = -deltaY
         const steps = Math.trunc(pixelDistance / 25)
+        if (steps !== lastHapticStepRef.current) {
+          lastHapticStepRef.current = steps
+          triggerHaptic('step')
+        }
         const targetWpm = touchStateRef.current.startWpm + steps * WPM_STEP
         onWpmSet?.(targetWpm)
       }
@@ -284,6 +303,16 @@ export function RsvpDisplay({
         {/* İlk Açılış İçin Yarı Saydam Dokunma Rehberi (Tap Guide Overlay) */}
         <TapGuide />
 
+        {/* 0.5s Doğal Nefes ve Dinlenme Aralığı Göstergesi */}
+        {isResting && (
+          <div className="absolute inset-0 z-30 flex items-center justify-center bg-background/85 backdrop-blur-xs transition-opacity duration-300 animate-in fade-in select-none">
+            <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3.5 py-1.5 text-xs font-semibold text-primary shadow-xs">
+              <span className="inline-block size-2 rounded-full bg-primary animate-ping" />
+              <span>Nefes Al • Göz Kırp</span>
+            </div>
+          </div>
+        )}
+
         {/* Dipnot Rozeti (Bölüm Başlığı rozeti yerine başlık tipografik vurgu ile sunulur) */}
         {isFootnote && (
           <div className="pointer-events-none absolute left-1/2 top-3.5 -translate-x-1/2 text-center">
@@ -374,6 +403,54 @@ export function RsvpDisplay({
           )}
           <span>{wpm} k/dk</span>
         </div>
+
+        {/* Entegre Alt İlerleme Çizgisi: Sadece duraklatıldığında görünür, aktif okumada (%100 sadelik için) KESİNLİKLE GİZLENİR */}
+        {!playing && total > 0 && (
+          <div
+            role="progressbar"
+            aria-label="Okuma İlerlemesi"
+            aria-valuenow={index}
+            aria-valuemin={0}
+            aria-valuemax={Math.max(0, total - 1)}
+            className="absolute inset-x-0 bottom-0 h-1 bg-foreground/10 overflow-hidden cursor-pointer hover:h-1.5 transition-all z-20"
+            onClick={(e) => {
+              e.stopPropagation()
+              const rect = e.currentTarget.getBoundingClientRect()
+              if (rect.width > 0 && onSeek && total > 1) {
+                const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width))
+                onSeek(Math.round(pct * (total - 1)))
+              }
+            }}
+          >
+            <div
+              className="h-full bg-primary/80 transition-[width] duration-150 ease-out"
+              style={{
+                width: `${Math.min(100, Math.max(0, ((index + 1) / total) * 100))}%`,
+              }}
+            />
+          </div>
+        )}
+      </div>
+
+      {/* Klavye Kısayol İpuçları: Yalnızca duraklatıldığında çok hafif görünür, aktif okumada tamamen solar */}
+      <div
+        className={cn(
+          'mt-2.5 hidden sm:flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[11px] text-muted-foreground/60 transition-opacity duration-500 select-none',
+          playing ? 'opacity-0 pointer-events-none' : 'opacity-100',
+        )}
+      >
+        <span className="inline-flex items-center gap-1">
+          <kbd className="rounded border border-border/60 bg-muted/50 px-1.5 py-0.5 font-mono text-[10px] text-foreground/80">Boşluk</kbd> Oynat / Durdur
+        </span>
+        <span className="inline-flex items-center gap-1">
+          <kbd className="rounded border border-border/60 bg-muted/50 px-1.5 py-0.5 font-mono text-[10px] text-foreground/80">↑ / ↓</kbd> Hız
+        </span>
+        <span className="inline-flex items-center gap-1">
+          <kbd className="rounded border border-border/60 bg-muted/50 px-1.5 py-0.5 font-mono text-[10px] text-foreground/80">← / →</kbd> Cümle
+        </span>
+        <span className="inline-flex items-center gap-1">
+          <kbd className="rounded border border-border/60 bg-muted/50 px-1.5 py-0.5 font-mono text-[10px] text-foreground/80">F</kbd> Tam Ekran
+        </span>
       </div>
     </section>
   )

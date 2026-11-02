@@ -1,8 +1,9 @@
 'use client'
 
-import { AlertCircle, Clipboard, FileText, Link2, Loader2, Sparkles, Upload, Video, X } from 'lucide-react'
+import { AlertCircle, BookOpen, Clipboard, FileText, Link2, Loader2, Sparkles, Upload, Video, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { SAMPLE_TEXT, tokenize } from '@/lib/rsvp'
+import { CURATED_LIBRARY, type CuratedPassage } from '@/lib/curated-library'
 import { fetchArticleFromUrl } from '@/lib/article-parser'
 import { extractYouTubeId, fetchYouTubeTranscript } from '@/lib/youtube-parser'
 import { parsePdfDocument } from '@/lib/pdf-book-parser'
@@ -15,7 +16,7 @@ type TextSheetProps = {
   onApply: (text: string, title?: string) => void
 }
 
-type TabType = 'text' | 'pdf' | 'url' | 'youtube'
+type TabType = 'text' | 'library' | 'pdf' | 'url' | 'youtube'
 
 export function TextSheet({ open, initialText, onClose, onApply }: TextSheetProps) {
   if (!open) return null
@@ -161,13 +162,13 @@ function TextSheetBody({ initialText, onClose, onApply }: Omit<TextSheetProps, '
           </button>
         </div>
 
-        {/* 4 Sekmeli Seçim Çubuğu (Kullanıcı Sıralaması: Metin, PDF, Site & Haber Linki, YouTube) */}
+        {/* 5 Sekmeli Seçim Çubuğu: Metin, Hazır Seçkiler, PDF, Link, YouTube */}
         <div className="flex items-center gap-1 overflow-x-auto rounded-xl bg-foreground/5 p-1">
           <button
             type="button"
             onClick={() => setActiveTab('text')}
             className={cn(
-              'ctl h-8 flex-1 gap-1.5 rounded-lg px-2.5 text-xs font-medium transition-colors',
+              'ctl h-8 flex-1 min-w-[70px] gap-1.5 rounded-lg px-2 text-xs font-medium transition-colors',
               activeTab === 'text' ? 'ctl-primary shadow-sm' : 'bg-transparent text-muted-foreground',
             )}
           >
@@ -177,9 +178,21 @@ function TextSheetBody({ initialText, onClose, onApply }: Omit<TextSheetProps, '
 
           <button
             type="button"
+            onClick={() => setActiveTab('library')}
+            className={cn(
+              'ctl h-8 flex-1 min-w-[80px] gap-1.5 rounded-lg px-2 text-xs font-medium transition-colors',
+              activeTab === 'library' ? 'ctl-primary shadow-sm' : 'bg-transparent text-muted-foreground',
+            )}
+          >
+            <BookOpen className="size-3.5" />
+            <span>Seçkiler</span>
+          </button>
+
+          <button
+            type="button"
             onClick={() => setActiveTab('pdf')}
             className={cn(
-              'ctl h-8 flex-1 gap-1.5 rounded-lg px-2.5 text-xs font-medium transition-colors',
+              'ctl h-8 flex-1 min-w-[65px] gap-1.5 rounded-lg px-2 text-xs font-medium transition-colors',
               activeTab === 'pdf' ? 'ctl-primary shadow-sm' : 'bg-transparent text-muted-foreground',
             )}
           >
@@ -191,7 +204,7 @@ function TextSheetBody({ initialText, onClose, onApply }: Omit<TextSheetProps, '
             type="button"
             onClick={() => setActiveTab('url')}
             className={cn(
-              'ctl h-8 flex-1 gap-1.5 rounded-lg px-2.5 text-xs font-medium transition-colors',
+              'ctl h-8 flex-1 min-w-[65px] gap-1.5 rounded-lg px-2 text-xs font-medium transition-colors',
               activeTab === 'url' ? 'ctl-primary shadow-sm' : 'bg-transparent text-muted-foreground',
             )}
           >
@@ -203,7 +216,7 @@ function TextSheetBody({ initialText, onClose, onApply }: Omit<TextSheetProps, '
             type="button"
             onClick={() => setActiveTab('youtube')}
             className={cn(
-              'ctl h-8 flex-1 gap-1.5 rounded-lg px-2.5 text-xs font-medium transition-colors',
+              'ctl h-8 flex-1 min-w-[80px] gap-1.5 rounded-lg px-2 text-xs font-medium transition-colors',
               activeTab === 'youtube' ? 'ctl-primary shadow-sm' : 'bg-transparent text-muted-foreground',
             )}
           >
@@ -245,6 +258,30 @@ function TextSheetBody({ initialText, onClose, onApply }: Omit<TextSheetProps, '
         {/* SEKME 1: METİN YAPIŞTIR (Sabit modern radius: rounded-2xl, köşelerde ASLA yazı kesilmez) */}
         {activeTab === 'text' && (
           <div className="flex flex-col gap-2.5">
+            {/* Hızlı Seçki Hapları */}
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
+              <span className="shrink-0 text-[11px] font-semibold text-muted-foreground mr-1">
+                Hızlı Klasikler:
+              </span>
+              {CURATED_LIBRARY.map((passage) => (
+                <button
+                  key={passage.id}
+                  type="button"
+                  onClick={() => {
+                    setDraft(passage.text)
+                    onApply(passage.text, passage.title)
+                  }}
+                  className="ctl shrink-0 h-6.5 rounded-full border border-border/80 bg-background/80 px-2.5 text-[11px] font-medium text-foreground hover:border-primary/50 hover:text-primary transition-colors cursor-pointer"
+                  title={`${passage.author} — ${passage.wordCount} kelime (~${passage.estimatedSeconds} sn)`}
+                >
+                  <span>{passage.title}</span>
+                  <span className="text-[10px] text-muted-foreground ml-1 font-mono">
+                    {passage.wordCount}k
+                  </span>
+                </button>
+              ))}
+            </div>
+
             <textarea
               id="reader-text"
               ref={textareaRef}
@@ -286,6 +323,56 @@ function TextSheetBody({ initialText, onClose, onApply }: Omit<TextSheetProps, '
                   Metni Oku
                 </button>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* SEKME 2: HAZIR SEÇKİLER KÜTÜPHANESİ (1 Dakikalık Klasik ve Bilimsel Metinler) */}
+        {activeTab === 'library' && (
+          <div className="flex flex-col gap-2.5">
+            <p className="text-xs text-muted-foreground">
+              Göz kaslarını dinlendiren, 1 dakikalık klasik edebiyat, felsefe ve bilişsel sinirbilim seçkileri:
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              {CURATED_LIBRARY.map((item) => (
+                <div
+                  key={item.id}
+                  className="flex flex-col justify-between rounded-2xl border border-border/80 bg-background/90 p-3.5 shadow-xs hover:border-primary/50 transition-all text-left group"
+                >
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
+                        {item.category}
+                      </span>
+                      <span className="font-mono text-[11px] text-muted-foreground tabular-nums">
+                        {item.wordCount} kelime • ~{item.estimatedSeconds} sn
+                      </span>
+                    </div>
+                    <h3 className="text-sm font-bold tracking-tight text-foreground group-hover:text-primary transition-colors">
+                      {item.title}
+                    </h3>
+                    <p className="text-[11px] font-medium text-foreground/75">
+                      {item.author}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground leading-snug line-clamp-2">
+                      {item.description}
+                    </p>
+                  </div>
+                  <div className="pt-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDraft(item.text)
+                        onApply(item.text, item.title)
+                      }}
+                      className="ctl ctl-primary flex h-8 w-full items-center justify-center gap-1.5 rounded-xl text-xs font-semibold cursor-pointer transition-all"
+                    >
+                      <Sparkles className="size-3" />
+                      <span>Bu Seçkiyi Oku</span>
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         )}

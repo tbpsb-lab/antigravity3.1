@@ -33,9 +33,11 @@ import { ContextPeek } from './context-peek'
 import { ControlDock } from './control-dock'
 import { TextSheet } from './text-sheet'
 import { SpeedTestModal } from './speed-test-modal'
+import { CompletionModal } from './completion-modal'
 import { AboutModal } from './about-modal'
 import { PaperCornerCurl } from './paper-corner-curl'
 import { FONT_FACES, FontSettings, type FontFace } from './font-settings'
+import { triggerHaptic } from '@/lib/haptics'
 import { useElementHeight } from '@/lib/use-element-height'
 
 export function ReaderApp() {
@@ -56,8 +58,17 @@ export function ReaderApp() {
   const [playing, setPlaying] = useState(false)
   const [sheetOpen, setSheetOpen] = useState(false)
   const [speedTestOpen, setSpeedTestOpen] = useState(false)
+  const [completionOpen, setCompletionOpen] = useState(false)
   const [aboutOpen, setAboutOpen] = useState(false)
   const [showSpeedTestBanner, setShowSpeedTestBanner] = useState(false)
+
+  // ~500 Kelimelik Doğal Nefes / Dinlenme Aralığı Durumu
+  const [isResting, setIsResting] = useState(false)
+  const wordsReadSinceRestRef = useRef(0)
+
+  // Okuma Oturumu Süre Sayacı
+  const sessionStartTimeRef = useRef<number | null>(null)
+  const sessionElapsedSecsRef = useRef(0)
 
   // İlk giriş kontrolü: Daha önce hız testi yapılmamış veya kapatılmamışsa davet butonunu göster
   useEffect(() => {
@@ -101,6 +112,20 @@ export function ReaderApp() {
   // 3. KURAL: Yumuşak Kalkış (Ramp-Up / Warm-up) sayacı
   const rampStepRef = useRef(0)
 
+  // Okuma Oturumu Süre Takibi (Başarı kartı ve istatistikler için)
+  useEffect(() => {
+    if (playing) {
+      if (sessionStartTimeRef.current === null) {
+        sessionStartTimeRef.current = Date.now()
+      }
+    } else {
+      if (sessionStartTimeRef.current !== null) {
+        sessionElapsedSecsRef.current += Math.round((Date.now() - sessionStartTimeRef.current) / 1000)
+        sessionStartTimeRef.current = null
+      }
+    }
+  }, [playing])
+
   // 1 & 2. KURAL: Dynamic WPM Pacing Engine (Dinamik Zamanlayıcı Döngüsü)
   useEffect(() => {
     if (!playing || chunks.length === 0) {
@@ -117,15 +142,43 @@ export function ReaderApp() {
     const effectiveWpm = Math.max(MIN_WPM, Math.round(wpm * speedFactor))
 
     // Her kelimenin uzunluğuna, harf yapısına ve noktalamasına göre gecikmeyi dinamik hesapla
-    const delay = calculateWordDelay(currentItem, effectiveWpm, {
+    let delay = calculateWordDelay(currentItem, effectiveWpm, {
       isParagraphEnd: currentItem.isParagraphEnd,
     })
 
+    // ~500 Kelimede Bir 0.5 Sn Doğal "Nefes" Aralığı (Micro-Rest Pause)
+    // 450+ kelimede karşılaşılan ilk cümle veya paragraf bitişinde 500ms doğal dinlenme molası
+    const wordCountInChunk = currentItem.words?.length || 1
+    const accumulated = wordsReadSinceRestRef.current + wordCountInChunk
+    wordsReadSinceRestRef.current = accumulated
+
+    const isSentenceBoundary =
+      currentItem.isSentenceEnd ||
+      currentItem.isParagraphEnd ||
+      /[.!?]$/.test(currentItem.text.trim())
+
+    let restTriggered = false
+    if (accumulated >= 450 && isSentenceBoundary) {
+      wordsReadSinceRestRef.current = 0
+      restTriggered = true
+      setIsResting(true)
+      delay += 500
+    }
+
     const timer = setTimeout(() => {
+      if (restTriggered) {
+        setIsResting(false)
+      }
       rampStepRef.current = currentRamp + 1
       if (index >= lastIndex) {
         setPlaying(false)
         rampStepRef.current = 0
+        if (sessionStartTimeRef.current !== null) {
+          sessionElapsedSecsRef.current += Math.round((Date.now() - sessionStartTimeRef.current) / 1000)
+          sessionStartTimeRef.current = null
+        }
+        setCompletionOpen(true)
+        triggerHaptic('success')
       } else {
         setIndex((i) => i + 1)
       }
@@ -308,6 +361,7 @@ export function ReaderApp() {
     const targetIndex = findPreviousSentenceIndex(chunks, index, 3)
     setIndex(targetIndex)
     triggerPulse()
+    triggerHaptic('jump')
   }, [chunks, index, triggerPulse])
 
   const jumpToPreviousSentence = handleSmartRewind
@@ -380,6 +434,7 @@ export function ReaderApp() {
       setWpm((prev) => Math.min(MAX_WPM, Math.max(MIN_WPM, prev + delta)))
       showWpmToast()
       hideWpmToastWithFade(1000)
+      triggerHaptic('step')
     },
     [showWpmToast, hideWpmToastWithFade],
   )
@@ -719,6 +774,10 @@ export function ReaderApp() {
     if (title) setDocTitle(title)
     setPlaying(false)
     setSheetOpen(false)
+    setCompletionOpen(false)
+    wordsReadSinceRestRef.current = 0
+    sessionElapsedSecsRef.current = 0
+    sessionStartTimeRef.current = null
 
     // Hafızadaki son okunan konumu otomatik hatırla ve geri yükle
     const newChunks = createChunks(next, chunkSize, { enableFootnotes: readFootnotes })
@@ -856,6 +915,10 @@ export function ReaderApp() {
               onToggle={togglePlay}
               onPrev={handleSmartRewind}
               onNext={() => seek(index + 1)}
+              onSeek={seek}
+              index={index}
+              total={chunks.length}
+              isResting={isResting}
               onWpmChange={changeWpm}
               onWpmSet={setWpmDirect}
               onWpmDragEnd={() => hideWpmToastWithFade(1000)}
@@ -866,8 +929,8 @@ export function ReaderApp() {
             />
           </div>
 
-          {/* Alt Esnek Bağlam Alanı: Ortalanmış pencerenin altında başlayıp alttaki dock'a kadar esner */}
-          <div className="flex-1 w-full min-h-0 flex flex-col overflow-hidden">
+          {/* Alt Zarif Bağlam Şeridi: Ortalanmış okuma kutusunun altında hafif, ferah ve kompakt şerit */}
+          <div className="w-full max-w-3xl shrink-0 mt-3 sm:mt-5 max-h-[80px] sm:max-h-[96px] flex flex-col overflow-hidden">
             <ContextPeek
               words={words}
               index={currentChunk?.startIndex ?? index}
@@ -894,6 +957,9 @@ export function ReaderApp() {
               hasNext={index < lastIndex}
             />
           </div>
+
+          {/* Alt Dengeleyici: Sayfa altını dengeleyip okuma penceresini doğal optik merkezde tutar */}
+          <div className="flex-1 w-full min-h-0 pointer-events-none select-none" />
         </div>
       </main>
 
@@ -991,6 +1057,22 @@ export function ReaderApp() {
         open={speedTestOpen}
         onClose={() => setSpeedTestOpen(false)}
         onApplySpeed={handleApplySpeedTest}
+      />
+
+      <CompletionModal
+        open={completionOpen}
+        wordCount={words.length}
+        wpm={wpm}
+        elapsedSeconds={sessionElapsedSecsRef.current}
+        onClose={() => setCompletionOpen(false)}
+        onRestart={() => {
+          seek(0)
+          setPlaying(true)
+        }}
+        onOpenNewText={() => {
+          setCompletionOpen(false)
+          setSheetOpen(true)
+        }}
       />
 
       <AboutModal

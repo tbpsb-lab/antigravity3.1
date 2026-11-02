@@ -158,11 +158,11 @@ function ThemedAppLogo({ theme, className }: { theme: ThemeId; className?: strin
       <span
         aria-hidden="true"
         className={cn(
-          'relative block h-10 w-[94px] sm:h-11 sm:w-[106px] landscape-short:h-9 landscape-short:w-[78px] shrink-0 select-none overflow-visible origin-left transition-transform duration-300',
+          'relative block h-10 w-[80px] sm:h-11 sm:w-[106px] landscape-short:h-9 landscape-short:w-[74px] shrink-0 select-none overflow-visible origin-left transition-transform duration-300',
           className
         )}
       >
-        <span className="absolute top-0 left-0 w-[94px] h-[72px] sm:w-[106px] sm:h-[82px] landscape-short:w-[78px] landscape-short:h-[60px] drop-shadow-[0_0_16px_rgba(168,85,247,0.55)]">
+        <span className="absolute top-0 left-0 w-[80px] h-[62px] sm:w-[106px] sm:h-[82px] landscape-short:w-[74px] landscape-short:h-[58px] drop-shadow-[0_0_16px_rgba(168,85,247,0.55)]">
           <Image
             src={logoNeon}
             alt="odak Neon Logo"
@@ -182,11 +182,11 @@ function ThemedAppLogo({ theme, className }: { theme: ThemeId; className?: strin
       <span
         aria-hidden="true"
         className={cn(
-          'relative block h-10 w-[72px] sm:h-11 sm:w-[82px] landscape-short:h-9 landscape-short:w-[60px] shrink-0 select-none overflow-visible origin-left transition-transform duration-300',
+          'relative block h-10 w-[62px] sm:h-11 sm:w-[82px] landscape-short:h-9 landscape-short:w-[58px] shrink-0 select-none overflow-visible origin-left transition-transform duration-300',
           className
         )}
       >
-        <span className="absolute top-0 left-0 w-[72px] h-[72px] sm:w-[82px] sm:h-[82px] landscape-short:w-[60px] landscape-short:h-[60px] drop-shadow-[0_3px_10px_rgba(0,0,0,0.14)]">
+        <span className="absolute top-0 left-0 w-[62px] h-[62px] sm:w-[82px] sm:h-[82px] landscape-short:w-[58px] landscape-short:h-[58px] drop-shadow-[0_3px_10px_rgba(0,0,0,0.14)]">
           <Image
             src={logoKagit}
             alt="odak Kağıt Logo"
@@ -205,11 +205,11 @@ function ThemedAppLogo({ theme, className }: { theme: ThemeId; className?: strin
     <span
       aria-hidden="true"
       className={cn(
-        'relative block h-10 w-[72px] sm:h-11 sm:w-[82px] landscape-short:h-9 landscape-short:w-[60px] shrink-0 select-none overflow-visible origin-left transition-transform duration-300',
+        'relative block h-10 w-[62px] sm:h-11 sm:w-[82px] landscape-short:h-9 landscape-short:w-[58px] shrink-0 select-none overflow-visible origin-left transition-transform duration-300',
         className
       )}
     >
-      <span className="absolute top-0 left-0 w-[72px] h-[72px] sm:w-[82px] sm:h-[82px] landscape-short:w-[60px] landscape-short:h-[60px] drop-shadow-[0_4px_16px_rgba(56,189,248,0.4)]">
+      <span className="absolute top-0 left-0 w-[62px] h-[62px] sm:w-[82px] sm:h-[82px] landscape-short:w-[58px] landscape-short:h-[58px] drop-shadow-[0_4px_16px_rgba(56,189,248,0.4)]">
         <Image
           src={logoCam}
           alt="odak Cam Logo"

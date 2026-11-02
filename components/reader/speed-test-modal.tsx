@@ -1,6 +1,6 @@
 'use client'
 
-import { Check, Play, RotateCcw, Timer, X, Zap } from 'lucide-react'
+import { Check, Copy, Play, RotateCcw, Share2, Timer, X, Zap } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { cn } from '@/lib/utils'
 
@@ -28,9 +28,33 @@ function SpeedTestBody({ onClose, onApplySpeed }: Omit<SpeedTestModalProps, 'ope
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
   const [traditionalWpm, setTraditionalWpm] = useState(0)
   const [recommendedWpm, setRecommendedWpm] = useState(250)
+  const [copied, setCopied] = useState(false)
 
   const startTimeRef = useRef<number | null>(null)
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null)
+
+  const shareText = `⚡ odak Okuma Hızı Testi Sonucum: \n📖 Geleneksel Hızım: ${traditionalWpm} kelime/dk\n🚀 odak RSVP Başlangıç: ${recommendedWpm} kelime/dk\n👁️ Göz kası yorgunluğu yok, %100 saf odaklanma!`
+
+  const handleShare = async () => {
+    if (typeof navigator !== 'undefined' && navigator.share) {
+      try {
+        await navigator.share({
+          title: 'odak — Okuma Hızı Testi Sonucum',
+          text: shareText,
+          url: 'https://tbpsb-lab.github.io/antigravity3.1/',
+        })
+        return
+      } catch {}
+    }
+
+    try {
+      if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(shareText)
+        setCopied(true)
+        setTimeout(() => setCopied(false), 2000)
+      }
+    } catch {}
+  }
 
   // ESC ile kapatma
   useEffect(() => {
@@ -220,11 +244,11 @@ function SpeedTestBody({ onClose, onApplySpeed }: Omit<SpeedTestModalProps, 'ope
               </p>
             </div>
 
-            <div className="flex items-center gap-2.5 pt-1">
+            <div className="flex items-center gap-2 pt-1">
               <button
                 type="button"
                 onClick={handleStart}
-                className="ctl flex h-11 items-center justify-center gap-1.5 rounded-xl border border-border bg-background px-4 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+                className="ctl flex h-11 items-center justify-center gap-1.5 rounded-xl border border-border bg-background px-3 sm:px-4 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
                 title="Testi Tekrarla"
               >
                 <RotateCcw className="size-3.5" />
@@ -233,8 +257,32 @@ function SpeedTestBody({ onClose, onApplySpeed }: Omit<SpeedTestModalProps, 'ope
 
               <button
                 type="button"
+                onClick={handleShare}
+                className={cn(
+                  'ctl flex h-11 items-center justify-center gap-1.5 rounded-xl border px-3 text-xs font-medium transition-colors cursor-pointer',
+                  copied
+                    ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-500'
+                    : 'border-border bg-background text-muted-foreground hover:text-foreground',
+                )}
+                title="Sonucu Paylaş veya Kopyala"
+              >
+                {copied ? (
+                  <>
+                    <Check className="size-3.5 text-emerald-500" />
+                    <span>Kopyalandı!</span>
+                  </>
+                ) : (
+                  <>
+                    <Share2 className="size-3.5" />
+                    <span className="hidden sm:inline">Paylaş</span>
+                  </>
+                )}
+              </button>
+
+              <button
+                type="button"
                 onClick={handleApply}
-                className="ctl ctl-primary flex h-11 flex-1 items-center justify-center gap-2 rounded-xl text-sm font-semibold shadow-md cursor-pointer transition-all hover:scale-[1.01]"
+                className="ctl ctl-primary flex h-11 flex-1 items-center justify-center gap-2 rounded-xl text-xs sm:text-sm font-semibold shadow-md cursor-pointer transition-all hover:scale-[1.01]"
               >
                 <Check className="size-4" />
                 <span>Bu Hızı Uygula ve Başla</span>

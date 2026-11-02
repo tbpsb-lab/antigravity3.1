@@ -483,8 +483,10 @@ export function calculateWordDelay(
     multiplier = 1.25 // 9 - 11 harf
   } else if (cleanLength <= 14) {
     multiplier = 1.5 // 12 - 14 harf
+  } else if (cleanLength <= 18) {
+    multiplier = 1.85 // 15 - 18 harf: Türkçe bitişken ekler
   } else {
-    multiplier = 1.75 // 15 ve üzeri harf
+    multiplier = 2.15 // 19 ve üzeri harf: Aşırı uzun bitişken kelimelerde bilişsel algılama payı
   }
 
   // Çoklu kelime öbeği (chunk > 1) modu için kelime sayısına göre algılama payı

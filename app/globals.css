@@ -655,5 +655,10 @@ html[data-theme='kindle']::-webkit-scrollbar-track {
     width: 0.875rem !important;
     height: 0.875rem !important;
   }
+
+  /* Progress bar hit alanı yatay telefonda da ultra-ince (10px) tutulur, oynat/durdur alanı gasp edilmez */
+  .rsvp-stage [role="progressbar"] {
+    height: 0.625rem !important;
+  }
 }
 

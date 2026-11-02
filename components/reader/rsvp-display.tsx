@@ -432,13 +432,13 @@ export function RsvpDisplay({
             onPointerMove={handleProgressPointerMove}
             onPointerUp={handleProgressPointerUp}
             onPointerCancel={handleProgressPointerUp}
-            className="group absolute inset-x-0 bottom-0 h-8 md:h-10 flex items-end cursor-ew-resize select-none touch-none z-30"
+            className="group absolute inset-x-0 bottom-0 h-3 sm:h-3.5 md:h-4 flex items-end cursor-ew-resize select-none touch-none z-30"
           >
-            {/* Arka plan izi (Track) - Normalde 3px, üzerine gelindiğinde veya sürüklenirken 6px */}
+            {/* Arka plan izi (Track) */}
             <div
               className={cn(
                 'relative w-full overflow-hidden transition-all duration-150 rounded-b-2xl sm:rounded-b-3xl',
-                isScrubbing ? 'h-2 bg-foreground/20' : 'h-1 group-hover:h-1.5 bg-foreground/10',
+                isScrubbing ? 'h-1.5 sm:h-2 bg-foreground/25' : 'h-1 group-hover:h-1.5 bg-foreground/15',
               )}
             >
               {/* Doluluk göstergesi */}
@@ -453,7 +453,7 @@ export function RsvpDisplay({
             {/* Sürükleme sırasında parmak/imleç altında beliren aktif odak noktası (Thumb Indicator) */}
             {isScrubbing && (
               <div
-                className="pointer-events-none absolute bottom-0.5 -translate-x-1/2 size-3.5 rounded-full bg-primary shadow-[0_0_10px_rgba(59,130,246,0.7)] border-2 border-background transition-transform"
+                className="pointer-events-none absolute bottom-0 -translate-x-1/2 size-3 sm:size-3.5 rounded-full bg-primary shadow-[0_0_10px_rgba(59,130,246,0.7)] border-2 border-background transition-transform"
                 style={{
                   left: `${Math.min(100, Math.max(0, ((index + 1) / total) * 100))}%`,
                 }}

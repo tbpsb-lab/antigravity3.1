@@ -426,24 +426,44 @@ export function ReaderApp() {
 
   // Esnek Bağlam Penceresi ve Sayfalama (Görünen kelime adedi ve alttaki <> buton adımı)
   const [contextPageSize, setContextPageSize] = useState(60)
-  const contextPageSizeInChunks = Math.max(1, Math.round(contextPageSize / Math.max(1, chunkSize)))
 
   const handleStepPrev = useCallback(() => {
     rampStepRef.current = 0
-    const pageIdx = Math.floor(index / contextPageSizeInChunks)
-    let targetIdx = pageIdx * contextPageSizeInChunks
-    if (index === targetIdx) {
-      targetIdx = Math.max(0, (pageIdx - 1) * contextPageSizeInChunks)
+    const currentWordIdx = currentChunk?.startIndex ?? 0
+    const pageSize = Math.max(1, contextPageSize)
+    const pageIdx = Math.floor(currentWordIdx / pageSize)
+    const startWordIdx = pageIdx * pageSize
+    const targetWordIdx = currentWordIdx > startWordIdx ? startWordIdx : Math.max(0, startWordIdx - pageSize)
+    const targetChunkIdx = chunks.findIndex(
+      (c, cIdx) =>
+        targetWordIdx >= c.startIndex &&
+        (cIdx === chunks.length - 1 || targetWordIdx < chunks[cIdx + 1].startIndex),
+    )
+    if (targetChunkIdx !== -1) {
+      seek(targetChunkIdx)
+    } else {
+      seek(Math.max(0, targetWordIdx))
     }
-    seek(targetIdx)
-  }, [index, contextPageSizeInChunks, seek])
+  }, [currentChunk, contextPageSize, chunks, seek])
 
   const handleStepNext = useCallback(() => {
     rampStepRef.current = 0
-    const pageIdx = Math.floor(index / contextPageSizeInChunks)
-    const targetIdx = Math.min(lastIndex, (pageIdx + 1) * contextPageSizeInChunks)
-    seek(targetIdx)
-  }, [index, contextPageSizeInChunks, lastIndex, seek])
+    const currentWordIdx = currentChunk?.startIndex ?? 0
+    const pageSize = Math.max(1, contextPageSize)
+    const pageIdx = Math.floor(currentWordIdx / pageSize)
+    const nextStartWordIdx = (pageIdx + 1) * pageSize
+    const targetWordIdx = Math.min(words.length - 1, nextStartWordIdx)
+    const targetChunkIdx = chunks.findIndex(
+      (c, cIdx) =>
+        targetWordIdx >= c.startIndex &&
+        (cIdx === chunks.length - 1 || targetWordIdx < chunks[cIdx + 1].startIndex),
+    )
+    if (targetChunkIdx !== -1) {
+      seek(targetChunkIdx)
+    } else {
+      seek(Math.min(lastIndex, targetWordIdx))
+    }
+  }, [currentChunk, contextPageSize, words.length, chunks, lastIndex, seek])
 
   // Klavye ok tuşları ve mouse wheel için kademeli değişim
   const changeWpm = useCallback(
@@ -930,7 +950,7 @@ export function ReaderApp() {
           </div>
 
           {/* Alt Zarif Bağlam Şeridi: Ortalanmış okuma kutusunun altında hafif, ferah ve kompakt şerit (tüm cihazlarda kesintisiz 3 satır) */}
-          <div className="w-full max-w-3xl shrink-0 mt-1 sm:mt-1.5 landscape-short:mt-0.5 min-h-[76px] sm:min-h-[90px] md:min-h-[110px] max-h-[94px] sm:max-h-[112px] md:max-h-[132px] landscape-short:min-h-[72px] landscape-short:max-h-[84px] flex flex-col overflow-hidden">
+          <div className="context-peek-box w-full max-w-3xl shrink-0 mt-1 sm:mt-1.5 landscape-short:mt-0.5 min-h-[76px] sm:min-h-[90px] md:min-h-[110px] max-h-[94px] sm:max-h-[112px] md:max-h-[132px] landscape-short:min-h-[72px] landscape-short:max-h-[84px] flex flex-col overflow-hidden">
             <ContextPeek
               words={words}
               index={currentChunk?.startIndex ?? index}

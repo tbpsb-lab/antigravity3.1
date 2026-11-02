@@ -65,6 +65,27 @@ export function ContextPeek({
   const end = Math.min(words.length, start + capacity)
   const slice = words.slice(start, end)
 
+  const canGoPrev = start > 0 || index > start
+  const canGoNext = end < words.length
+
+  const handlePrev = () => {
+    if (onStepPrev) {
+      onStepPrev()
+    } else {
+      const targetWordIdx = index > start ? start : Math.max(0, start - capacity)
+      onJump(targetWordIdx)
+    }
+  }
+
+  const handleNext = () => {
+    if (onStepNext) {
+      onStepNext()
+    } else {
+      const targetWordIdx = Math.min(words.length - 1, end)
+      onJump(targetWordIdx)
+    }
+  }
+
   return (
     <div
       ref={containerRef}
@@ -98,11 +119,11 @@ export function ContextPeek({
         {/* Sol Sayfa Geri Atla Butonu: Minik ve şeffaf */}
         <button
           type="button"
-          onClick={onStepPrev}
-          disabled={!hasPrev}
+          onClick={handlePrev}
+          disabled={!canGoPrev}
           className={cn(
             'ctl size-7 sm:size-8 md:size-10 shrink-0 rounded-full border border-border/40 bg-foreground/5 hover:bg-foreground/15 text-muted-foreground hover:text-foreground backdrop-blur-xs transition-all flex items-center justify-center cursor-pointer shadow-2xs',
-            !hasPrev && 'opacity-20 pointer-events-none',
+            !canGoPrev && 'opacity-20 pointer-events-none',
           )}
           aria-label="Önceki bağlam sayfası"
           title="Önceki bağlam (Shift + ←)"
@@ -140,11 +161,11 @@ export function ContextPeek({
         {/* Sağ Sayfa İleri Atla Butonu */}
         <button
           type="button"
-          onClick={onStepNext}
-          disabled={!hasNext}
+          onClick={handleNext}
+          disabled={!canGoNext}
           className={cn(
             'ctl size-7 sm:size-8 md:size-10 shrink-0 rounded-full border border-border/40 bg-foreground/5 hover:bg-foreground/15 text-muted-foreground hover:text-foreground backdrop-blur-xs transition-all flex items-center justify-center cursor-pointer shadow-2xs',
-            !hasNext && 'opacity-20 pointer-events-none',
+            !canGoNext && 'opacity-20 pointer-events-none',
           )}
           aria-label="Sonraki bağlam sayfası"
           title="Sonraki bağlam (Shift + →)"

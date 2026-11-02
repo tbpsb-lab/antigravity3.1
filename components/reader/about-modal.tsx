@@ -110,8 +110,8 @@ export function AboutModal({ open, onClose, theme }: AboutModalProps) {
     >
       <div
         className={cn(
-          'panel relative w-full max-w-2xl md:max-w-3xl rounded-3xl p-5 sm:p-7 md:p-8 landscape-short:p-3 shadow-2xl',
-          'flex flex-col gap-4 md:gap-5 landscape-short:gap-2 border transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] animate-in zoom-in-95 max-h-[92dvh] landscape-short:max-h-[98dvh]',
+          'panel relative w-full max-w-2xl md:max-w-3xl rounded-3xl p-5 sm:p-6 md:p-7 landscape-short:p-3 shadow-2xl',
+          'flex flex-col gap-3.5 md:gap-4 landscape-short:gap-2 border transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] animate-in zoom-in-95 max-h-[88dvh] landscape-short:max-h-[96dvh] overflow-hidden',
           theme === 'linear' && 'border-purple-500/40 shadow-[0_0_40px_rgba(168,85,247,0.3)] bg-[#07060b]/95 text-slate-100',
           theme === 'kindle' && 'border-[#cfbe96] shadow-[0_8px_30px_rgba(0,0,0,0.15)] bg-[#fcf8ee] text-[#22180e]',
           theme === 'ios' && 'border-white/90 dark:border-white/25 shadow-[0_16px_50px_rgba(56,189,248,0.25)] bg-white/85 dark:bg-slate-900/85 backdrop-blur-3xl text-slate-900 dark:text-slate-100'
@@ -121,14 +121,14 @@ export function AboutModal({ open, onClose, theme }: AboutModalProps) {
         <button
           type="button"
           onClick={onClose}
-          className="absolute top-4 right-4 sm:top-6 sm:right-6 md:top-7 md:right-7 landscape-short:top-2.5 landscape-short:right-2.5 size-9 landscape-short:size-7 md:size-10 rounded-full panel grid place-items-center text-muted-foreground hover:text-foreground transition-all hover:scale-105 active:scale-95 cursor-pointer z-30"
+          className="absolute top-4 right-4 sm:top-5 sm:right-5 md:top-6 md:right-6 landscape-short:top-2.5 landscape-short:right-2.5 size-9 landscape-short:size-7 md:size-10 rounded-full panel grid place-items-center text-muted-foreground hover:text-foreground transition-all hover:scale-105 active:scale-95 cursor-pointer z-30"
           aria-label="Kapat"
         >
           <X className="size-4.5 landscape-short:size-3.5" />
         </button>
 
         {/* Üst Alan: Sol Tarafta Temaya Özel Vektör Logo Rozeti, Sağında Başlık & Açıklama */}
-        <div className="flex flex-row items-center gap-3.5 sm:gap-4.5 md:gap-5 landscape-short:gap-2.5 pb-1 landscape-short:pb-0">
+        <div className="shrink-0 flex flex-row items-center gap-3.5 sm:gap-4.5 md:gap-5 landscape-short:gap-2.5 pb-0.5 landscape-short:pb-0">
           <OdakModalLogo theme={theme} />
 
           <div className="flex flex-col min-w-0 pr-8">
@@ -159,7 +159,7 @@ export function AboutModal({ open, onClose, theme }: AboutModalProps) {
         </div>
 
         {/* Entegre Dinamik Kompakt Sekme Çubuğu (Aktif sekme tam başlıkla açılır, diğerleri kendi simgelerini gösterir) */}
-        <div className="flex items-center justify-between gap-1.5 p-1 md:p-1.5 landscape-short:p-0.5 rounded-2xl bg-foreground/5 border border-border/60 select-none pt-1 landscape-short:pt-0.5">
+        <div className="shrink-0 flex items-center justify-between gap-1.5 p-1 md:p-1.5 landscape-short:p-0.5 rounded-2xl bg-foreground/5 border border-border/60 select-none">
           {TABS.map((tab) => {
             const Icon = tab.icon
             const isActive = activeTab === tab.id
@@ -191,13 +191,13 @@ export function AboutModal({ open, onClose, theme }: AboutModalProps) {
         </div>
 
         {/* Sekmeler Arası Yatay Scroll / Slider Alanı */}
-        <div className="relative w-full overflow-hidden rounded-2xl">
+        <div className="relative w-full flex-1 min-h-0 overflow-hidden rounded-2xl">
           <div
-            className="flex w-[400%] transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]"
+            className="flex w-[400%] h-full transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]"
             style={{ transform: `translateX(-${activeTabIndex * 25}%)` }}
           >
             {/* 1. SLIDE: RSVP & Bilim */}
-            <div className="w-1/4 max-h-[50vh] sm:max-h-[52vh] md:max-h-[58vh] landscape-short:max-h-[calc(100dvh-5.5rem)] overflow-y-auto theme-scrollbar px-1 text-sm md:text-base leading-relaxed">
+            <div className="w-1/4 h-full max-h-[calc(88dvh-13.5rem)] landscape-short:max-h-[calc(96dvh-5.5rem)] overflow-y-auto theme-scrollbar px-1 pb-12 text-sm md:text-base leading-relaxed">
               <div className="flex flex-col gap-3.5">
                 <div className={cn(
                   'p-4 sm:p-5 rounded-2xl border shadow-sm',
@@ -247,7 +247,7 @@ export function AboutModal({ open, onClose, theme }: AboutModalProps) {
             </div>
 
             {/* 2. SLIDE: Özellikler */}
-            <div className="w-1/4 max-h-[50vh] sm:max-h-[52vh] md:max-h-[58vh] landscape-short:max-h-[calc(100dvh-5.5rem)] overflow-y-auto theme-scrollbar px-1 text-sm md:text-base leading-relaxed">
+            <div className="w-1/4 h-full max-h-[calc(88dvh-13.5rem)] landscape-short:max-h-[calc(96dvh-5.5rem)] overflow-y-auto theme-scrollbar px-1 pb-12 text-sm md:text-base leading-relaxed">
               <div className="flex flex-col gap-3">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                   <div className={cn(
@@ -356,7 +356,7 @@ export function AboutModal({ open, onClose, theme }: AboutModalProps) {
             </div>
 
             {/* 3. SLIDE: Kullanım & Tuşlar */}
-            <div className="w-1/4 max-h-[50vh] sm:max-h-[52vh] md:max-h-[58vh] landscape-short:max-h-[calc(100dvh-5.5rem)] overflow-y-auto theme-scrollbar px-1 text-sm md:text-base leading-relaxed">
+            <div className="w-1/4 h-full max-h-[calc(88dvh-13.5rem)] landscape-short:max-h-[calc(96dvh-5.5rem)] overflow-y-auto theme-scrollbar px-1 pb-12 text-sm md:text-base leading-relaxed">
               <div className="flex flex-col gap-3.5">
                 {/* Masaüstü Klavye ve Fare */}
                 <div className={cn(
@@ -455,7 +455,7 @@ export function AboutModal({ open, onClose, theme }: AboutModalProps) {
             </div>
 
             {/* 4. SLIDE: Künye & Geliştirici Hikâyesi */}
-            <div className="w-1/4 max-h-[50vh] sm:max-h-[52vh] md:max-h-[58vh] landscape-short:max-h-[calc(100dvh-5.5rem)] overflow-y-auto theme-scrollbar px-1 text-sm md:text-base leading-relaxed">
+            <div className="w-1/4 h-full max-h-[calc(88dvh-13.5rem)] landscape-short:max-h-[calc(96dvh-5.5rem)] overflow-y-auto theme-scrollbar px-1 pb-12 text-sm md:text-base leading-relaxed">
               <div className="flex flex-col gap-3.5">
                 <div className={cn(
                   'p-5 sm:p-6 rounded-2xl border shadow-sm flex flex-col gap-3',

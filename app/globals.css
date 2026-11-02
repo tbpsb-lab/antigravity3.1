@@ -602,3 +602,58 @@ html[data-theme='kindle'] *::-webkit-scrollbar-track,
 html[data-theme='kindle']::-webkit-scrollbar-track {
   background: rgba(160, 135, 100, 0.08);
 }
+
+/* Mobil Telefon Yatay Tutuş (Landscape Phone) Kesin Sıkıştırma ve Alttan Kesilmeyi Önleme */
+@media (orientation: landscape) and (max-height: 520px) {
+  /* Okuma Sahnesi / Penceresi: Dikeyde aşırı büyümesini önle, kompakt tut */
+  .rsvp-stage {
+    min-height: 70px !important;
+    max-height: 84px !important;
+    padding-top: 0.25rem !important;
+    padding-bottom: 0.25rem !important;
+    padding-left: 1.5rem !important;
+    padding-right: 1.5rem !important;
+  }
+
+  /* Okuma Sahnesi İçindeki Kelime Boyutu: Ekran yüksekliğiyle dengeli */
+  .rsvp-stage .reader-word {
+    --word-base: clamp(1.15rem, 6.2vh, 1.75rem) !important;
+  }
+
+  /* Üst Bar: Minimal dikey alan ve kompakt butonlar */
+  header.top-bar-stage {
+    padding-top: max(0.25rem, env(safe-area-inset-top)) !important;
+    padding-bottom: 0 !important;
+  }
+  header.top-bar-stage button.ctl {
+    width: 2.125rem !important;
+    height: 2.125rem !important;
+  }
+  header.top-bar-stage button.ctl svg {
+    width: 1rem !important;
+    height: 1rem !important;
+  }
+
+  /* Bağlam Penceresi Kapsayıcısı: Alttan kesilmeyi kesinlikle önler, 3 satırı rahatça barındırır */
+  .context-peek-box {
+    min-height: 68px !important;
+    max-height: 78px !important;
+    margin-top: 0.25rem !important;
+  }
+
+  /* Bağlam Metni: 3 satır için kusursuz satır yüksekliği ve tipografi */
+  .context-peek-box p {
+    font-size: 11.5px !important;
+    line-height: 1.28 !important;
+  }
+
+  .context-peek-box button.ctl {
+    width: 1.625rem !important;
+    height: 1.625rem !important;
+  }
+  .context-peek-box button.ctl svg {
+    width: 0.875rem !important;
+    height: 0.875rem !important;
+  }
+}
+

@@ -775,10 +775,10 @@ export function ReaderApp() {
       <TopBar
         ref={headerRef}
         docTitle={docTitle}
-        isFullscreen={isFullscreen}
-        onToggleFullscreen={toggleFullscreen}
         fontControl={
           <FontSettings
+            theme={theme}
+            onThemeChange={handleThemeChange}
             face={fontFace}
             scale={fontScale}
             onFaceChange={setFontFace}
@@ -787,17 +787,16 @@ export function ReaderApp() {
             onChunkSizeChange={handleChunkSizeChange}
             readFootnotes={readFootnotes}
             onReadFootnotesChange={handleReadFootnotesChange}
+            onOpenSpeedTest={() => {
+              setPlaying(false)
+              setSpeedTestOpen(true)
+            }}
           />
         }
         theme={theme}
-        onThemeChange={handleThemeChange}
         onOpenText={() => {
           setPlaying(false)
           setSheetOpen(true)
-        }}
-        onOpenSpeedTest={() => {
-          setPlaying(false)
-          setSpeedTestOpen(true)
         }}
         onOpenAbout={() => {
           setPlaying(false)

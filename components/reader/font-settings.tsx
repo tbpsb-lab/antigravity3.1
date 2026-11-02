@@ -1,9 +1,10 @@
 'use client'
 
-import { Minus, Plus, Type } from 'lucide-react'
+import { Minus, Plus, Zap } from 'lucide-react'
 import { useEffect, useId, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
 import { cn } from '@/lib/utils'
+import { type ThemeId } from '@/lib/rsvp'
 
 export type FontFace = 'theme' | 'sans' | 'serif' | 'mono'
 
@@ -39,6 +40,8 @@ export const FONT_SCALE_MAX = 1.6
 export const FONT_SCALE_STEP = 0.1
 
 type FontSettingsProps = {
+  theme?: ThemeId
+  onThemeChange?: (theme: ThemeId) => void
   face: FontFace
   scale: number
   onFaceChange: (face: FontFace) => void
@@ -47,9 +50,12 @@ type FontSettingsProps = {
   onChunkSizeChange?: (size: number) => void
   readFootnotes?: boolean
   onReadFootnotesChange?: (val: boolean) => void
+  onOpenSpeedTest?: () => void
 }
 
 export function FontSettings({
+  theme = 'ios',
+  onThemeChange,
   face,
   scale,
   onFaceChange,
@@ -58,6 +64,7 @@ export function FontSettings({
   onChunkSizeChange,
   readFootnotes = true,
   onReadFootnotesChange,
+  onOpenSpeedTest,
 }: FontSettingsProps) {
   const [open, setOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
@@ -91,11 +98,11 @@ export function FontSettings({
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
         aria-controls={panelId}
-        aria-label="Yazı Tipi ve Görünüm Ayarları"
-        title="Yazı Tipi ve Görünüm Ayarları"
-        className={cn('ctl panel size-10 landscape-short:size-9', open && 'ctl-primary')}
+        aria-label="Görünüm ve Okuma Ayarları (Aa)"
+        title="Görünüm ve Okuma Ayarları (Aa)"
+        className={cn('ctl panel size-10 landscape-short:size-9 cursor-pointer', open && 'ctl-primary')}
       >
-        <Type className="size-4" />
+        <span className="font-serif font-bold text-sm tracking-tighter select-none">Aa</span>
       </button>
 
       <div
@@ -104,13 +111,80 @@ export function FontSettings({
         aria-label="Görünüm ve okuma ayarları"
         inert={!open}
         className={cn(
-          'panel panel-solid absolute -right-12 top-full z-50 mt-2 w-[min(18rem,calc(100vw-1.5rem))] origin-top-right p-3.5 sm:right-0 transition-all duration-200 ease-out shadow-xl',
+          'panel panel-solid absolute -right-12 top-full z-50 mt-2 w-[min(19rem,calc(100vw-1.5rem))] origin-top-right p-3.5 sm:right-0 transition-all duration-200 ease-out shadow-xl',
           // Yatay mobil (kısa ekran): panel ekran yüksekliğini aşmasın, kendi içinde kaydırılsın
           'max-h-[calc(100dvh-5.5rem)] overflow-y-auto overscroll-contain touch-pan-y landscape-short:max-h-[calc(100dvh-3.75rem)] landscape-short:w-[min(26rem,calc(100vw-1.5rem))] landscape-short:p-3',
           open ? 'scale-100 opacity-100' : 'pointer-events-none scale-95 opacity-0',
         )}
       >
-        {/* Yazı Tipi Ailesi */}
+        {/* 1. Tema Seçimi (Apple Books & Kindle Stili Görsel Kartlar) */}
+        {onThemeChange && (
+          <div className="mb-4">
+            <p className="mb-2 px-0.5 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+              Tema
+            </p>
+            <div role="radiogroup" aria-label="Tasarım teması" className="grid grid-cols-3 gap-2">
+              {/* Cam (iOS) */}
+              <button
+                type="button"
+                role="radio"
+                aria-checked={theme === 'ios'}
+                onClick={() => onThemeChange('ios')}
+                className={cn(
+                  'flex flex-col items-center gap-1.5 p-2 rounded-xl border transition-all cursor-pointer text-center select-none',
+                  theme === 'ios'
+                    ? 'border-primary bg-primary/10 text-foreground ring-1 ring-primary/40 shadow-sm'
+                    : 'border-border/60 hover:border-border hover:bg-muted/40 text-muted-foreground'
+                )}
+              >
+                <span className="size-6 rounded-full border border-sky-400/50 bg-gradient-to-br from-white/90 via-sky-100/60 to-sky-300/30 shadow-[0_0_8px_rgba(56,189,248,0.4)] flex items-center justify-center">
+                  <span className="size-2 rounded-full bg-sky-500/80" />
+                </span>
+                <span className="text-[11px] font-medium">Cam</span>
+              </button>
+
+              {/* Neon (Siyah) */}
+              <button
+                type="button"
+                role="radio"
+                aria-checked={theme === 'linear'}
+                onClick={() => onThemeChange('linear')}
+                className={cn(
+                  'flex flex-col items-center gap-1.5 p-2 rounded-xl border transition-all cursor-pointer text-center select-none',
+                  theme === 'linear'
+                    ? 'border-purple-400 bg-purple-500/10 text-foreground ring-1 ring-purple-400/40 shadow-sm'
+                    : 'border-border/60 hover:border-border hover:bg-muted/40 text-muted-foreground'
+                )}
+              >
+                <span className="size-6 rounded-full border border-purple-500/60 bg-[#07060b] shadow-[0_0_8px_rgba(168,85,247,0.5)] flex items-center justify-center">
+                  <span className="size-2 rounded-full bg-cyan-400 shadow-[0_0_4px_#38bdf8]" />
+                </span>
+                <span className="text-[11px] font-medium">Neon</span>
+              </button>
+
+              {/* Kağıt (Kindle) */}
+              <button
+                type="button"
+                role="radio"
+                aria-checked={theme === 'kindle'}
+                onClick={() => onThemeChange('kindle')}
+                className={cn(
+                  'flex flex-col items-center gap-1.5 p-2 rounded-xl border transition-all cursor-pointer text-center select-none',
+                  theme === 'kindle'
+                    ? 'border-amber-600/70 bg-amber-500/10 text-foreground ring-1 ring-amber-600/40 shadow-sm'
+                    : 'border-border/60 hover:border-border hover:bg-muted/40 text-muted-foreground'
+                )}
+              >
+                <span className="size-6 rounded-md border border-[#cbba92] bg-[#fbf0d9] dark:bg-[#2b241c] shadow-[0_1px_4px_rgba(0,0,0,0.15)] flex items-center justify-center">
+                  <span className="text-[9px] font-serif font-bold text-[#5c452d] dark:text-[#d7c3a0]">A</span>
+                </span>
+                <span className="text-[11px] font-medium">Kağıt</span>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* 2. Yazı Tipi Ailesi */}
         <p className="mb-2 px-0.5 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
           Yazı tipi
         </p>
@@ -141,7 +215,7 @@ export function FontSettings({
           })}
         </div>
 
-        {/* Yazı Boyutu */}
+        {/* 3. Yazı Boyutu */}
         <p className="mb-2 mt-4 px-0.5 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
           Boyut
         </p>
@@ -187,7 +261,7 @@ export function FontSettings({
           %{Math.round(scale * 100)}
         </p>
 
-        {/* Kelime Öbeği (Chunk Size) */}
+        {/* 4. Kelime Öbeği (Chunk Size) */}
         {onChunkSizeChange && (
           <>
             <div className="mb-2 mt-4 flex items-center justify-between px-0.5 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
@@ -217,7 +291,7 @@ export function FontSettings({
           </>
         )}
 
-        {/* Akıllı Dipnot Okuma */}
+        {/* 5. Akıllı Dipnot Okuma */}
         {onReadFootnotesChange && (
           <div className="mt-4 pt-3 border-t border-border/40 flex items-center justify-between gap-2">
             <div>
@@ -240,6 +314,26 @@ export function FontSettings({
                   readFootnotes ? 'translate-x-4' : 'translate-x-0',
                 )}
               />
+            </button>
+          </div>
+        )}
+
+        {/* 6. Okuma Hızı Testi & Kalibrasyon Butonu */}
+        {onOpenSpeedTest && (
+          <div className="mt-4 pt-3 border-t border-border/40">
+            <button
+              type="button"
+              onClick={() => {
+                setOpen(false)
+                onOpenSpeedTest()
+              }}
+              className="w-full flex items-center justify-between px-3 py-2 rounded-xl bg-muted/40 hover:bg-muted/80 text-foreground transition-colors text-xs font-medium cursor-pointer"
+            >
+              <span className="flex items-center gap-2">
+                <Zap className="size-3.5 text-primary" />
+                <span>Okuma Hızı Testi & Kalibrasyon</span>
+              </span>
+              <span className="text-[10px] font-semibold text-primary">Başlat →</span>
             </button>
           </div>
         )}

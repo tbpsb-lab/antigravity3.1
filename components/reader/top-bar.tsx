@@ -150,7 +150,7 @@ export function OdakWordmarkSvg({
   )
 }
 
-// Temaya Uyum Sağlayan Özel Biçimli Mini Logo (1.5 kat büyütülmüş hali - media_1793569406285_e3e2edba.jpg)
+// Temaya Uyum Sağlayan Özel Biçimli Mini Logo (1.5 kat büyütülmüş, tek satırlık başlık çubuğunu daraltmadan aşağı taşan rozet)
 function ThemedAppLogo({ theme, className }: { theme: ThemeId; className?: string }) {
   if (theme === 'linear') {
     // 2. NEON SİYAH: Mor Neon Elips Kapsül, Elektrik Cyan Çentikler & Neon Kırmızı Lazer
@@ -158,18 +158,20 @@ function ThemedAppLogo({ theme, className }: { theme: ThemeId; className?: strin
       <span
         aria-hidden="true"
         className={cn(
-          'relative block h-[74px] w-[96px] sm:h-[86px] sm:w-[112px] shrink-0 transition-transform duration-300 select-none drop-shadow-[0_0_16px_rgba(168,85,247,0.55)]',
+          'relative block h-10 w-[94px] sm:h-11 sm:w-[106px] landscape-short:h-9 landscape-short:w-[78px] shrink-0 select-none overflow-visible origin-left transition-transform duration-300',
           className
         )}
       >
-        <Image
-          src={logoNeon}
-          alt="odak Neon Logo"
-          width={112}
-          height={86}
-          priority
-          className="w-full h-full object-contain pointer-events-none select-none"
-        />
+        <span className="absolute top-0 left-0 w-[94px] h-[72px] sm:w-[106px] sm:h-[82px] landscape-short:w-[78px] landscape-short:h-[60px] drop-shadow-[0_0_16px_rgba(168,85,247,0.55)]">
+          <Image
+            src={logoNeon}
+            alt="odak Neon Logo"
+            width={106}
+            height={82}
+            priority
+            className="w-full h-full object-contain pointer-events-none select-none"
+          />
+        </span>
       </span>
     )
   }
@@ -180,18 +182,20 @@ function ThemedAppLogo({ theme, className }: { theme: ThemeId; className?: strin
       <span
         aria-hidden="true"
         className={cn(
-          'relative block size-[74px] sm:size-[86px] shrink-0 transition-transform duration-300 select-none drop-shadow-[0_3px_10px_rgba(0,0,0,0.14)]',
+          'relative block h-10 w-[72px] sm:h-11 sm:w-[82px] landscape-short:h-9 landscape-short:w-[60px] shrink-0 select-none overflow-visible origin-left transition-transform duration-300',
           className
         )}
       >
-        <Image
-          src={logoKagit}
-          alt="odak Kağıt Logo"
-          width={86}
-          height={86}
-          priority
-          className="w-full h-full object-contain pointer-events-none select-none"
-        />
+        <span className="absolute top-0 left-0 w-[72px] h-[72px] sm:w-[82px] sm:h-[82px] landscape-short:w-[60px] landscape-short:h-[60px] drop-shadow-[0_3px_10px_rgba(0,0,0,0.14)]">
+          <Image
+            src={logoKagit}
+            alt="odak Kağıt Logo"
+            width={82}
+            height={82}
+            priority
+            className="w-full h-full object-contain pointer-events-none select-none"
+          />
+        </span>
       </span>
     )
   }
@@ -201,18 +205,20 @@ function ThemedAppLogo({ theme, className }: { theme: ThemeId; className?: strin
     <span
       aria-hidden="true"
       className={cn(
-        'relative block size-[74px] sm:size-[86px] shrink-0 transition-transform duration-300 select-none drop-shadow-[0_4px_16px_rgba(56,189,248,0.4)]',
+        'relative block h-10 w-[72px] sm:h-11 sm:w-[82px] landscape-short:h-9 landscape-short:w-[60px] shrink-0 select-none overflow-visible origin-left transition-transform duration-300',
         className
       )}
     >
-      <Image
-        src={logoCam}
-        alt="odak Cam Logo"
-        width={86}
-        height={86}
-        priority
-        className="w-full h-full object-contain pointer-events-none select-none"
-      />
+      <span className="absolute top-0 left-0 w-[72px] h-[72px] sm:w-[82px] sm:h-[82px] landscape-short:w-[60px] landscape-short:h-[60px] drop-shadow-[0_4px_16px_rgba(56,189,248,0.4)]">
+        <Image
+          src={logoCam}
+          alt="odak Cam Logo"
+          width={82}
+          height={82}
+          priority
+          className="w-full h-full object-contain pointer-events-none select-none"
+        />
+      </span>
     </span>
   )
 }
@@ -333,15 +339,15 @@ export function TopBar({
       )}
     >
       <div className="mx-auto flex max-w-5xl items-center justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-2.5">
+        <div className="flex min-w-0 items-center gap-2.5 overflow-visible">
           <button
             type="button"
             onClick={onOpenAbout}
-            className="flex min-w-0 items-center gap-2.5 text-left group cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-2xl p-1 -m-1 transition-all active:scale-95"
+            className="flex min-w-0 items-center gap-2.5 text-left group cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-2xl p-1 -m-1 transition-all active:scale-95 overflow-visible"
             title="odak Hakkında, RSVP Mantığı ve Kılavuz"
             aria-label="odak Hakkında, RSVP Mantığı ve Kılavuz"
           >
-            <ThemedAppLogo theme={theme} className="group-hover:scale-105 transition-transform" />
+            <ThemedAppLogo theme={theme} className="group-hover:scale-105" />
             <div className="leading-tight max-[359px]:sr-only max-w-[140px] min-[400px]:max-w-[200px] sm:max-w-xs md:max-w-sm truncate">
               <p className="text-sm font-semibold tracking-tight truncate group-hover:text-primary transition-colors" title={docTitle || 'odak'}>
                 {docTitle || 'odak'}

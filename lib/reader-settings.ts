@@ -8,6 +8,7 @@ export type ReaderSettings = {
   chunkSize?: number
   wpm?: number
   readFootnotes?: boolean
+  bionicEnabled?: boolean
   neuroAudioEnabled?: boolean
 }
 
@@ -62,6 +63,9 @@ export function loadReaderSettings(): ReaderSettings {
     }
     if (typeof parsed.readFootnotes === 'boolean') {
       safe.readFootnotes = parsed.readFootnotes
+    }
+    if (typeof parsed.bionicEnabled === 'boolean') {
+      safe.bionicEnabled = parsed.bionicEnabled
     }
     if (typeof parsed.neuroAudioEnabled === 'boolean') {
       safe.neuroAudioEnabled = parsed.neuroAudioEnabled

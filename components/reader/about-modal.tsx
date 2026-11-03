@@ -389,10 +389,10 @@ export function AboutModal({ open, onClose, theme }: AboutModalProps) {
                   >
                     <h4 className="font-bold text-foreground flex items-center gap-2 mb-1.5 text-sm sm:text-base">
                       <Layers className="size-4 text-purple-500 shrink-0" />
-                      Kelime Bloklama (Chunking - &apos;C&apos;)
+                      Kelime Bloklama (&apos;C&apos;) & Bionic (&apos;B&apos;)
                     </h4>
                     <p className="text-xs leading-relaxed text-foreground/85">
-                      İleri düzey okuma için kelimeleri 1&apos;li, 2&apos;li, 3&apos;lü veya 4&apos;lü bloklar halinde akıtma imkanı. Tek tuşla (<kbd className="px-1 py-0.5 rounded bg-muted text-[10px]">C</kbd>) blok boyutunu değiştirebilirsiniz.
+                      Kelimeleri 1&apos;li, 2&apos;li, 3&apos;lü veya 4&apos;lü bloklar halinde (<kbd className="px-1 py-0.5 rounded bg-muted text-[10px]">C</kbd>) akıtma imkanı. Çoklu kelimede <strong>Akıllı Bionic</strong> (<kbd className="px-1 py-0.5 rounded bg-muted text-[10px]">B</kbd>) kökleri vurgular, bağlaçları gölgede bırakır.
                     </p>
                   </div>
 
@@ -485,6 +485,14 @@ export function AboutModal({ open, onClose, theme }: AboutModalProps) {
                     <div className="flex items-center justify-between p-2 rounded-xl bg-muted/40">
                       <span className="text-foreground/90 font-medium">Kelime Bloklama (1, 2, 3, 4)</span>
                       <kbd className="px-2 py-0.5 rounded-md bg-background border border-border/80 text-xs font-mono font-semibold">C Tuşu</kbd>
+                    </div>
+                    <div className="flex items-center justify-between p-2 rounded-xl bg-muted/40">
+                      <span className="text-foreground/90 font-medium">Akıllı Bionic Öbekleme (2K–4K)</span>
+                      <kbd className="px-2 py-0.5 rounded-md bg-background border border-border/80 text-xs font-mono font-semibold">B Tuşu</kbd>
+                    </div>
+                    <div className="flex items-center justify-between p-2 rounded-xl bg-muted/40">
+                      <span className="text-foreground/90 font-medium">Metin İçi Dipnotlar (Aç / Kapat)</span>
+                      <kbd className="px-2 py-0.5 rounded-md bg-background border border-border/80 text-xs font-mono font-semibold">D Tuşu</kbd>
                     </div>
                     <div className="flex items-center justify-between p-2 rounded-xl bg-muted/40">
                       <span className="text-foreground/90 font-medium">Temaları Değiştir (Cam, Neon, Kağıt)</span>

@@ -11,7 +11,7 @@ import {
   type TouchEvent,
 } from 'react'
 import { cn } from '@/lib/utils'
-import { calculateTurkishORP, WPM_STEP, type ChunkItem } from '@/lib/rsvp'
+import { calculateTurkishORP, formatBionicChunk, WPM_STEP, type ChunkItem } from '@/lib/rsvp'
 import { triggerHaptic } from '@/lib/haptics'
 import { useElementSize } from '@/lib/use-element-size'
 import { TapGuide } from './tap-guide'
@@ -20,6 +20,7 @@ type RsvpDisplayProps = {
   word: string
   chunk?: ChunkItem
   chunkSize?: number
+  bionicEnabled?: boolean
   playing: boolean
   wpm: number
   index?: number
@@ -43,6 +44,7 @@ export const RsvpDisplay = memo(function RsvpDisplay({
   word,
   chunk,
   chunkSize = 1,
+  bionicEnabled = true,
   playing,
   wpm,
   index = 0,
@@ -374,14 +376,36 @@ export const RsvpDisplay = memo(function RsvpDisplay({
                 isFootnote && 'italic text-amber-800 dark:text-amber-300 flex-wrap text-balance',
               )}
             >
-              {displayWords.map((w, idx) => (
-                <span
-                  key={idx}
-                  className="inline-block max-w-full whitespace-nowrap"
-                >
-                  {w}
-                </span>
-              ))}
+              {bionicEnabled && !isFootnote
+                ? formatBionicChunk(displayWords).map((part, idx) => (
+                    <span
+                      key={idx}
+                      className="inline-block max-w-full whitespace-nowrap"
+                    >
+                      {part.leading && (
+                        <span className="font-normal text-foreground/60">{part.leading}</span>
+                      )}
+                      {part.anchor && (
+                        <span className="font-bold text-foreground">{part.anchor}</span>
+                      )}
+                      <span
+                        className={cn(
+                          'font-normal',
+                          part.isConnector ? 'text-foreground/55' : 'text-foreground/68',
+                        )}
+                      >
+                        {part.tail}
+                      </span>
+                    </span>
+                  ))
+                : displayWords.map((w, idx) => (
+                    <span
+                      key={idx}
+                      className="inline-block max-w-full whitespace-nowrap"
+                    >
+                      {w}
+                    </span>
+                  ))}
             </span>
           )}
         </span>
@@ -401,7 +425,7 @@ export const RsvpDisplay = memo(function RsvpDisplay({
                 onCycleChunkSize()
               }}
               className="rounded-full border border-foreground/15 hover:border-foreground/35 bg-foreground/[0.04] hover:bg-foreground/[0.08] px-2 py-0.5 md:px-2.5 md:py-1 text-[10px] md:text-xs font-mono font-medium text-foreground/85 transition-all cursor-pointer shadow-2xs hover:scale-105 active:scale-95 select-none"
-              title="Kelime Öbeğini Değiştir (C) — 1K / 2K / 3K"
+              title="Kelime Öbeğini Değiştir (C) — 1K / 2K / 3K / 4K"
             >
               {chunkSize}K
             </button>

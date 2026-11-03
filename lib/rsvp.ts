@@ -679,4 +679,105 @@ export function findNextSentenceIndex(
   return chunks.length - 1
 }
 
+const TURKISH_STOP_CONNECTORS = new Set([
+  've',
+  'de',
+  'da',
+  'ki',
+  'mi',
+  'mı',
+  'mu',
+  'mü',
+  'ya',
+  'o',
+  'bu',
+  'şu',
+  'ne',
+  'ile',
+  'ama',
+  'için',
+  'gibi',
+  'veya',
+  'hem',
+  'ise',
+])
+
+export type BionicWordParts = {
+  leading: string
+  anchor: string
+  tail: string
+  isConnector: boolean
+}
+
+/**
+ * 2K / 3K / 4K Çoklu Kelime Öbekleri İçin Akıllı Bionic Katmanı:
+ * - Kısa bağlaçları/edatları ("ve", "de", "için", "ile" vb.) gölgede bırakarak gözün
+ *   yalnızca anlam taşıyan kelimelerin köklerine (bilişsel çıpalara) tutunmasını sağlar.
+ * - Kelime başındaki tırnak/parantez gibi noktalama işaretlerini ayırır, tipografiyi bozmaz.
+ */
+export function formatBionicChunk(words: string[]): BionicWordParts[] {
+  if (!words || words.length === 0) return []
+
+  const cleanNormalized = words.map((w) =>
+    w
+      .replace(/[^\p{L}\p{N}]/gu, '')
+      .toLocaleLowerCase('tr-TR'),
+  )
+
+  // Öbekte en az bir tane içerik kelimesi (bağlaç olmayan) var mı kontrol et
+  const hasContentWord = cleanNormalized.some(
+    (c) => c.length > 1 && !TURKISH_STOP_CONNECTORS.has(c),
+  )
+
+  return words.map((rawWord, idx) => {
+    const clean = cleanNormalized[idx]
+    if (hasContentWord && (clean.length <= 1 || TURKISH_STOP_CONNECTORS.has(clean))) {
+      return {
+        leading: '',
+        anchor: '',
+        tail: rawWord,
+        isConnector: true,
+      }
+    }
+
+    const match = rawWord.match(/^([^\p{L}\p{N}]*)([\p{L}\p{N}]+)([\s\S]*)$/u)
+    if (!match) {
+      return {
+        leading: '',
+        anchor: '',
+        tail: rawWord,
+        isConnector: false,
+      }
+    }
+
+    const [, leading, core, trailing] = match
+    const chars = Array.from(core)
+    const len = chars.length
+
+    let boldCount = 1
+    if (len <= 3) {
+      boldCount = 1
+    } else if (len <= 5) {
+      boldCount = 2
+    } else if (len <= 8) {
+      boldCount = 3
+    } else if (len <= 11) {
+      boldCount = 4
+    } else {
+      boldCount = 5
+    }
+
+    const anchor = chars.slice(0, boldCount).join('')
+    const restCore = chars.slice(boldCount).join('')
+
+    return {
+      leading,
+      anchor,
+      tail: restCore + trailing,
+      isConnector: false,
+    }
+  })
+}
+
+
 

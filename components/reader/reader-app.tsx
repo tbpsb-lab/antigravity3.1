@@ -47,6 +47,7 @@ export function ReaderApp() {
   const [fontScale, setFontScale] = useState(1)
   const [chunkSize, setChunkSize] = useState<number>(1)
   const [readFootnotes, setReadFootnotes] = useState<boolean>(true)
+  const [bionicEnabled, setBionicEnabled] = useState<boolean>(true)
   const [neuroAudioEnabled, setNeuroAudioEnabled] = useState<boolean>(false)
   const [audioToast, setAudioToast] = useState<string | null>(null)
   const [, setChunkBadge] = useState<string | null>(null)
@@ -731,6 +732,14 @@ export function ReaderApp() {
     [chunks, index, text, chunkSize],
   )
 
+  const handleBionicChange = useCallback(
+    (enabled: boolean) => {
+      setBionicEnabled(enabled)
+      triggerHaptic('tap')
+    },
+    [],
+  )
+
   // Tema değiştiğinde yazı tipini o temanın özgün yazı tipine uyarla
   const handleThemeChange = useCallback((newTheme: ThemeId) => {
     setTheme(newTheme)
@@ -803,6 +812,25 @@ export function ReaderApp() {
         e.preventDefault()
         cycleChunkSize()
         break
+      case 'KeyB': {
+        e.preventDefault()
+        const nextBionic = !bionicEnabled
+        handleBionicChange(nextBionic)
+        showAudioToast(
+          nextBionic ? 'Akıllı Bionic Öbekleme: Açık' : 'Akıllı Bionic Öbekleme: Kapalı',
+        )
+        break
+      }
+      case 'KeyD': {
+        e.preventDefault()
+        const nextFootnotes = !readFootnotes
+        handleReadFootnotesChange(nextFootnotes)
+        triggerHaptic('tap')
+        showAudioToast(
+          nextFootnotes ? 'Metin İçi Dipnotlar: Açık' : 'Metin İçi Dipnotlar: Kapalı',
+        )
+        break
+      }
       case 'KeyF':
         e.preventDefault()
         toggleFullscreen()
@@ -849,6 +877,7 @@ export function ReaderApp() {
     if (typeof settings.chunkSize === 'number') setChunkSize(settings.chunkSize)
     if (typeof settings.wpm === 'number') setWpm(settings.wpm)
     if (typeof settings.readFootnotes === 'boolean') setReadFootnotes(settings.readFootnotes)
+    if (typeof settings.bionicEnabled === 'boolean') setBionicEnabled(settings.bionicEnabled)
     // Ses modu varsayılan olarak daima kapalı başlar (Autoplay ve kullanıcı isteği gereği)
     setNeuroAudioEnabled(false)
 
@@ -878,9 +907,10 @@ export function ReaderApp() {
       chunkSize,
       wpm,
       readFootnotes,
+      bionicEnabled,
       neuroAudioEnabled,
     })
-  }, [theme, fontFace, fontScale, chunkSize, wpm, readFootnotes, neuroAudioEnabled])
+  }, [theme, fontFace, fontScale, chunkSize, wpm, readFootnotes, bionicEnabled, neuroAudioEnabled])
 
   // Akıllı Okuma Konumu Hafızası: Duraklatıldığında veya düzenli aralıklarla son konumu kaydet
   useEffect(() => {
@@ -1000,8 +1030,8 @@ export function ReaderApp() {
         onScaleChange={setFontScale}
         chunkSize={chunkSize}
         onChunkSizeChange={handleChunkSizeChange}
-        readFootnotes={readFootnotes}
-        onReadFootnotesChange={handleReadFootnotesChange}
+        bionicEnabled={bionicEnabled}
+        onBionicChange={handleBionicChange}
         neuroAudioEnabled={neuroAudioEnabled}
         onNeuroAudioChange={handleNeuroAudioChange}
         onOpenSpeedTest={handleOpenSpeedTest}
@@ -1016,8 +1046,8 @@ export function ReaderApp() {
       fontScale,
       chunkSize,
       handleChunkSizeChange,
-      readFootnotes,
-      handleReadFootnotesChange,
+      bionicEnabled,
+      handleBionicChange,
       neuroAudioEnabled,
       handleNeuroAudioChange,
       handleOpenSpeedTest,
@@ -1094,6 +1124,7 @@ export function ReaderApp() {
               word={currentChunk?.text ?? ''}
               chunk={currentChunk}
               chunkSize={chunkSize}
+              bionicEnabled={bionicEnabled}
               playing={playing}
               isPulsing={isPulsing}
               onToggle={togglePlay}
@@ -1160,7 +1191,7 @@ export function ReaderApp() {
         </div>
       )}
 
-      {/* Nöroakustik Odak Sesi Durum Bildirimi (Toast HUD) */}
+      {/* Nöroakustik Odak Sesi / Kısayol Durum Bildirimi (Toast HUD) */}
       {audioToast && (
         <div
           role="status"
@@ -1168,11 +1199,12 @@ export function ReaderApp() {
           className="pointer-events-none fixed top-7 left-1/2 -translate-x-1/2 z-50 animate-in fade-in slide-in-from-top-1 duration-200 select-none"
         >
           <div className="flex items-center gap-2 rounded-full border border-border/60 bg-background/85 px-4 py-1.5 font-sans text-xs font-medium text-foreground shadow-2xl backdrop-blur-md">
-            {neuroAudioEnabled ? (
-              <Volume2 className="size-3.5 text-primary" />
-            ) : (
-              <VolumeX className="size-3.5 text-muted-foreground" />
-            )}
+            {audioToast.includes('Nöroakustik') &&
+              (neuroAudioEnabled ? (
+                <Volume2 className="size-3.5 text-primary" />
+              ) : (
+                <VolumeX className="size-3.5 text-muted-foreground" />
+              ))}
             <span>{audioToast}</span>
           </div>
         </div>

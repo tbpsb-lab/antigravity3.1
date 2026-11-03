@@ -49,8 +49,8 @@ type FontSettingsProps = {
   onScaleChange: (scale: number) => void
   chunkSize?: number
   onChunkSizeChange?: (size: number) => void
-  readFootnotes?: boolean
-  onReadFootnotesChange?: (val: boolean) => void
+  bionicEnabled?: boolean
+  onBionicChange?: (val: boolean) => void
   neuroAudioEnabled?: boolean
   onNeuroAudioChange?: (val: boolean) => void
   onOpenSpeedTest?: () => void
@@ -93,8 +93,8 @@ export const FontSettings = memo(function FontSettings({
   onScaleChange,
   chunkSize = 1,
   onChunkSizeChange,
-  readFootnotes = true,
-  onReadFootnotesChange,
+  bionicEnabled = true,
+  onBionicChange,
   neuroAudioEnabled = false,
   onNeuroAudioChange,
   onOpenSpeedTest,
@@ -129,31 +129,6 @@ export const FontSettings = memo(function FontSettings({
       if (e.key === 'Escape') {
         e.stopPropagation()
         setOpen(false)
-        return
-      }
-
-      if (e.ctrlKey || e.metaKey || e.altKey) return
-      const target = e.target as HTMLElement | null
-      if (target?.closest('input:not([type="range"]), textarea, select, [contenteditable="true"]')) {
-        return
-      }
-
-      if (e.key === '1' || e.code === 'Digit1' || e.code === 'Numpad1') {
-        e.preventDefault()
-        onThemeChange?.('ios')
-      } else if (e.key === '2' || e.code === 'Digit2' || e.code === 'Numpad2') {
-        e.preventDefault()
-        onThemeChange?.('cyberpunk')
-      } else if (e.key === '3' || e.code === 'Digit3' || e.code === 'Numpad3') {
-        e.preventDefault()
-        onThemeChange?.('kindle')
-      } else if (e.key === 'c' || e.key === 'C') {
-        e.preventDefault()
-        const nextChunk = chunkSize >= 3 ? 1 : chunkSize + 1
-        onChunkSizeChange?.(nextChunk)
-      } else if (e.key === 'm' || e.key === 'M') {
-        e.preventDefault()
-        onNeuroAudioChange?.(!neuroAudioEnabled)
       }
     }
     document.addEventListener('pointerdown', onPointer)
@@ -162,15 +137,7 @@ export const FontSettings = memo(function FontSettings({
       document.removeEventListener('pointerdown', onPointer)
       document.removeEventListener('keydown', onKey)
     }
-  }, [
-    open,
-    setOpen,
-    onThemeChange,
-    chunkSize,
-    onChunkSizeChange,
-    neuroAudioEnabled,
-    onNeuroAudioChange,
-  ])
+  }, [open, setOpen])
 
   const step = (delta: number) =>
     onScaleChange(
@@ -395,28 +362,45 @@ export const FontSettings = memo(function FontSettings({
           </div>
         )}
 
-        {/* 5. Metin İçi Dipnotlar (Kompakt switch) */}
-        {onReadFootnotesChange && (
-          <div className="pt-2 border-t border-border/40 flex items-center justify-between gap-2">
-            <div>
-              <p className="text-xs font-medium text-foreground">Metin İçi Dipnotlar</p>
-              <p className="text-[10px] text-muted-foreground">Yeri gelince oku ve akışa dön</p>
+        {/* 5. Akıllı Bionic Öbekleme (2K-4K modlarında devreye giren kök vurgusu, sol üstte mini b) */}
+        {onBionicChange && (
+          <div className="relative pt-2.5 border-t border-border/40 flex items-center justify-between gap-2">
+            <span
+              aria-hidden="true"
+              className={cn(
+                'absolute -top-1.5 left-1 px-1 py-0 rounded text-[9px] font-mono font-bold bg-background border leading-none select-none shadow-xs transition-colors',
+                bionicEnabled && chunkSize > 1
+                  ? 'border-primary/50 text-primary'
+                  : 'border-border/70 text-muted-foreground/80',
+              )}
+            >
+              b
+            </span>
+            <div className="min-w-0 pr-1 pl-1">
+              <p className="text-xs font-medium text-foreground truncate">Akıllı Bionic Öbekleme</p>
+              <p className="text-[10px] text-muted-foreground truncate">
+                {chunkSize === 1
+                  ? '2K–4K modlarında kökleri vurgular'
+                  : bionicEnabled
+                    ? `${chunkSize}K modunda bilişsel çıpa açık`
+                    : '2K–4K öbeklerde kök vurgusu'}
+              </p>
             </div>
             <button
               type="button"
               role="switch"
-              aria-checked={readFootnotes}
-              onClick={() => onReadFootnotesChange(!readFootnotes)}
+              aria-checked={bionicEnabled}
+              onClick={() => onBionicChange(!bionicEnabled)}
               className={cn(
                 'relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none',
-                readFootnotes ? 'bg-primary' : 'bg-muted/60',
+                bionicEnabled ? 'bg-primary' : 'bg-muted/60',
               )}
-              aria-label="Metin İçi Dipnotlar"
+              aria-label="Akıllı Bionic Öbekleme"
             >
               <span
                 className={cn(
                   'pointer-events-none inline-block size-4 transform rounded-full bg-background shadow-md ring-0 transition duration-200 ease-in-out',
-                  readFootnotes ? 'translate-x-4' : 'translate-x-0',
+                  bionicEnabled ? 'translate-x-4' : 'translate-x-0',
                 )}
               />
             </button>

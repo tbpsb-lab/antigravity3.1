@@ -64,7 +64,7 @@ export function ReaderApp() {
   const [aboutOpen, setAboutOpen] = useState(false)
   const [showSpeedTestBanner, setShowSpeedTestBanner] = useState(false)
 
-  const anyModalOpen = sheetOpen || fontOpen || speedTestOpen || completionOpen || aboutOpen
+  const anyModalOpen = sheetOpen || speedTestOpen || completionOpen || aboutOpen
 
   // ~500 Kelimelik Doğal Nefes / Dinlenme Aralığı Durumu
   const [isResting, setIsResting] = useState(false)
@@ -812,8 +812,12 @@ export function ReaderApp() {
         break
       case 'Digit1':
       case 'Digit2':
-      case 'Digit3': {
-        const targetTheme = THEMES[Number(e.key) - 1]?.id
+      case 'Digit3':
+      case 'Numpad1':
+      case 'Numpad2':
+      case 'Numpad3': {
+        const num = Number(e.key)
+        const targetTheme = THEMES[num - 1]?.id
         if (targetTheme) {
           handleThemeChange(targetTheme)
         }

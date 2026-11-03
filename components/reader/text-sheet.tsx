@@ -276,7 +276,7 @@ export const TextSheet = memo(function TextSheet({
         )}
 
         {/* Sekmeler Arası Sabit Yükseklikli Yatay Kaydırma (Jitter / Zıplama Yok) */}
-        <div className="relative w-full h-[255px] sm:h-[270px] landscape-short:h-[180px] overflow-hidden rounded-2xl">
+        <div className="relative w-full h-[265px] sm:h-[280px] landscape-short:h-[185px] overflow-hidden rounded-2xl">
           <div
             className="flex w-[300%] h-full transition-transform duration-400 ease-[cubic-bezier(0.16,1,0.3,1)]"
             style={{ transform: `translateX(-${activeTabIndex * (100 / 3)}%)` }}
@@ -433,47 +433,55 @@ export const TextSheet = memo(function TextSheet({
               </form>
             </div>
 
-            {/* 3. SEKME: HAZIR SEÇKİLER */}
+            {/* 3. SEKME: HAZIR SEÇKİLER (2x2 KARE FORMAT) */}
             <div
               role="tabpanel"
               inert={activeTabIndex !== 2}
               aria-hidden={activeTabIndex !== 2}
-              className="w-1/3 h-full overflow-y-auto theme-scrollbar px-0.5 flex flex-col gap-2"
+              className="w-1/3 h-full overflow-y-auto theme-scrollbar px-0.5 flex flex-col"
             >
-              <div className="grid grid-cols-1 gap-2">
+              <div className="grid grid-cols-2 gap-1.5 sm:gap-2 h-full">
                 {CURATED_LIBRARY.map((item) => (
                   <div
                     key={item.id}
-                    className="flex flex-col justify-between rounded-2xl border border-border/80 bg-background/90 p-2.5 shadow-xs hover:border-primary/50 transition-all text-left group"
+                    onClick={() => {
+                      setDraft(item.text)
+                      onApply(item.text, item.title)
+                    }}
+                    className="flex flex-col justify-between rounded-xl sm:rounded-2xl border border-border/80 bg-background/90 hover:bg-primary/5 hover:border-primary/60 p-2 sm:p-2.5 shadow-xs transition-all text-left group select-none cursor-pointer"
                   >
-                    <div className="space-y-1">
+                    <div className="space-y-0.5 sm:space-y-1 min-w-0">
                       <div className="flex items-center justify-between gap-1">
-                        <span className="rounded-full bg-primary/10 px-1.5 py-0.2 text-[9px] font-semibold text-primary">
+                        <span className="rounded-md bg-primary/10 px-1.5 py-0.2 text-[8px] sm:text-[9px] font-semibold text-primary shrink-0 leading-tight">
                           {item.category}
                         </span>
-                        <span className="font-mono text-[10px] text-muted-foreground tabular-nums">
-                          {item.wordCount} k • ~{item.estimatedSeconds} sn
+                        <span className="font-mono text-[8.5px] sm:text-[9.5px] text-muted-foreground tabular-nums shrink-0 leading-tight">
+                          ~{item.estimatedSeconds} sn • {item.wordCount} k
                         </span>
                       </div>
-                      <h4 className="text-xs font-bold tracking-tight text-foreground group-hover:text-primary transition-colors truncate">
+                      <h4 className="text-[11px] sm:text-xs font-bold tracking-tight text-foreground group-hover:text-primary transition-colors line-clamp-1 leading-snug">
                         {item.title}
                       </h4>
-                      <p className="text-[10px] text-foreground/75 truncate">{item.author}</p>
-                      <p className="text-[10px] text-muted-foreground leading-snug line-clamp-2">
+                      <p className="text-[9.5px] sm:text-[10px] text-foreground/75 truncate leading-tight">
+                        {item.author}
+                      </p>
+                      <p className="text-[8.5px] sm:text-[9.5px] text-muted-foreground leading-tight line-clamp-2">
                         {item.description}
                       </p>
                     </div>
-                    <div className="pt-2">
+
+                    <div className="pt-1.5 shrink-0">
                       <button
                         type="button"
-                        onClick={() => {
+                        onClick={(e) => {
+                          e.stopPropagation()
                           setDraft(item.text)
                           onApply(item.text, item.title)
                         }}
-                        className="ctl ctl-primary flex h-7 w-full items-center justify-center gap-1.5 rounded-xl text-xs font-semibold cursor-pointer transition-all"
+                        className="ctl ctl-primary flex h-6 sm:h-6.5 w-full items-center justify-center gap-1 rounded-lg sm:rounded-xl text-[10px] sm:text-[11px] font-semibold cursor-pointer transition-all active:scale-95 shadow-xs"
                       >
-                        <Sparkles className="size-3" />
-                        <span>Bu Seçkiyi Oku</span>
+                        <Sparkles className="size-2.5 sm:size-3 shrink-0" />
+                        <span>Hemen Oku</span>
                       </button>
                     </div>
                   </div>

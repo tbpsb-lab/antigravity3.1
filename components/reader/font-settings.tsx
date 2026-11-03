@@ -129,6 +129,31 @@ export const FontSettings = memo(function FontSettings({
       if (e.key === 'Escape') {
         e.stopPropagation()
         setOpen(false)
+        return
+      }
+
+      if (e.ctrlKey || e.metaKey || e.altKey) return
+      const target = e.target as HTMLElement | null
+      if (target?.closest('input:not([type="range"]), textarea, select, [contenteditable="true"]')) {
+        return
+      }
+
+      if (e.key === '1' || e.code === 'Digit1' || e.code === 'Numpad1') {
+        e.preventDefault()
+        onThemeChange?.('ios')
+      } else if (e.key === '2' || e.code === 'Digit2' || e.code === 'Numpad2') {
+        e.preventDefault()
+        onThemeChange?.('cyberpunk')
+      } else if (e.key === '3' || e.code === 'Digit3' || e.code === 'Numpad3') {
+        e.preventDefault()
+        onThemeChange?.('kindle')
+      } else if (e.key === 'c' || e.key === 'C') {
+        e.preventDefault()
+        const nextChunk = chunkSize >= 3 ? 1 : chunkSize + 1
+        onChunkSizeChange?.(nextChunk)
+      } else if (e.key === 'm' || e.key === 'M') {
+        e.preventDefault()
+        onNeuroAudioChange?.(!neuroAudioEnabled)
       }
     }
     document.addEventListener('pointerdown', onPointer)
@@ -137,7 +162,15 @@ export const FontSettings = memo(function FontSettings({
       document.removeEventListener('pointerdown', onPointer)
       document.removeEventListener('keydown', onKey)
     }
-  }, [open])
+  }, [
+    open,
+    setOpen,
+    onThemeChange,
+    chunkSize,
+    onChunkSizeChange,
+    neuroAudioEnabled,
+    onNeuroAudioChange,
+  ])
 
   const step = (delta: number) =>
     onScaleChange(

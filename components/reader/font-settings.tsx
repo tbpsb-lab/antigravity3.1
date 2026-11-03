@@ -1,6 +1,6 @@
 'use client'
 
-import { Minus, Plus, Volume2, VolumeX, Zap } from 'lucide-react'
+import { Minus, Plus, Type, Volume2, VolumeX, Zap } from 'lucide-react'
 import { memo, useEffect, useId, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
 import { cn } from '@/lib/utils'
@@ -153,7 +153,7 @@ export const FontSettings = memo(function FontSettings({
           open ? 'scale-100 opacity-100' : 'pointer-events-none scale-95 opacity-0',
         )}
       >
-        {/* 1. Tema Seçimi (Simgeler aynı boyutta, başlık kaldırıldı) */}
+        {/* 1. Tema Seçimi (Simgeler aynı boyutta, sol üstte mini 1, 2, 3) */}
         {onThemeChange && (
           <div role="radiogroup" aria-label="Tasarım teması" className="grid grid-cols-3 gap-2">
             <button
@@ -162,12 +162,21 @@ export const FontSettings = memo(function FontSettings({
               aria-checked={theme === 'ios'}
               onClick={() => onThemeChange('ios')}
               className={cn(
-                'flex flex-col items-center gap-1.5 p-2 rounded-xl border transition-all cursor-pointer text-center select-none',
+                'relative flex flex-col items-center gap-1.5 p-2 rounded-xl border transition-all cursor-pointer text-center select-none',
                 theme === 'ios'
                   ? 'border-primary bg-primary/10 text-foreground ring-1 ring-primary/40 shadow-sm'
                   : 'border-border/60 hover:border-border hover:bg-muted/40 text-muted-foreground',
               )}
             >
+              <span
+                aria-hidden="true"
+                className={cn(
+                  'absolute top-1 left-1.5 text-[9px] font-mono font-bold leading-none select-none transition-colors',
+                  theme === 'ios' ? 'text-primary' : 'text-muted-foreground/50',
+                )}
+              >
+                1
+              </span>
               <div className="h-7 flex items-center justify-center">
                 <CamShape />
               </div>
@@ -180,12 +189,21 @@ export const FontSettings = memo(function FontSettings({
               aria-checked={theme === 'linear'}
               onClick={() => onThemeChange('linear')}
               className={cn(
-                'flex flex-col items-center gap-1.5 p-2 rounded-xl border transition-all cursor-pointer text-center select-none',
+                'relative flex flex-col items-center gap-1.5 p-2 rounded-xl border transition-all cursor-pointer text-center select-none',
                 theme === 'linear'
                   ? 'border-purple-400 bg-purple-500/10 text-foreground ring-1 ring-purple-400/40 shadow-sm'
                   : 'border-border/60 hover:border-border hover:bg-muted/40 text-muted-foreground',
               )}
             >
+              <span
+                aria-hidden="true"
+                className={cn(
+                  'absolute top-1 left-1.5 text-[9px] font-mono font-bold leading-none select-none transition-colors',
+                  theme === 'linear' ? 'text-purple-400' : 'text-muted-foreground/50',
+                )}
+              >
+                2
+              </span>
               <div className="h-7 flex items-center justify-center">
                 <NeonShape />
               </div>
@@ -198,12 +216,21 @@ export const FontSettings = memo(function FontSettings({
               aria-checked={theme === 'kindle'}
               onClick={() => onThemeChange('kindle')}
               className={cn(
-                'flex flex-col items-center gap-1.5 p-2 rounded-xl border transition-all cursor-pointer text-center select-none',
+                'relative flex flex-col items-center gap-1.5 p-2 rounded-xl border transition-all cursor-pointer text-center select-none',
                 theme === 'kindle'
                   ? 'border-amber-600/70 bg-amber-500/10 text-foreground ring-1 ring-amber-600/40 shadow-sm'
                   : 'border-border/60 hover:border-border hover:bg-muted/40 text-muted-foreground',
               )}
             >
+              <span
+                aria-hidden="true"
+                className={cn(
+                  'absolute top-1 left-1.5 text-[9px] font-mono font-bold leading-none select-none transition-colors',
+                  theme === 'kindle' ? 'text-amber-600 dark:text-amber-400' : 'text-muted-foreground/50',
+                )}
+              >
+                3
+              </span>
               <div className="h-7 flex items-center justify-center">
                 <KagitShape />
               </div>
@@ -212,8 +239,9 @@ export const FontSettings = memo(function FontSettings({
           </div>
         )}
 
-        {/* 2. Yazı Boyutu (Tek satır: eksi, slider, artı, %) */}
+        {/* 2. Yazı Boyutu (Tek satır: Type simgesi, eksi, slider, artı, %) */}
         <div className="flex items-center gap-2 pt-1" role="group" aria-label="Yazı boyutu">
+          <Type className="size-4 text-muted-foreground/80 shrink-0 select-none" aria-hidden="true" />
           <button
             type="button"
             onClick={() => step(-FONT_SCALE_STEP)}
@@ -283,13 +311,16 @@ export const FontSettings = memo(function FontSettings({
           })}
         </div>
 
-        {/* 4. Kelime Öbeği (Tek satır, C tuşu minik gösterge) */}
+        {/* 4. Kelime Öbeği (Tek satır, sol üstte mini c) */}
         {onChunkSizeChange && (
-          <div className="pt-2 border-t border-border/40 flex items-center gap-2">
-            <span className="text-[10px] font-mono text-muted-foreground/75 select-none shrink-0 pl-0.5">
-              C tuşu
+          <div className="relative pt-2.5 border-t border-border/40">
+            <span
+              aria-hidden="true"
+              className="absolute -top-1.5 left-1 px-1 py-0 rounded text-[9px] font-mono font-bold bg-background border border-border/70 text-muted-foreground/80 leading-none select-none shadow-xs"
+            >
+              c
             </span>
-            <div role="radiogroup" aria-label="Kelime öbeği boyutu" className="grid grid-cols-4 gap-1 flex-1">
+            <div role="radiogroup" aria-label="Kelime öbeği boyutu" className="grid grid-cols-4 gap-1 w-full">
               {[1, 2, 3, 4].map((size) => {
                 const active = chunkSize === size
                 return (
@@ -341,10 +372,19 @@ export const FontSettings = memo(function FontSettings({
           </div>
         )}
 
-        {/* 6. Nöroakustik Odak Sesi (Kompakt switch) */}
+        {/* 6. Nöroakustik Odak Sesi (Kompakt switch, sol üstte mini m) */}
         {onNeuroAudioChange && (
-          <div className="pt-2 border-t border-border/40 flex items-center justify-between gap-2">
-            <div className="min-w-0 pr-1">
+          <div className="relative pt-2.5 border-t border-border/40 flex items-center justify-between gap-2">
+            <span
+              aria-hidden="true"
+              className={cn(
+                'absolute -top-1.5 left-1 px-1 py-0 rounded text-[9px] font-mono font-bold bg-background border leading-none select-none shadow-xs transition-colors',
+                neuroAudioEnabled ? 'border-primary/50 text-primary' : 'border-border/70 text-muted-foreground/80',
+              )}
+            >
+              m
+            </span>
+            <div className="min-w-0 pr-1 pl-1">
               <div className="flex items-center gap-1.5">
                 {neuroAudioEnabled ? (
                   <Volume2 className="size-3.5 text-primary shrink-0 animate-pulse" />
@@ -354,7 +394,7 @@ export const FontSettings = memo(function FontSettings({
                 <p className="text-xs font-medium text-foreground truncate">Nöroakustik Odak Sesi</p>
               </div>
               <p className="text-[10px] text-muted-foreground truncate">
-                {neuroAudioEnabled ? '40Hz Gama & Pembe Gürültü açık' : 'Pembe gürültü & 40Hz Gama (M tuşu)'}
+                {neuroAudioEnabled ? '40Hz Gama & Pembe Gürültü açık' : 'Pembe gürültü & 40Hz Gama'}
               </p>
             </div>
             <button

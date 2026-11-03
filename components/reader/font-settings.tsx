@@ -148,164 +148,148 @@ export const FontSettings = memo(function FontSettings({
         aria-label="Görünüm ve okuma ayarları"
         inert={!open}
         className={cn(
-          'panel panel-solid absolute -right-12 top-full z-50 mt-2 w-[min(19rem,calc(100vw-1.5rem))] origin-top-right p-3.5 sm:right-0 transition-all duration-200 ease-out shadow-xl',
-          'max-h-[calc(100dvh-5.5rem)] overflow-y-auto overscroll-contain touch-pan-y landscape-short:max-h-[calc(100dvh-3.75rem)] landscape-short:w-[min(26rem,calc(100vw-1.5rem))] landscape-short:p-3',
+          'panel panel-solid absolute -right-12 top-full z-50 mt-2 w-[min(19rem,calc(100vw-1.5rem))] origin-top-right p-3 sm:right-0 transition-all duration-200 ease-out shadow-xl flex flex-col gap-2.5',
+          'max-h-[calc(100dvh-5.5rem)] overflow-y-auto overscroll-contain touch-pan-y landscape-short:max-h-[calc(100dvh-3.75rem)] landscape-short:w-[min(24rem,calc(100vw-1.5rem))] landscape-short:p-2.5',
           open ? 'scale-100 opacity-100' : 'pointer-events-none scale-95 opacity-0',
         )}
       >
-        {/* 1. Tema Seçimi */}
+        {/* 1. Tema Seçimi (Simgeler aynı boyutta, başlık kaldırıldı) */}
         {onThemeChange && (
-          <div className="mb-4">
-            <p className="mb-2 px-0.5 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
-              Tema
-            </p>
-            <div role="radiogroup" aria-label="Tasarım teması" className="grid grid-cols-3 gap-2">
-              <button
-                type="button"
-                role="radio"
-                aria-checked={theme === 'ios'}
-                onClick={() => onThemeChange('ios')}
-                className={cn(
-                  'flex flex-col items-center gap-1.5 p-2 rounded-xl border transition-all cursor-pointer text-center select-none',
-                  theme === 'ios'
-                    ? 'border-primary bg-primary/10 text-foreground ring-1 ring-primary/40 shadow-sm'
-                    : 'border-border/60 hover:border-border hover:bg-muted/40 text-muted-foreground',
-                )}
-              >
-                <div className="h-7 flex items-center justify-center">
-                  <CamShape />
-                </div>
-                <span className="text-[11px] font-medium">Cam</span>
-              </button>
+          <div role="radiogroup" aria-label="Tasarım teması" className="grid grid-cols-3 gap-2">
+            <button
+              type="button"
+              role="radio"
+              aria-checked={theme === 'ios'}
+              onClick={() => onThemeChange('ios')}
+              className={cn(
+                'flex flex-col items-center gap-1.5 p-2 rounded-xl border transition-all cursor-pointer text-center select-none',
+                theme === 'ios'
+                  ? 'border-primary bg-primary/10 text-foreground ring-1 ring-primary/40 shadow-sm'
+                  : 'border-border/60 hover:border-border hover:bg-muted/40 text-muted-foreground',
+              )}
+            >
+              <div className="h-7 flex items-center justify-center">
+                <CamShape />
+              </div>
+              <span className="text-[11px] font-medium">Cam</span>
+            </button>
 
-              <button
-                type="button"
-                role="radio"
-                aria-checked={theme === 'linear'}
-                onClick={() => onThemeChange('linear')}
-                className={cn(
-                  'flex flex-col items-center gap-1.5 p-2 rounded-xl border transition-all cursor-pointer text-center select-none',
-                  theme === 'linear'
-                    ? 'border-purple-400 bg-purple-500/10 text-foreground ring-1 ring-purple-400/40 shadow-sm'
-                    : 'border-border/60 hover:border-border hover:bg-muted/40 text-muted-foreground',
-                )}
-              >
-                <div className="h-7 flex items-center justify-center">
-                  <NeonShape />
-                </div>
-                <span className="text-[11px] font-medium">Neon</span>
-              </button>
+            <button
+              type="button"
+              role="radio"
+              aria-checked={theme === 'linear'}
+              onClick={() => onThemeChange('linear')}
+              className={cn(
+                'flex flex-col items-center gap-1.5 p-2 rounded-xl border transition-all cursor-pointer text-center select-none',
+                theme === 'linear'
+                  ? 'border-purple-400 bg-purple-500/10 text-foreground ring-1 ring-purple-400/40 shadow-sm'
+                  : 'border-border/60 hover:border-border hover:bg-muted/40 text-muted-foreground',
+              )}
+            >
+              <div className="h-7 flex items-center justify-center">
+                <NeonShape />
+              </div>
+              <span className="text-[11px] font-medium">Neon</span>
+            </button>
 
-              <button
-                type="button"
-                role="radio"
-                aria-checked={theme === 'kindle'}
-                onClick={() => onThemeChange('kindle')}
-                className={cn(
-                  'flex flex-col items-center gap-1.5 p-2 rounded-xl border transition-all cursor-pointer text-center select-none',
-                  theme === 'kindle'
-                    ? 'border-amber-600/70 bg-amber-500/10 text-foreground ring-1 ring-amber-600/40 shadow-sm'
-                    : 'border-border/60 hover:border-border hover:bg-muted/40 text-muted-foreground',
-                )}
-              >
-                <div className="h-7 flex items-center justify-center">
-                  <KagitShape />
-                </div>
-                <span className="text-[11px] font-medium">Kağıt</span>
-              </button>
-            </div>
+            <button
+              type="button"
+              role="radio"
+              aria-checked={theme === 'kindle'}
+              onClick={() => onThemeChange('kindle')}
+              className={cn(
+                'flex flex-col items-center gap-1.5 p-2 rounded-xl border transition-all cursor-pointer text-center select-none',
+                theme === 'kindle'
+                  ? 'border-amber-600/70 bg-amber-500/10 text-foreground ring-1 ring-amber-600/40 shadow-sm'
+                  : 'border-border/60 hover:border-border hover:bg-muted/40 text-muted-foreground',
+              )}
+            >
+              <div className="h-7 flex items-center justify-center">
+                <KagitShape />
+              </div>
+              <span className="text-[11px] font-medium">Kağıt</span>
+            </button>
           </div>
         )}
 
-        {/* 2. Yazı Boyutu (Tipografi Önceliği) */}
-        <div className="mb-4">
-          <div className="mb-2 flex items-center justify-between px-0.5 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
-            <span>Yazı Boyutu</span>
-            <span className="font-mono text-[11px] tabular-nums font-semibold text-foreground/80">
-              %{Math.round(scale * 100)}
-            </span>
-          </div>
-          <div className="flex items-center gap-2" role="group" aria-label="Yazı boyutu">
-            <button
-              type="button"
-              onClick={() => step(-FONT_SCALE_STEP)}
-              disabled={scale <= FONT_SCALE_MIN}
-              className="ctl size-9 shrink-0 disabled:opacity-40"
-              aria-label="Yazıyı küçült"
-            >
-              <Minus className="size-4" />
-            </button>
-            <label htmlFor={`${panelId}-scale`} className="sr-only">
-              Yazı boyutu
-            </label>
-            <input
-              id={`${panelId}-scale`}
-              type="range"
-              min={FONT_SCALE_MIN}
-              max={FONT_SCALE_MAX}
-              step={FONT_SCALE_STEP}
-              value={scale}
-              onChange={(e) => onScaleChange(Number(e.target.value))}
-              className="scrubber min-w-0 flex-1"
-              style={
-                {
-                  '--progress': `${((scale - FONT_SCALE_MIN) / (FONT_SCALE_MAX - FONT_SCALE_MIN)) * 100}%`,
-                } as CSSProperties
-              }
-            />
-            <button
-              type="button"
-              onClick={() => step(FONT_SCALE_STEP)}
-              disabled={scale >= FONT_SCALE_MAX}
-              className="ctl size-9 shrink-0 disabled:opacity-40"
-              aria-label="Yazıyı büyüt"
-            >
-              <Plus className="size-4" />
-            </button>
-          </div>
+        {/* 2. Yazı Boyutu (Tek satır: eksi, slider, artı, %) */}
+        <div className="flex items-center gap-2 pt-1" role="group" aria-label="Yazı boyutu">
+          <button
+            type="button"
+            onClick={() => step(-FONT_SCALE_STEP)}
+            disabled={scale <= FONT_SCALE_MIN}
+            className="ctl size-8 shrink-0 disabled:opacity-40"
+            aria-label="Yazıyı küçült"
+          >
+            <Minus className="size-3.5" />
+          </button>
+          <label htmlFor={`${panelId}-scale`} className="sr-only">
+            Yazı boyutu
+          </label>
+          <input
+            id={`${panelId}-scale`}
+            type="range"
+            min={FONT_SCALE_MIN}
+            max={FONT_SCALE_MAX}
+            step={FONT_SCALE_STEP}
+            value={scale}
+            onChange={(e) => onScaleChange(Number(e.target.value))}
+            className="scrubber min-w-0 flex-1"
+            style={
+              {
+                '--progress': `${((scale - FONT_SCALE_MIN) / (FONT_SCALE_MAX - FONT_SCALE_MIN)) * 100}%`,
+              } as CSSProperties
+            }
+          />
+          <button
+            type="button"
+            onClick={() => step(FONT_SCALE_STEP)}
+            disabled={scale >= FONT_SCALE_MAX}
+            className="ctl size-8 shrink-0 disabled:opacity-40"
+            aria-label="Yazıyı büyüt"
+          >
+            <Plus className="size-3.5" />
+          </button>
+          <span className="w-9 text-right font-mono text-[11px] tabular-nums font-semibold text-foreground/85 shrink-0 select-none">
+            %{Math.round(scale * 100)}
+          </span>
         </div>
 
-        {/* 3. Yazı Tipi Ailesi */}
-        <div className="mb-4">
-          <p className="mb-2 px-0.5 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
-            Yazı Tipi
-          </p>
-          <div role="radiogroup" aria-label="Yazı ailesi" className="grid grid-cols-4 gap-1">
-            {FONT_FACES.map((f) => {
-              const active = f.id === face
-              return (
-                <button
-                  key={f.id}
-                  type="button"
-                  role="radio"
-                  aria-checked={active}
-                  onClick={() => onFaceChange(f.id)}
-                  className={cn(
-                    'ctl flex-col gap-0.5 rounded-xl py-2',
-                    active ? 'ctl-primary' : 'bg-transparent text-muted-foreground',
-                  )}
+        {/* 3. Yazı Tipi Ailesi (Başlık kaldırıldı, doğrudan 4 seçenek) */}
+        <div role="radiogroup" aria-label="Yazı ailesi" className="grid grid-cols-4 gap-1">
+          {FONT_FACES.map((f) => {
+            const active = f.id === face
+            return (
+              <button
+                key={f.id}
+                type="button"
+                role="radio"
+                aria-checked={active}
+                onClick={() => onFaceChange(f.id)}
+                className={cn(
+                  'ctl flex-col gap-0.5 rounded-xl py-1.5',
+                  active ? 'ctl-primary' : 'bg-transparent text-muted-foreground',
+                )}
+              >
+                <span
+                  className="text-base leading-none"
+                  style={{ fontFamily: f.family ?? 'var(--reader-font)' }}
                 >
-                  <span
-                    className="text-lg leading-none"
-                    style={{ fontFamily: f.family ?? 'var(--reader-font)' }}
-                  >
-                    {f.sample}
-                  </span>
-                  <span className="text-[10px] font-medium">{f.label}</span>
-                </button>
-              )
-            })}
-          </div>
+                  {f.sample}
+                </span>
+                <span className="text-[10px] font-medium">{f.label}</span>
+              </button>
+            )
+          })}
         </div>
 
-        {/* 4. Kelime Öbeği (Chunk Size - RSVP Akış Mekaniği) */}
+        {/* 4. Kelime Öbeği (Tek satır, C tuşu minik gösterge) */}
         {onChunkSizeChange && (
-          <div className="mb-3.5 pt-3 border-t border-border/40">
-            <div className="mb-2 flex items-center justify-between px-0.5 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
-              <span>Kelime Öbeği (Chunk)</span>
-              <span className="font-mono text-[10px] text-muted-foreground/85 normal-case">(C tuşu)</span>
-            </div>
-            <div role="radiogroup" aria-label="Kelime öbeği boyutu" className="grid grid-cols-4 gap-1">
+          <div className="pt-2 border-t border-border/40 flex items-center gap-2">
+            <span className="text-[10px] font-mono text-muted-foreground/75 select-none shrink-0 pl-0.5">
+              C tuşu
+            </span>
+            <div role="radiogroup" aria-label="Kelime öbeği boyutu" className="grid grid-cols-4 gap-1 flex-1">
               {[1, 2, 3, 4].map((size) => {
                 const active = chunkSize === size
                 return (
@@ -316,9 +300,10 @@ export const FontSettings = memo(function FontSettings({
                     aria-checked={active}
                     onClick={() => onChunkSizeChange(size)}
                     className={cn(
-                      'ctl h-8 text-xs font-mono font-medium rounded-xl',
+                      'ctl h-7 text-xs font-mono font-medium rounded-lg',
                       active ? 'ctl-primary' : 'bg-transparent text-muted-foreground hover:text-foreground',
                     )}
+                    title={`${size} kelime öbeği`}
                   >
                     {size} {size === 1 ? 'kelime' : 'k'}
                   </button>
@@ -328,9 +313,9 @@ export const FontSettings = memo(function FontSettings({
           </div>
         )}
 
-        {/* 5. Akış & Odak Tercihleri: Metin İçi Dipnotlar */}
+        {/* 5. Metin İçi Dipnotlar (Kompakt switch) */}
         {onReadFootnotesChange && (
-          <div className="pt-3 border-t border-border/40 flex items-center justify-between gap-2">
+          <div className="pt-2 border-t border-border/40 flex items-center justify-between gap-2">
             <div>
               <p className="text-xs font-medium text-foreground">Metin İçi Dipnotlar</p>
               <p className="text-[10px] text-muted-foreground">Yeri gelince oku ve akışa dön</p>
@@ -356,9 +341,9 @@ export const FontSettings = memo(function FontSettings({
           </div>
         )}
 
-        {/* 6. Akış & Odak Tercihleri: Nöroakustik Odak Sesi */}
+        {/* 6. Nöroakustik Odak Sesi (Kompakt switch) */}
         {onNeuroAudioChange && (
-          <div className="pt-3 border-t border-border/40 flex items-center justify-between gap-2">
+          <div className="pt-2 border-t border-border/40 flex items-center justify-between gap-2">
             <div className="min-w-0 pr-1">
               <div className="flex items-center gap-1.5">
                 {neuroAudioEnabled ? (
@@ -369,7 +354,7 @@ export const FontSettings = memo(function FontSettings({
                 <p className="text-xs font-medium text-foreground truncate">Nöroakustik Odak Sesi</p>
               </div>
               <p className="text-[10px] text-muted-foreground truncate">
-                {neuroAudioEnabled ? '40Hz Gama & Pembe Gürültü açık' : 'Pembe gürültü & 40Hz Gama'} (M tuşu)
+                {neuroAudioEnabled ? '40Hz Gama & Pembe Gürültü açık' : 'Pembe gürültü & 40Hz Gama (M tuşu)'}
               </p>
             </div>
             <button
@@ -381,7 +366,7 @@ export const FontSettings = memo(function FontSettings({
                 'relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none',
                 neuroAudioEnabled ? 'bg-primary' : 'bg-muted/60',
               )}
-              aria-label="Nöroakustik Odak Sesi (40Hz Gama ve Pembe Gürültü)"
+              aria-label="Nöroakustik Odak Sesi"
             >
               <span
                 className={cn(
@@ -393,22 +378,19 @@ export const FontSettings = memo(function FontSettings({
           </div>
         )}
 
-        {/* 7. Kalibrasyon & Araçlar: Okuma Hızı Testi */}
+        {/* 7. Okuma Hızı Testi (Yalnızca başlık ve sonda şimşek simgesi) */}
         {onOpenSpeedTest && (
-          <div className="mt-4 pt-3 border-t border-border/40">
+          <div className="pt-2 border-t border-border/40">
             <button
               type="button"
               onClick={() => {
                 setOpen(false)
                 onOpenSpeedTest()
               }}
-              className="w-full flex items-center justify-between px-3 py-2 rounded-xl bg-muted/40 hover:bg-muted/80 text-foreground transition-colors text-xs font-medium cursor-pointer"
+              className="w-full flex items-center justify-between px-3 py-2 rounded-xl bg-muted/30 hover:bg-muted/70 text-foreground transition-colors text-xs font-medium cursor-pointer"
             >
-              <span className="flex items-center gap-2">
-                <Zap className="size-3.5 text-primary" />
-                <span>Okuma Hızı Testi & Kalibrasyon</span>
-              </span>
-              <span className="text-[10px] font-semibold text-primary">Başlat →</span>
+              <span>Okuma Hızı Testi</span>
+              <Zap className="size-3.5 text-primary shrink-0" />
             </button>
           </div>
         )}

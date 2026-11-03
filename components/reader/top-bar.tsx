@@ -1,6 +1,6 @@
 'use client'
 
-import { FileText, Maximize, Minimize, Volume2, VolumeX } from 'lucide-react'
+import { FileText, Maximize, Minimize } from 'lucide-react'
 import Image from 'next/image'
 import { memo, type ReactNode, type Ref } from 'react'
 import { cn } from '@/lib/utils'
@@ -265,60 +265,17 @@ export const TopBar = memo(function TopBar({
           </button>
         </div>
 
-        {/* Sağ Alan: 1. Nöro-Odak Sesi, 2. Aa Görünüm, 3. Metin Yükle, 4. Tam Ekran (En Sağda) */}
+        {/* Sağ Alan: 1. Metin Yükle, 2. Aa Görünüm & Ayarlar, 3. Tam Ekran */}
         <div className="flex items-center gap-2 md:gap-3">
-          {/* 1. Nöroakustik Odak Sesi (40Hz Gama + Pembe Gürültü) */}
-          {onToggleNeuroAudio && (
-            <button
-              type="button"
-              onClick={(e) => {
-                ;(e.currentTarget as HTMLButtonElement)?.blur()
-                onToggleNeuroAudio()
-              }}
-              onPointerUp={(e) => {
-                ;(e.currentTarget as HTMLButtonElement)?.blur()
-              }}
-              aria-pressed={neuroAudioEnabled}
-              aria-label={
-                neuroAudioEnabled
-                  ? 'Nöroakustik odak sesini kapat (40Hz Gama + Pembe Gürültü — M)'
-                  : 'Nöroakustik odak sesini aç (40Hz Gama + Pembe Gürültü — M)'
-              }
-              title={
-                neuroAudioEnabled
-                  ? 'Nöroakustik Odak Sesi Açık: 40Hz Gama + Pembe Gürültü (Kapatmak için tıklayın veya M)'
-                  : 'Nöroakustik Odak Sesi Kapalı: 40Hz Gama + Pembe Gürültü (Açmak için tıklayın veya M)'
-              }
-              className={cn(
-                'ctl panel relative size-10 md:size-12 landscape-short:size-9 transition-colors cursor-pointer',
-                neuroAudioEnabled
-                  ? 'text-primary border-primary/40 bg-primary/10'
-                  : 'text-muted-foreground hover:text-foreground',
-              )}
-            >
-              {neuroAudioEnabled ? (
-                <>
-                  <Volume2 className="size-4 md:size-5" />
-                  <span
-                    aria-hidden="true"
-                    className="pointer-events-none absolute top-1.5 right-1.5 size-1.5 rounded-full bg-primary animate-pulse"
-                  />
-                </>
-              ) : (
-                <VolumeX className="size-4 md:size-5" />
-              )}
-            </button>
-          )}
-
-          {/* 2. Görünüm & Okuma Ayarları */}
-          {fontControl}
-
-          {/* 3. Okuma ve İçerik Merkezi / Metin Yükle */}
+          {/* 1. Okuma ve İçerik Merkezi / Metin Yükle */}
           <button
             type="button"
             onClick={(e) => {
               ;(e.currentTarget as HTMLButtonElement)?.blur()
               onOpenText()
+            }}
+            onPointerUp={(e) => {
+              ;(e.currentTarget as HTMLButtonElement)?.blur()
             }}
             className="ctl panel size-10 md:size-12 landscape-short:size-9 text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
             aria-label="Okuma ve İçerik Merkezi (Metin Yükle)"
@@ -327,13 +284,19 @@ export const TopBar = memo(function TopBar({
             <FileText className="size-4 md:size-5" />
           </button>
 
-          {/* 4. Tam Ekran Butonu (En Sağda) */}
+          {/* 2. Görünüm & Okuma Ayarları (Aa) */}
+          {fontControl}
+
+          {/* 3. Tam Ekran Butonu (En Sağda) */}
           {onToggleFullscreen && (
             <button
               type="button"
               onClick={(e) => {
                 ;(e.currentTarget as HTMLButtonElement)?.blur()
                 onToggleFullscreen()
+              }}
+              onPointerUp={(e) => {
+                ;(e.currentTarget as HTMLButtonElement)?.blur()
               }}
               className="ctl panel size-10 md:size-12 landscape-short:size-9 text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
               aria-label={isFullscreen ? 'Tam ekrandan çık (F)' : 'Tam ekran modu (F)'}

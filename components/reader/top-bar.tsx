@@ -155,16 +155,16 @@ function ThemedAppLogo({ theme, className }: { theme: ThemeId; className?: strin
       <span
         aria-hidden="true"
         className={cn(
-          'relative block h-10 w-[84px] sm:h-11 sm:w-[114px] landscape-short:h-9 landscape-short:w-[78px] shrink-0 select-none overflow-visible origin-left transition-transform duration-300',
+          'relative block h-10 w-[62px] sm:h-11 sm:w-[82px] landscape-short:h-9 landscape-short:w-[58px] shrink-0 select-none overflow-visible origin-left transition-transform duration-300',
           className,
         )}
       >
-        <span className="absolute top-0 left-0 w-[92px] h-[72px] sm:w-[122px] sm:h-[95px] landscape-short:w-[86px] landscape-short:h-[67px] drop-shadow-[0_0_16px_rgba(168,85,247,0.55)]">
+        <span className="absolute top-0 left-0 w-[62px] h-[62px] sm:w-[82px] sm:h-[82px] landscape-short:w-[58px] landscape-short:h-[58px] drop-shadow-[0_0_16px_rgba(168,85,247,0.55)]">
           <Image
             src={logoNeon}
             alt="odak Neon Logo"
-            width={122}
-            height={95}
+            width={82}
+            height={82}
             priority
             className="w-full h-full object-contain pointer-events-none select-none"
           />

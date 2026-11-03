@@ -32,6 +32,7 @@ type AboutModalProps = {
   open: boolean
   onClose: () => void
   theme: ThemeId
+  onThemeChange?: (theme: ThemeId) => void
 }
 
 function OdakModalLogo({ theme }: { theme: ThemeId }) {
@@ -82,24 +83,40 @@ const TABS = [
 
 type TabId = (typeof TABS)[number]['id']
 
-export function AboutModal({ open, onClose, theme }: AboutModalProps) {
+export function AboutModal({ open, onClose, theme, onThemeChange }: AboutModalProps) {
   const [activeTab, setActiveTab] = useState<TabId>('rsvp')
   const dialogRef = useFocusTrap<HTMLDivElement>(open)
 
   const activeTabIndex = TABS.findIndex((t) => t.id === activeTab)
 
-  // ESC ile kapatma
+  // ESC ile kapatma & 1, 2, 3 ile tema değiştirme
   useEffect(() => {
     if (!open) return
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.stopPropagation()
         onClose()
+        return
+      }
+      if (e.ctrlKey || e.metaKey || e.altKey) return
+      const target = e.target as HTMLElement | null
+      if (target?.closest('input, textarea, select, [contenteditable="true"]')) return
+
+      if (['1', '2', '3'].includes(e.key) && onThemeChange) {
+        const themeMap: Record<string, ThemeId> = {
+          '1': 'ios',
+          '2': 'linear',
+          '3': 'kindle',
+        }
+        const targetTheme = themeMap[e.key]
+        if (targetTheme) {
+          onThemeChange(targetTheme)
+        }
       }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [open, onClose])
+  }, [open, onClose, onThemeChange])
 
   if (!open) return null
 

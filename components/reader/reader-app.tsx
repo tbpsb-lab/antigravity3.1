@@ -840,7 +840,6 @@ export function ReaderApp() {
   }, [theme])
 
   const onKeyDown = useEffectEvent((e: KeyboardEvent) => {
-    if (anyModalOpen) return
     if (e.ctrlKey || e.metaKey || e.altKey) return
 
     const target = e.target as HTMLElement | null
@@ -849,6 +848,26 @@ export function ReaderApp() {
         return
       }
     }
+
+    // 1, 2, 3 Temaları değiştirme kısayolları (Kılavuz penceresi açıkken de anında çalışır)
+    if (
+      e.code === 'Digit1' ||
+      e.code === 'Digit2' ||
+      e.code === 'Digit3' ||
+      e.code === 'Numpad1' ||
+      e.code === 'Numpad2' ||
+      e.code === 'Numpad3'
+    ) {
+      const num = Number(e.key)
+      const targetTheme = THEMES[num - 1]?.id
+      if (targetTheme) {
+        handleThemeChange(targetTheme)
+        triggerHaptic('tap')
+      }
+      return
+    }
+
+    if (anyModalOpen) return
 
     // Açık modal veya diyalog içerisindeyken Space/Enter tuşunun diyaloğa ait kalmasına izin ver
     if (
@@ -928,19 +947,6 @@ export function ReaderApp() {
         e.preventDefault()
         handleEyeTrackingChange(!eyeTrackingEnabled)
         break
-      case 'Digit1':
-      case 'Digit2':
-      case 'Digit3':
-      case 'Numpad1':
-      case 'Numpad2':
-      case 'Numpad3': {
-        const num = Number(e.key)
-        const targetTheme = THEMES[num - 1]?.id
-        if (targetTheme) {
-          handleThemeChange(targetTheme)
-        }
-        break
-      }
     }
   })
 
@@ -1408,6 +1414,7 @@ export function ReaderApp() {
         open={aboutOpen}
         onClose={() => setAboutOpen(false)}
         theme={theme}
+        onThemeChange={handleThemeChange}
       />
     </div>
   )

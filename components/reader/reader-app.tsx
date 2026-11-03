@@ -35,6 +35,7 @@ import { CompletionModal } from './completion-modal'
 import { AboutModal } from './about-modal'
 import { PaperCornerCurl } from './paper-corner-curl'
 import { GlassCornerCurl } from './glass-corner-curl'
+import { NeonCornerCurl } from './neon-corner-curl'
 import { FONT_FACES, FontSettings, type FontFace } from './font-settings'
 import { triggerHaptic } from '@/lib/haptics'
 import { NeuroAudioEngine } from '@/lib/neuro-audio'
@@ -1373,6 +1374,9 @@ export function ReaderApp() {
 
       {/* Cam Temasına Özel Sağ Alt Köşe Cam Kıvrımı */}
       <GlassCornerCurl visible={theme === 'ios'} />
+
+      {/* Neon Temasına Özel Sağ Alt Köşe Neon Kıvrımı */}
+      <NeonCornerCurl visible={theme === 'linear'} />
 
       <SpeedTestModal
         open={speedTestOpen}

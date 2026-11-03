@@ -463,6 +463,13 @@ export function AboutModal({ open, onClose, theme }: AboutModalProps) {
                       <kbd className="px-2 py-0.5 rounded-md bg-background border border-border/80 text-xs font-mono font-semibold">M Tuşu</kbd>
                     </div>
                     <div className="flex items-center justify-between p-2 rounded-xl bg-muted/40">
+                      <span className="text-foreground/90 font-medium flex items-center gap-1.5">
+                        <Eye className="size-3.5 text-emerald-500" />
+                        Göz & Dikkat İzleme (Web Kamerası)
+                      </span>
+                      <kbd className="px-2 py-0.5 rounded-md bg-background border border-border/80 text-xs font-mono font-semibold">G Tuşu</kbd>
+                    </div>
+                    <div className="flex items-center justify-between p-2 rounded-xl bg-muted/40">
                       <span className="text-foreground/90 font-medium">Hız Kontrolü (±25 WPM)</span>
                       <kbd className="px-2 py-0.5 rounded-md bg-background border border-border/80 text-xs font-mono font-semibold">↑ / ↓ veya Scroll</kbd>
                     </div>

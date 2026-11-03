@@ -1,6 +1,6 @@
 'use client'
 
-import { Minus, Plus, Type, Volume2, VolumeX, Zap } from 'lucide-react'
+import { Eye, EyeOff, Minus, Plus, Type, Volume2, VolumeX, Zap } from 'lucide-react'
 import { memo, useCallback, useEffect, useId, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
 import { cn } from '@/lib/utils'
@@ -53,6 +53,9 @@ type FontSettingsProps = {
   onBionicChange?: (val: boolean) => void
   neuroAudioEnabled?: boolean
   onNeuroAudioChange?: (val: boolean) => void
+  eyeTrackingEnabled?: boolean
+  onEyeTrackingChange?: (val: boolean) => void
+  eyeTrackingStatus?: 'inactive' | 'initializing' | 'active' | 'attention-lost' | 'error'
   onOpenSpeedTest?: () => void
   isOpen?: boolean
   onOpenChange?: (open: boolean) => void
@@ -97,6 +100,9 @@ export const FontSettings = memo(function FontSettings({
   onBionicChange,
   neuroAudioEnabled = false,
   onNeuroAudioChange,
+  eyeTrackingEnabled = false,
+  onEyeTrackingChange,
+  eyeTrackingStatus = 'inactive',
   onOpenSpeedTest,
   isOpen: controlledOpen,
   onOpenChange,
@@ -453,7 +459,59 @@ export const FontSettings = memo(function FontSettings({
           </div>
         )}
 
-        {/* 7. Okuma Hızı Testi (Yalnızca başlık ve sonda şimşek simgesi) */}
+        {/* 7. Göz & Dikkat İzleme (Web Kamerası, sol üstte mini g) */}
+        {onEyeTrackingChange && (
+          <div className="relative pt-2.5 border-t border-border/40 flex items-center justify-between gap-2">
+            <span
+              aria-hidden="true"
+              className={cn(
+                'absolute -top-1.5 left-1 px-1 py-0 rounded text-[9px] font-mono font-bold bg-background border leading-none select-none shadow-xs transition-colors',
+                eyeTrackingEnabled ? 'border-emerald-500/60 text-emerald-500' : 'border-border/70 text-muted-foreground/80',
+              )}
+            >
+              g
+            </span>
+            <div className="min-w-0 pr-1 pl-1">
+              <div className="flex items-center gap-1.5">
+                {eyeTrackingEnabled ? (
+                  <Eye className="size-3.5 text-emerald-500 shrink-0 animate-pulse" />
+                ) : (
+                  <EyeOff className="size-3.5 text-muted-foreground shrink-0" />
+                )}
+                <p className="text-xs font-medium text-foreground truncate">Göz & Dikkat İzleme</p>
+              </div>
+              <p className="text-[10px] text-muted-foreground truncate">
+                {!eyeTrackingEnabled
+                  ? 'Ekrandan kopunca otomatik duraklatır'
+                  : eyeTrackingStatus === 'initializing'
+                    ? 'Kamera izni / yüz modeli hazırlanıyor...'
+                    : eyeTrackingStatus === 'attention-lost'
+                      ? 'Dikkat kaybı — Okuma duraklatıldı'
+                      : 'EAR & yüz takibi aktif (Cihaz içi)'}
+              </p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={eyeTrackingEnabled}
+              onClick={() => onEyeTrackingChange(!eyeTrackingEnabled)}
+              className={cn(
+                'relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none',
+                eyeTrackingEnabled ? 'bg-emerald-500' : 'bg-muted/60',
+              )}
+              aria-label="Göz ve Dikkat İzleme"
+            >
+              <span
+                className={cn(
+                  'pointer-events-none inline-block size-4 transform rounded-full bg-background shadow-md ring-0 transition duration-200 ease-in-out',
+                  eyeTrackingEnabled ? 'translate-x-4' : 'translate-x-0',
+                )}
+              />
+            </button>
+          </div>
+        )}
+
+        {/* 8. Okuma Hızı Testi (Yalnızca başlık ve sonda şimşek simgesi) */}
         {onOpenSpeedTest && (
           <div className="pt-2 border-t border-border/40">
             <button

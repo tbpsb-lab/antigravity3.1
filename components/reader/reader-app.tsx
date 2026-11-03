@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from 'react'
-import { Gauge, Volume2, VolumeX, X } from 'lucide-react'
+import { Eye, EyeOff, Gauge, Volume2, VolumeX, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
   MAX_WPM,
@@ -40,6 +40,7 @@ import { triggerHaptic } from '@/lib/haptics'
 import { NeuroAudioEngine } from '@/lib/neuro-audio'
 import { useElementHeight } from '@/lib/use-element-height'
 import { useWakeLock } from '@/lib/use-wake-lock'
+import { EyeTracker, type AttentionLossReason } from '@/components/EyeTracker'
 
 export function ReaderApp() {
   const [theme, setTheme] = useState<ThemeId>('ios')
@@ -49,6 +50,10 @@ export function ReaderApp() {
   const [readFootnotes, setReadFootnotes] = useState<boolean>(true)
   const [bionicEnabled, setBionicEnabled] = useState<boolean>(true)
   const [neuroAudioEnabled, setNeuroAudioEnabled] = useState<boolean>(false)
+  const [eyeTrackingEnabled, setEyeTrackingEnabled] = useState<boolean>(false)
+  const [eyeTrackingStatus, setEyeTrackingStatus] = useState<
+    'inactive' | 'initializing' | 'active' | 'attention-lost' | 'error'
+  >('inactive')
   const [audioToast, setAudioToast] = useState<string | null>(null)
   const [, setChunkBadge] = useState<string | null>(null)
   const [, setResumeBadge] = useState<string | null>(null)
@@ -81,6 +86,9 @@ export function ReaderApp() {
   const audioToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const chunkBadgeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const resumeBadgeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const pausedByEyeTrackerRef = useRef(false)
+  const microBlinkExtraDelayRef = useRef(0)
+  const prevEyeStatusRef = useRef<'inactive' | 'initializing' | 'active' | 'attention-lost' | 'error'>('inactive')
 
   const getAudioEngine = useCallback(() => {
     if (!audioEngineRef.current) {
@@ -182,6 +190,12 @@ export function ReaderApp() {
       isParagraphEnd: currentItem.isParagraphEnd,
     })
 
+    // Doğal göz kırpma anında (+120ms) mikro-tolerans telafisi
+    if (microBlinkExtraDelayRef.current > 0) {
+      delay += microBlinkExtraDelayRef.current
+      microBlinkExtraDelayRef.current = 0
+    }
+
     // ~500 Kelimede Bir 0.5 Sn Doğal "Nefes" Aralığı (Micro-Rest Pause)
     const wordCountInChunk = currentItem.words?.length || 1
     const accumulated = wordsReadSinceRestRef.current + wordCountInChunk
@@ -250,6 +264,7 @@ export function ReaderApp() {
   const togglePlay = useCallback(() => {
     if (chunks.length === 0) return
     const nextPlaying = !playing
+    pausedByEyeTrackerRef.current = false
     rampStepRef.current = 0
     expectedTimestampRef.current = null
     if (nextPlaying && index >= lastIndex) {
@@ -340,6 +355,75 @@ export function ReaderApp() {
       }, 400)
     })
   }, [])
+
+  // Göz Kırpma & Dikkat İzleme (Attention Tracking via Webcam) Yönetimi
+  const handleEyeTrackingChange = useCallback(
+    (nextEnabled: boolean) => {
+      setEyeTrackingEnabled(nextEnabled)
+      pausedByEyeTrackerRef.current = false
+      triggerHaptic('tap')
+      showAudioToast(
+        nextEnabled ? 'Göz & Dikkat İzleme: Kamera Başlatılıyor...' : 'Göz & Dikkat İzleme: Kapalı',
+      )
+    },
+    [showAudioToast],
+  )
+
+  const handleEyeTrackingStatusChange = useCallback(
+    (nextStatus: 'inactive' | 'initializing' | 'active' | 'attention-lost' | 'error') => {
+      const prev = prevEyeStatusRef.current
+      prevEyeStatusRef.current = nextStatus
+      setEyeTrackingStatus(nextStatus)
+      if (prev === 'initializing' && nextStatus === 'active') {
+        showAudioToast('Göz & Dikkat İzleme: Aktif')
+      }
+    },
+    [showAudioToast],
+  )
+
+  const handleBlinkOrLookAway = useCallback(
+    (reason: AttentionLossReason) => {
+      if (!playing) return
+      pausedByEyeTrackerRef.current = true
+      setPlaying(false)
+      const startIdx = findCurrentSentenceStartIndex(chunksRef.current, indexRef.current)
+      rampStepRef.current = 0
+      expectedTimestampRef.current = null
+      setIndex(startIdx)
+      triggerPulse()
+      showAudioToast(
+        reason === 'no-face'
+          ? 'Ekrandan uzaklaşıldı — Okuma duraklatıldı'
+          : 'Göz kapandı — Okuma duraklatıldı',
+      )
+    },
+    [playing, triggerPulse, showAudioToast],
+  )
+
+  const handleAttentionRestored = useCallback(() => {
+    if (!pausedByEyeTrackerRef.current) return
+    pausedByEyeTrackerRef.current = false
+    if (anyModalOpen || sheetOpen) return
+    rampStepRef.current = 0
+    expectedTimestampRef.current = null
+    triggerPulse()
+    setPlaying(true)
+    showAudioToast('Dikkat geri geldi — Cümle başından devam ediliyor')
+  }, [anyModalOpen, sheetOpen, triggerPulse, showAudioToast])
+
+  const handleMicroBlink = useCallback(() => {
+    microBlinkExtraDelayRef.current = Math.min(240, microBlinkExtraDelayRef.current + 120)
+  }, [])
+
+  const handleEyePermissionDenied = useCallback(
+    (message: string) => {
+      setEyeTrackingEnabled(false)
+      setEyeTrackingStatus('inactive')
+      pausedByEyeTrackerRef.current = false
+      showAudioToast(message)
+    },
+    [showAudioToast],
+  )
 
   // Tam Ekran Yönetimi (Sonsuz resize döngüsü olmadan ve temiz zamanlayıcı takibiyle)
   const [isFullscreen, setIsFullscreen] = useState(false)
@@ -839,6 +923,10 @@ export function ReaderApp() {
         e.preventDefault()
         toggleNeuroAudio()
         break
+      case 'KeyG':
+        e.preventDefault()
+        handleEyeTrackingChange(!eyeTrackingEnabled)
+        break
       case 'Digit1':
       case 'Digit2':
       case 'Digit3':
@@ -1034,6 +1122,9 @@ export function ReaderApp() {
         onBionicChange={handleBionicChange}
         neuroAudioEnabled={neuroAudioEnabled}
         onNeuroAudioChange={handleNeuroAudioChange}
+        eyeTrackingEnabled={eyeTrackingEnabled}
+        onEyeTrackingChange={handleEyeTrackingChange}
+        eyeTrackingStatus={eyeTrackingStatus}
         onOpenSpeedTest={handleOpenSpeedTest}
       />
     ),
@@ -1050,6 +1141,9 @@ export function ReaderApp() {
       handleBionicChange,
       neuroAudioEnabled,
       handleNeuroAudioChange,
+      eyeTrackingEnabled,
+      handleEyeTrackingChange,
+      eyeTrackingStatus,
       handleOpenSpeedTest,
     ],
   )
@@ -1199,16 +1293,36 @@ export function ReaderApp() {
           className="pointer-events-none fixed top-7 left-1/2 -translate-x-1/2 z-50 animate-in fade-in slide-in-from-top-1 duration-200 select-none"
         >
           <div className="flex items-center gap-2 rounded-full border border-border/60 bg-background/85 px-4 py-1.5 font-sans text-xs font-medium text-foreground shadow-2xl backdrop-blur-md">
-            {audioToast.includes('Nöroakustik') &&
+            {audioToast.includes('Nöro-Odak') &&
               (neuroAudioEnabled ? (
                 <Volume2 className="size-3.5 text-primary" />
               ) : (
                 <VolumeX className="size-3.5 text-muted-foreground" />
               ))}
+            {(audioToast.includes('Göz') ||
+              audioToast.includes('Dikkat') ||
+              audioToast.includes('Ekrandan') ||
+              audioToast.includes('Kamera')) &&
+              (eyeTrackingEnabled ? (
+                <Eye className="size-3.5 text-emerald-500" />
+              ) : (
+                <EyeOff className="size-3.5 text-muted-foreground" />
+              ))}
             <span>{audioToast}</span>
           </div>
         </div>
       )}
+
+      {/* Görünmez Web Kamerası Tabanlı Göz Kırpma & Dikkat İzleme Motoru */}
+      <EyeTracker
+        enabled={eyeTrackingEnabled}
+        earThreshold={0.18}
+        onBlinkOrLookAway={handleBlinkOrLookAway}
+        onAttentionRestored={handleAttentionRestored}
+        onMicroBlink={handleMicroBlink}
+        onPermissionDenied={handleEyePermissionDenied}
+        onTrackingStatusChange={handleEyeTrackingStatusChange}
+      />
 
       {/* Okuma Sırasında Tam Ekran Dokunma ve Jest Katmanı */}
       {zen && (

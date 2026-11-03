@@ -179,8 +179,8 @@ export const RsvpDisplay = memo(function RsvpDisplay({
     const availableFullWidth = Math.max(160, containerWidth - padding * 2)
 
     const estimatedBasePx = isDesktopStage
-      ? Math.min(72, Math.max(38.4, containerWidth * 0.068))
-      : Math.min(56, Math.max(28, containerWidth * 0.052))
+      ? Math.min(57.6, Math.max(30.7, containerWidth * 0.0544))
+      : Math.min(44.8, Math.max(22.4, containerWidth * 0.0416))
 
     const currentPx = estimatedBasePx * fontScale
 
@@ -332,7 +332,7 @@ export const RsvpDisplay = memo(function RsvpDisplay({
             <span
               aria-live="off"
               style={wordStyle}
-              className="reader-word relative grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-baseline whitespace-pre py-[0.08em] leading-[1.3] [--word-base:clamp(1.75rem,5.2cqi,3.5rem)] md:[--word-base:clamp(2.4rem,6.8cqi,4.5rem)] landscape-short:[--word-base:clamp(1.4rem,8vh,2.5rem)] select-none tracking-normal"
+              className="reader-word relative grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-baseline whitespace-pre py-[0.08em] leading-[1.3] [--word-base:clamp(1.4rem,4.2cqi,2.8rem)] md:[--word-base:clamp(1.9rem,5.4cqi,3.6rem)] landscape-short:[--word-base:clamp(1.1rem,6.4vh,2rem)] select-none tracking-normal"
             >
               {/* Sol parça: Sağa yaslı */}
               <span className="min-w-0 text-right overflow-visible">
@@ -370,7 +370,7 @@ export const RsvpDisplay = memo(function RsvpDisplay({
               aria-live="off"
               style={wordStyle}
               className={cn(
-                'reader-word relative flex w-full items-center justify-center py-[0.08em] text-center select-none max-w-full flex-nowrap gap-x-[0.3em] items-baseline leading-[1.3] [--word-base:clamp(1.75rem,5.2cqi,3.5rem)] md:[--word-base:clamp(2.4rem,6.8cqi,4.5rem)] landscape-short:[--word-base:clamp(1.4rem,8vh,2.5rem)]',
+                'reader-word relative flex w-full items-center justify-center py-[0.08em] text-center select-none max-w-full flex-nowrap gap-x-[0.3em] items-baseline leading-[1.3] [--word-base:clamp(1.4rem,4.2cqi,2.8rem)] md:[--word-base:clamp(1.9rem,5.4cqi,3.6rem)] landscape-short:[--word-base:clamp(1.1rem,6.4vh,2rem)]',
                 isFootnote && 'italic text-amber-800 dark:text-amber-300 flex-wrap text-balance',
               )}
             >

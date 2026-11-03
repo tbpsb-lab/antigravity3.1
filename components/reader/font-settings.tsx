@@ -1,10 +1,11 @@
 'use client'
 
 import { Minus, Plus, Zap } from 'lucide-react'
-import { useEffect, useId, useRef, useState } from 'react'
+import { memo, useEffect, useId, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
 import { cn } from '@/lib/utils'
 import { type ThemeId } from '@/lib/rsvp'
+import { useFocusTrap } from '@/lib/use-focus-trap'
 
 export type FontFace = 'theme' | 'sans' | 'serif' | 'mono'
 
@@ -50,10 +51,12 @@ type FontSettingsProps = {
   onChunkSizeChange?: (size: number) => void
   readFootnotes?: boolean
   onReadFootnotesChange?: (val: boolean) => void
+  neuroAudioEnabled?: boolean
+  onNeuroAudioChange?: (val: boolean) => void
   onOpenSpeedTest?: () => void
 }
 
-// Temaların Özel Malzeme ve Şekil İkonları (Orijinal 3 Biçim)
+// Temaların Özel Malzeme ve Şekil İkonları
 function CamShape() {
   return (
     <span className="relative block size-6.5 rounded-full backdrop-blur-md border border-white/80 dark:border-white/40 bg-gradient-to-br from-white/70 via-white/20 to-white/5 dark:from-white/25 dark:via-white/10 dark:to-transparent shadow-[inset_0_1px_1.5px_rgba(255,255,255,0.9),0_2px_6px_rgba(0,0,0,0.08)] shrink-0">
@@ -79,7 +82,7 @@ function KagitShape() {
   )
 }
 
-export function FontSettings({
+export const FontSettings = memo(function FontSettings({
   theme = 'ios',
   onThemeChange,
   face,
@@ -90,10 +93,13 @@ export function FontSettings({
   onChunkSizeChange,
   readFootnotes = true,
   onReadFootnotesChange,
+  neuroAudioEnabled = false,
+  onNeuroAudioChange,
   onOpenSpeedTest,
 }: FontSettingsProps) {
   const [open, setOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
+  const dialogRef = useFocusTrap<HTMLDivElement>(open)
   const panelId = useId()
 
   useEffect(() => {
@@ -102,7 +108,10 @@ export function FontSettings({
       if (!rootRef.current?.contains(e.target as Node)) setOpen(false)
     }
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setOpen(false)
+      if (e.key === 'Escape') {
+        e.stopPropagation()
+        setOpen(false)
+      }
     }
     document.addEventListener('pointerdown', onPointer)
     document.addEventListener('keydown', onKey)
@@ -132,25 +141,25 @@ export function FontSettings({
       </button>
 
       <div
+        ref={dialogRef}
         id={panelId}
         role="dialog"
+        aria-modal={open ? 'true' : undefined}
         aria-label="Görünüm ve okuma ayarları"
         inert={!open}
         className={cn(
           'panel panel-solid absolute -right-12 top-full z-50 mt-2 w-[min(19rem,calc(100vw-1.5rem))] origin-top-right p-3.5 sm:right-0 transition-all duration-200 ease-out shadow-xl',
-          // Yatay mobil (kısa ekran): panel ekran yüksekliğini aşmasın, kendi içinde kaydırılsın
           'max-h-[calc(100dvh-5.5rem)] overflow-y-auto overscroll-contain touch-pan-y landscape-short:max-h-[calc(100dvh-3.75rem)] landscape-short:w-[min(26rem,calc(100vw-1.5rem))] landscape-short:p-3',
           open ? 'scale-100 opacity-100' : 'pointer-events-none scale-95 opacity-0',
         )}
       >
-        {/* 1. Tema Seçimi (Apple Books & Kindle Stili Görsel Kartlar) */}
+        {/* 1. Tema Seçimi */}
         {onThemeChange && (
           <div className="mb-4">
             <p className="mb-2 px-0.5 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
               Tema
             </p>
             <div role="radiogroup" aria-label="Tasarım teması" className="grid grid-cols-3 gap-2">
-              {/* Cam (iOS) */}
               <button
                 type="button"
                 role="radio"
@@ -160,7 +169,7 @@ export function FontSettings({
                   'flex flex-col items-center gap-1.5 p-2 rounded-xl border transition-all cursor-pointer text-center select-none',
                   theme === 'ios'
                     ? 'border-primary bg-primary/10 text-foreground ring-1 ring-primary/40 shadow-sm'
-                    : 'border-border/60 hover:border-border hover:bg-muted/40 text-muted-foreground'
+                    : 'border-border/60 hover:border-border hover:bg-muted/40 text-muted-foreground',
                 )}
               >
                 <div className="h-7 flex items-center justify-center">
@@ -169,7 +178,6 @@ export function FontSettings({
                 <span className="text-[11px] font-medium">Cam</span>
               </button>
 
-              {/* Neon (Siyah) */}
               <button
                 type="button"
                 role="radio"
@@ -179,7 +187,7 @@ export function FontSettings({
                   'flex flex-col items-center gap-1.5 p-2 rounded-xl border transition-all cursor-pointer text-center select-none',
                   theme === 'linear'
                     ? 'border-purple-400 bg-purple-500/10 text-foreground ring-1 ring-purple-400/40 shadow-sm'
-                    : 'border-border/60 hover:border-border hover:bg-muted/40 text-muted-foreground'
+                    : 'border-border/60 hover:border-border hover:bg-muted/40 text-muted-foreground',
                 )}
               >
                 <div className="h-7 flex items-center justify-center">
@@ -188,7 +196,6 @@ export function FontSettings({
                 <span className="text-[11px] font-medium">Neon</span>
               </button>
 
-              {/* Kağıt (Kindle) */}
               <button
                 type="button"
                 role="radio"
@@ -198,7 +205,7 @@ export function FontSettings({
                   'flex flex-col items-center gap-1.5 p-2 rounded-xl border transition-all cursor-pointer text-center select-none',
                   theme === 'kindle'
                     ? 'border-amber-600/70 bg-amber-500/10 text-foreground ring-1 ring-amber-600/40 shadow-sm'
-                    : 'border-border/60 hover:border-border hover:bg-muted/40 text-muted-foreground'
+                    : 'border-border/60 hover:border-border hover:bg-muted/40 text-muted-foreground',
                 )}
               >
                 <div className="h-7 flex items-center justify-center">
@@ -292,7 +299,7 @@ export function FontSettings({
           <>
             <div className="mb-2 mt-4 flex items-center justify-between px-0.5 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
               <span>Kelime Öbeği (Chunk)</span>
-              <span className="font-mono text-[10px] text-muted-foreground/70 normal-case">(C tuşu)</span>
+              <span className="font-mono text-[10px] text-muted-foreground/85 normal-case">(C tuşu)</span>
             </div>
             <div role="radiogroup" aria-label="Kelime öbeği boyutu" className="grid grid-cols-4 gap-1">
               {[1, 2, 3, 4].map((size) => {
@@ -344,6 +351,33 @@ export function FontSettings({
           </div>
         )}
 
+        {/* 6. Nöroakustik Odak Sesi (40Hz Gama + Pembe Gürültü) */}
+        {onNeuroAudioChange && (
+          <div className="mt-3 pt-3 border-t border-border/40 flex items-center justify-between gap-2">
+            <div>
+              <p className="text-xs font-medium text-foreground">Nöroakustik Odak Sesi</p>
+              <p className="text-[10px] text-muted-foreground">Pembe gürültü & 40Hz Gama (M tuşu)</p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={neuroAudioEnabled}
+              onClick={() => onNeuroAudioChange(!neuroAudioEnabled)}
+              className={cn(
+                'relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none',
+                neuroAudioEnabled ? 'bg-primary' : 'bg-muted/60',
+              )}
+            >
+              <span
+                className={cn(
+                  'pointer-events-none inline-block size-4 transform rounded-full bg-background shadow-md ring-0 transition duration-200 ease-in-out',
+                  neuroAudioEnabled ? 'translate-x-4' : 'translate-x-0',
+                )}
+              />
+            </button>
+          </div>
+        )}
+
         {/* 6. Okuma Hızı Testi & Kalibrasyon Butonu */}
         {onOpenSpeedTest && (
           <div className="mt-4 pt-3 border-t border-border/40">
@@ -366,4 +400,4 @@ export function FontSettings({
       </div>
     </div>
   )
-}
+})

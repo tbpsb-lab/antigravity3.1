@@ -58,7 +58,7 @@
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.205 0 0);
   --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
+  --muted-foreground: oklch(0.46 0.015 260);
   --accent: oklch(0.97 0 0);
   --accent-foreground: oklch(0.205 0 0);
   --destructive: oklch(0.577 0.245 27.325);
@@ -79,6 +79,10 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+  --pivot: #dc2626;
+  --ui-font: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --reader-font: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --mono-font: var(--font-geist-mono), ui-monospace, monospace;
 }
 
 .dark {
@@ -197,7 +201,7 @@
   --font-mono: var(--mono-font);
 }
 
-/* Seçenek A — Apple / iOS minimalizmi */
+/* Seçenek A — Apple / iOS minimalizmi (WCAG 2.1 AA Kontrast Uyumlu) */
 [data-theme='ios'] {
   color-scheme: light;
   --app-bg:
@@ -206,10 +210,10 @@
     oklch(0.975 0.004 260);
   --background: oklch(0.975 0.004 260);
   --foreground: oklch(0.2 0.01 260);
-  --muted-foreground: oklch(0.55 0.01 260);
-  --primary: oklch(0.6 0.2 255);
+  --muted-foreground: oklch(0.46 0.015 260);
+  --primary: oklch(0.56 0.2 255);
   --primary-foreground: oklch(1 0 0);
-  --pivot: #ef4444;
+  --pivot: #dc2626;
   --pivot-glow: none;
   --border: oklch(0.2 0.01 260 / 0.08);
   --ring: oklch(0.6 0.2 255 / 0.6);
@@ -230,7 +234,7 @@
   --reader-tracking: -0.02em;
 }
 
-/* Seçenek B — Linear / Raycast estetiği */
+/* Seçenek B — Linear / Raycast estetiği (WCAG 2.1 AA/AAA Kontrast Uyumlu) */
 [data-theme='linear'] {
   color-scheme: dark;
   --app-bg:
@@ -238,7 +242,7 @@
     oklch(0 0 0);
   --background: oklch(0 0 0);
   --foreground: oklch(0.96 0.005 285);
-  --muted-foreground: oklch(0.62 0.01 285);
+  --muted-foreground: oklch(0.68 0.01 285);
   --primary: oklch(0.72 0.19 285);
   --primary-foreground: oklch(0.12 0.02 285);
   --pivot: #ef4444;
@@ -262,18 +266,18 @@
   --reader-tracking: -0.03em;
 }
 
-/* Seçenek C — Kindle / E-kitap dokusu */
+/* Seçenek C — Kindle / E-kitap dokusu (WCAG 2.1 AA Kontrast Uyumlu) */
 [data-theme='kindle'] {
   color-scheme: light;
   --app-bg:
     radial-gradient(1200px 800px at 50% 40%, transparent 55%, oklch(0.78 0.04 75 / 0.35)),
     oklch(0.94 0.025 85);
   --background: oklch(0.94 0.025 85);
-  --foreground: oklch(0.3 0.03 60);
-  --muted-foreground: oklch(0.52 0.035 65);
+  --foreground: oklch(0.28 0.03 60);
+  --muted-foreground: oklch(0.44 0.035 60);
   --primary: oklch(0.42 0.07 50);
   --primary-foreground: oklch(0.96 0.02 85);
-  --pivot: #ef4444;
+  --pivot: #b91c1c;
   --pivot-glow: none;
   --border: oklch(0.3 0.03 60 / 0.14);
   --ring: oklch(0.42 0.07 50 / 0.6);
@@ -405,7 +409,6 @@
   background: oklch(from color-mix(in oklab, var(--panel) 25%, var(--background)) l c h / 1);
 }
 
-
 /* ==========================================================================
    Akıllı Cümle Başı Geri Sarma (Sentence-Boundary Rewind) Parlama Animasyonu
    ========================================================================== */
@@ -512,7 +515,7 @@ body,
   background: transparent;
 }
 
-/* 1. CAM TEMASI: Berrak açık mavi cam kırılması ve gökyüzü mavisi scrollbar */
+/* 1. CAM TEMASI */
 [data-theme='ios'],
 [data-theme='ios'] *,
 html[data-theme='ios'],
@@ -543,7 +546,7 @@ html[data-theme='ios']::-webkit-scrollbar-track {
   background: rgba(56, 189, 248, 0.05);
 }
 
-/* 2. NEON SİYAH TEMASI: Derin siyah zemin üzerinde parlayan mor neon scrollbar */
+/* 2. NEON SİYAH TEMASI */
 [data-theme='linear'],
 [data-theme='linear'] *,
 html[data-theme='linear'],
@@ -574,7 +577,7 @@ html[data-theme='linear']::-webkit-scrollbar-track {
   background: rgba(168, 85, 247, 0.06);
 }
 
-/* 3. KAĞIT TEMASI: Parşömen ve sepya kitap dokusuna uyumlu doğal mürekkep scrollbar */
+/* 3. KAĞIT TEMASI */
 [data-theme='kindle'],
 [data-theme='kindle'] *,
 html[data-theme='kindle'],
@@ -605,7 +608,6 @@ html[data-theme='kindle']::-webkit-scrollbar-track {
 
 /* Mobil Telefon Yatay Tutuş (Landscape Phone) Kesin Sıkıştırma ve Alttan Kesilmeyi Önleme */
 @media (orientation: landscape) and (max-height: 520px) {
-  /* Okuma Sahnesi / Penceresi: Dikeyde aşırı büyümesini önle, kompakt tut */
   .rsvp-stage {
     min-height: 70px !important;
     max-height: 84px !important;
@@ -615,12 +617,10 @@ html[data-theme='kindle']::-webkit-scrollbar-track {
     padding-right: 1.5rem !important;
   }
 
-  /* Okuma Sahnesi İçindeki Kelime Boyutu: Ekran yüksekliğiyle dengeli */
   .rsvp-stage .reader-word {
     --word-base: clamp(1.15rem, 6.2vh, 1.75rem) !important;
   }
 
-  /* Üst Bar: Minimal dikey alan ve kompakt butonlar */
   header.top-bar-stage {
     padding-top: max(0.25rem, env(safe-area-inset-top)) !important;
     padding-bottom: 0 !important;
@@ -634,14 +634,12 @@ html[data-theme='kindle']::-webkit-scrollbar-track {
     height: 1rem !important;
   }
 
-  /* Bağlam Penceresi Kapsayıcısı: Alttan kesilmeyi kesinlikle önler, 3 satırı rahatça barındırır */
   .context-peek-box {
     min-height: 68px !important;
     max-height: 78px !important;
     margin-top: 0.25rem !important;
   }
 
-  /* Bağlam Metni: 3 satır için kusursuz satır yüksekliği ve tipografi */
   .context-peek-box p {
     font-size: 11.5px !important;
     line-height: 1.28 !important;
@@ -656,9 +654,7 @@ html[data-theme='kindle']::-webkit-scrollbar-track {
     height: 0.875rem !important;
   }
 
-  /* Progress bar hit alanı yatay telefonda da ultra-ince (10px) tutulur, oynat/durdur alanı gasp edilmez */
   .rsvp-stage [role="progressbar"] {
     height: 0.625rem !important;
   }
 }
-

@@ -1,8 +1,9 @@
 'use client'
 
-import { Check, Copy, RotateCcw, Share2, Sparkles, Trophy, Upload, X, Zap } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { Check, RotateCcw, Share2, Sparkles, Trophy, Upload, X } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
 import { triggerHaptic } from '@/lib/haptics'
+import { useFocusTrap } from '@/lib/use-focus-trap'
 import { cn } from '@/lib/utils'
 
 type CompletionModalProps = {
@@ -46,27 +47,33 @@ function CompletionModalBody({
   onOpenNewText,
 }: Omit<CompletionModalProps, 'open'>) {
   const [copied, setCopied] = useState(false)
+  const dialogRef = useFocusTrap<HTMLDivElement>(true)
+  const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Açıldığında haptik başarı ritmi
   useEffect(() => {
     triggerHaptic('success')
+    return () => {
+      if (copyTimerRef.current) clearTimeout(copyTimerRef.current)
+    }
   }, [])
 
   // ESC ile kapatma
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
+      if (e.key === 'Escape') {
+        e.stopPropagation()
+        onClose()
+      }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose])
 
-  // Geleneksel okuma (200 WPM) ile kıyaslama hesabı
   const standardTimeSeconds = Math.round((wordCount / 200) * 60)
   const actualSeconds = Math.max(1, elapsedSeconds > 0 ? elapsedSeconds : Math.round((wordCount / Math.max(100, wpm)) * 60))
   const savedSeconds = Math.max(0, standardTimeSeconds - actualSeconds)
 
-  // Önlenen göz sıçraması (sakkad): Kelime başı ortalama 1.25 mekanik göz atlaması
   const saccadesPrevented = Math.round(wordCount * 1.25)
 
   const formatDuration = (secs: number) => {
@@ -79,12 +86,17 @@ function CompletionModalBody({
   const shareText = `⚡ odak ile ${wordCount} kelimelik metni ${wpm} k/dk hızla ${formatDuration(actualSeconds)} içinde okudum! Geleneksel okumaya göre ${formatDuration(savedSeconds)} kazandım ve ${saccadesPrevented.toLocaleString('tr-TR')} göz sıçramasını sıfırladım.`
 
   const handleShare = async () => {
+    const shareUrl =
+      typeof window !== 'undefined' && window.location?.href
+        ? window.location.href
+        : 'https://tbpsb-lab.github.io/antigravity3.1/'
+
     if (typeof navigator !== 'undefined' && navigator.share) {
       try {
         await navigator.share({
           title: 'odak — Okuma Başarısı',
           text: shareText,
-          url: 'https://tbpsb-lab.github.io/antigravity3.1/',
+          url: shareUrl,
         })
         return
       } catch {}
@@ -94,7 +106,8 @@ function CompletionModalBody({
       if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
         await navigator.clipboard.writeText(shareText)
         setCopied(true)
-        setTimeout(() => setCopied(false), 2000)
+        if (copyTimerRef.current) clearTimeout(copyTimerRef.current)
+        copyTimerRef.current = setTimeout(() => setCopied(false), 2000)
       }
     } catch {}
   }
@@ -103,12 +116,14 @@ function CompletionModalBody({
     <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-6 landscape-short:items-center landscape-short:p-2">
       <button
         type="button"
+        tabIndex={-1}
         aria-label="Kapat"
         onClick={onClose}
         className="absolute inset-0 bg-black/60 backdrop-blur-md animate-in fade-in duration-300"
       />
 
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="completion-title"
@@ -140,9 +155,8 @@ function CompletionModalBody({
           </button>
         </div>
 
-        {/* 4'lü Başarı Metrikleri Kartı (Sıcak, Prestijli ve Canlı) */}
+        {/* 4'lü Başarı Metrikleri Kartı */}
         <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
-          {/* 1. Kelime Sayısı */}
           <div className="flex flex-col rounded-2xl border border-sky-400/30 bg-sky-500/10 p-3 sm:p-3.5 text-center shadow-xs">
             <span className="text-[11px] font-medium text-sky-700 dark:text-sky-300">Okunan Hacim</span>
             <span className="mt-0.5 font-mono text-xl sm:text-2xl font-black tracking-tight text-foreground">
@@ -151,7 +165,6 @@ function CompletionModalBody({
             <span className="text-[10px] text-sky-700/80 dark:text-sky-300/80">kelime</span>
           </div>
 
-          {/* 2. Ortalama Hız */}
           <div className="flex flex-col rounded-2xl border border-purple-400/30 bg-purple-500/10 p-3 sm:p-3.5 text-center shadow-xs">
             <span className="text-[11px] font-medium text-purple-700 dark:text-purple-300">RSVP Hızı</span>
             <span className="mt-0.5 font-mono text-xl sm:text-2xl font-black tracking-tight text-primary">
@@ -160,7 +173,6 @@ function CompletionModalBody({
             <span className="text-[10px] text-purple-700/80 dark:text-purple-300/80">kelime / dakika</span>
           </div>
 
-          {/* 3. Kazanılan Zaman */}
           <div className="flex flex-col rounded-2xl border border-emerald-500/40 bg-emerald-500/15 p-3 sm:p-3.5 text-center shadow-xs">
             <span className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-300">Kazanılan Zaman</span>
             <span className="mt-0.5 font-mono text-xl sm:text-2xl font-black tracking-tight text-emerald-700 dark:text-emerald-300">
@@ -171,7 +183,6 @@ function CompletionModalBody({
             </span>
           </div>
 
-          {/* 4. Dinlenen Göz Kasları */}
           <div className="flex flex-col rounded-2xl border border-amber-400/30 bg-amber-500/10 p-3 sm:p-3.5 text-center shadow-xs">
             <span className="text-[11px] font-medium text-amber-700 dark:text-amber-300">Önlenen Göz Sıçraması</span>
             <span className="mt-0.5 font-mono text-xl sm:text-2xl font-black tracking-tight text-foreground">

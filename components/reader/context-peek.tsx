@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo } from 'react'
+import { memo, useEffect, useMemo } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useElementSize } from '@/lib/use-element-size'
@@ -19,7 +19,7 @@ type ContextPeekProps = {
   hasNext?: boolean
 }
 
-export function ContextPeek({
+export const ContextPeek = memo(function ContextPeek({
   words,
   index,
   chunkSize = 1,
@@ -27,10 +27,6 @@ export function ContextPeek({
   remainingTime,
   onJump,
   onVisibleCountChange,
-  onStepPrev,
-  onStepNext,
-  hasPrev = true,
-  hasNext = true,
 }: ContextPeekProps) {
   const [containerRef, containerSize] = useElementSize<HTMLDivElement>()
 
@@ -69,6 +65,18 @@ export function ContextPeek({
     }
   }, [capacity, onVisibleCountChange])
 
+  // Aktif okuma sırasında (visible === false) VDOM üzerinde 30 buton düğümü oluşturmayı tamamen atla
+  if (!visible) {
+    return (
+      <div
+        ref={containerRef}
+        aria-hidden="true"
+        inert={true}
+        className="pointer-events-none hidden opacity-0"
+      />
+    )
+  }
+
   // Sayfa bazlı dilimleme:
   // Sayfada tam capacity kadar kelime yer alır.
   // > butonuna basıldığında EXACTLY capacity kadar ilerler.
@@ -96,25 +104,20 @@ export function ContextPeek({
   return (
     <div
       ref={containerRef}
-      aria-hidden={!visible}
-      inert={!visible}
-      className={cn(
-        'flex flex-1 min-h-0 flex-col overflow-hidden transition-opacity duration-300 select-none w-full',
-        visible ? 'opacity-100' : 'pointer-events-none hidden opacity-0',
-      )}
+      className="flex flex-1 min-h-0 flex-col overflow-hidden transition-opacity duration-300 select-none w-full opacity-100"
     >
       {/* Üst Bilgi Başlığı (Sol: Kelime Sayısı ve Konumu, Sağ: Kalan Süre) */}
       <div className="flex items-center justify-between mb-1 px-1 shrink-0 landscape-short:mb-0.5">
         <div>
           {words.length > 0 && (
-            <span className="text-[11px] font-mono tabular-nums text-muted-foreground/60">
+            <span className="text-[11px] font-mono tabular-nums text-muted-foreground/85">
               {start + 1} - {end} / {words.length}
             </span>
           )}
         </div>
         <div>
           {remainingTime && (
-            <span className="text-[11px] font-mono tabular-nums text-muted-foreground/60">
+            <span className="text-[11px] font-mono tabular-nums text-muted-foreground/85">
               {remainingTime}
             </span>
           )}
@@ -180,4 +183,4 @@ export function ContextPeek({
       </div>
     </div>
   )
-}
+})

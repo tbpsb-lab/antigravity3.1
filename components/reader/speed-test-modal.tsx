@@ -1,7 +1,8 @@
 'use client'
 
-import { Check, Copy, Play, RotateCcw, Share2, Timer, X, Zap } from 'lucide-react'
+import { Check, Play, RotateCcw, Share2, Timer, X, Zap } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
+import { useFocusTrap } from '@/lib/use-focus-trap'
 import { cn } from '@/lib/utils'
 
 type SpeedTestModalProps = {
@@ -30,18 +31,25 @@ function SpeedTestBody({ onClose, onApplySpeed }: Omit<SpeedTestModalProps, 'ope
   const [recommendedWpm, setRecommendedWpm] = useState(250)
   const [copied, setCopied] = useState(false)
 
+  const dialogRef = useFocusTrap<HTMLDivElement>(true)
   const startTimeRef = useRef<number | null>(null)
-  const timerIntervalRef = useRef<NodeJS.Timeout | null>(null)
+  const timerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const shareText = `⚡ odak Okuma Hızı Testi Sonucum: \n📖 Geleneksel Hızım: ${traditionalWpm} kelime/dk\n🚀 odak RSVP Başlangıç: ${recommendedWpm} kelime/dk\n👁️ Göz kası yorgunluğu yok, %100 saf odaklanma!`
 
   const handleShare = async () => {
+    const shareUrl =
+      typeof window !== 'undefined' && window.location?.href
+        ? window.location.href
+        : 'https://tbpsb-lab.github.io/antigravity3.1/'
+
     if (typeof navigator !== 'undefined' && navigator.share) {
       try {
         await navigator.share({
           title: 'odak — Okuma Hızı Testi Sonucum',
           text: shareText,
-          url: 'https://tbpsb-lab.github.io/antigravity3.1/',
+          url: shareUrl,
         })
         return
       } catch {}
@@ -51,7 +59,8 @@ function SpeedTestBody({ onClose, onApplySpeed }: Omit<SpeedTestModalProps, 'ope
       if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
         await navigator.clipboard.writeText(shareText)
         setCopied(true)
-        setTimeout(() => setCopied(false), 2000)
+        if (copyTimerRef.current) clearTimeout(copyTimerRef.current)
+        copyTimerRef.current = setTimeout(() => setCopied(false), 2000)
       }
     } catch {}
   }
@@ -59,7 +68,10 @@ function SpeedTestBody({ onClose, onApplySpeed }: Omit<SpeedTestModalProps, 'ope
   // ESC ile kapatma
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
+      if (e.key === 'Escape') {
+        e.stopPropagation()
+        onClose()
+      }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
@@ -68,6 +80,7 @@ function SpeedTestBody({ onClose, onApplySpeed }: Omit<SpeedTestModalProps, 'ope
   useEffect(() => {
     return () => {
       if (timerIntervalRef.current) clearInterval(timerIntervalRef.current)
+      if (copyTimerRef.current) clearTimeout(copyTimerRef.current)
     }
   }, [])
 
@@ -92,12 +105,10 @@ function SpeedTestBody({ onClose, onApplySpeed }: Omit<SpeedTestModalProps, 'ope
     const finalSeconds = Math.max(3, totalMs / 1000)
     setElapsedSeconds(Math.round(finalSeconds))
 
-    // Geleneksel WPM hesabı: (Kelime Sayısı / Saniye) * 60
     const rawWpm = Math.round((PASSAGE_WORD_COUNT / finalSeconds) * 60)
     const clampedRaw = Math.min(800, Math.max(80, rawWpm))
     setTraditionalWpm(clampedRaw)
 
-    // RSVP Çarpanı: Göz sıçraması (sakkad) ortadan kalktığı için +%25 başlangıç bonusu, 25'lik kademeye yuvarlanır
     const rsvpTarget = clampedRaw * 1.25
     const roundedRsvp = Math.min(1000, Math.max(100, Math.round(rsvpTarget / 25) * 25))
     setRecommendedWpm(roundedRsvp)
@@ -127,12 +138,14 @@ function SpeedTestBody({ onClose, onApplySpeed }: Omit<SpeedTestModalProps, 'ope
     <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-6 landscape-short:items-center landscape-short:p-2">
       <button
         type="button"
+        tabIndex={-1}
         aria-label="Kapat"
         onClick={onClose}
         className="absolute inset-0 bg-black/60 backdrop-blur-md animate-in fade-in duration-300"
       />
 
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="speed-test-title"

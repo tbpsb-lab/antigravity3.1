@@ -42,15 +42,17 @@ Unutmayın, amaç yalnızca hız değil, berraklıktır. Zihniniz sakin, gözün
 export function dehyphenateText(text: string): string {
   if (!text) return ''
   return text
-    // 1. Satır sonunda tire + satır sonu (\r?\n) + küçük harf ([a-zçğıöşü])
+    // Görünmez sıfır genişlikli boşlukları (ZWSP, ZWNJ, ZWJ, BOM, Word Joiner) temizle
+    .replace(/[\u200B-\u200D\uFEFF\u2060]/g, '')
+    // 1. Satır sonunda tire + satır sonu (\r?\n) + küçük harf
     .replace(
-      /([a-zA-ZçğıöşüÇĞİÖŞÜ0-9])[\-\u00AD\uFFFD\u2010\u2011\u2012\u2212\u00AC~]\s*[\r\n]+\s*([a-zçğıöşü])/g,
+      /([\p{L}\p{N}])[\-\u00AD\uFFFD\u2010\u2011\u2012\u2212\u00AC~]\s*[\r\n]+\s*([\p{Ll}])/gu,
       '$1$2',
     )
-    // 2. Tire + boşluk + küçük harf ([a-zçğıöşü])
+    // 2. Tire + boşluk + küçük harf
     // İstisna: Rakamlar arasındaki tireleri ("2025-2026") ve aralarında boşluk olmayan birleşik kelimeleri ("e-posta", "check-up") korur
     .replace(
-      /(?<!\d)([a-zA-ZçğıöşüÇĞİÖŞÜ]{2,})[\-\u00AD\uFFFD\u2010\u2011\u2012\u2212\u00AC~]\s+([a-zçğıöşü]{1,15})(?!\d)/g,
+      /(?<!\d)([\p{L}]{2,})[\-\u00AD\uFFFD\u2010\u2011\u2012\u2212\u00AC~]\s+([\p{Ll}]{1,15})(?!\d)/gu,
       '$1$2',
     )
 }
@@ -64,26 +66,31 @@ export function dehyphenateText(text: string): string {
  */
 export function cleanPunctuationAndCamelCase(text: string): string {
   if (!text) return ''
-  let t = text
+  let t = text.replace(/[\u200B-\u200D\uFEFF\u2060]/g, '')
 
-  // URL ve e-posta adreslerini koru
+  // URL ve e-posta adreslerini koru (sondaki noktalama hariç tüm URL'yi yakala)
   const urls: string[] = []
   t = t.replace(
-    /\b(https?:\/\/[^\s]+|www\.[^\s]+|[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})\b/g,
+    /(?:https?:\/\/[^\s)”"'>\]]+|www\.[^\s)”"'>\]]+|[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/g,
     (m) => {
-      urls.push(m)
-      return `___URL_${urls.length - 1}___`
+      const cleanUrl = m.replace(/[.,!?;:]+$/, '')
+      const trailing = m.slice(cleanUrl.length)
+      urls.push(cleanUrl)
+      return `___URL_${urls.length - 1}___${trailing}`
     },
   )
 
+  // Kelimeler arasındaki bitişik em-dash (—), en-dash (–) ve elipsleri (…) ayır
+  t = t.replace(/([\p{L}\p{N}])([—–…]+|\.{3,})([\p{L}\p{N}])/gu, '$1$2 $3')
+
   // 1. Noktalama işaretlerinden sonra boşluk unutulmuşsa ayır (3.14 veya 12,5 gibi sayıları bozmadan):
-  t = t.replace(/([.,!?;:])([a-zA-ZÇĞİÖŞÜçğıöşü])/g, '$1 $2')
+  t = t.replace(/([.,!?;:…])([\p{L}])/gu, '$1 $2')
 
   // 2. Küçük harften hemen sonra büyük harf geliyorsa ayır:
-  t = t.replace(/([a-zçğıöşü])([A-ZÇĞİÖŞÜ])/g, '$1 $2')
+  t = t.replace(/([\p{Ll}])([\p{Lu}])/gu, '$1 $2')
 
   // URL ve e-postaları geri yükle
-  t = t.replace(/___URL_(\d+)___/g, (_, idx) => urls[Number(idx)])
+  t = t.replace(/___URL_(\d+)___/g, (_, idx) => urls[Number(idx)] ?? '')
 
   return t
 }
@@ -140,18 +147,25 @@ export function calculateTurkishORP(word: string): TurkishORPResult {
     }
   }
 
-  // Başındaki noktalama işaretlerini tespit et: " ( ' « [ “ ‘ vb.
-  const leadMatch = word.match(/^[^\wçğıöşüÇĞİÖŞÜ0-9]+/)
-  const leadingPunct = leadMatch ? leadMatch[0] : ''
-  const leadingOffset = leadingPunct.length
+  // Grapheme / Code-point güvenli dizi (surrogate pair bölünmesini ve şapkalı harf kaybını önler)
+  const chars = Array.from(word)
+  const isWordChar = (ch: string) => /[\p{L}\p{N}]/u.test(ch)
 
-  // Sonundaki noktalama işaretlerini tespit et: .,!?;:")'»] ” ’ vb.
-  const trailMatch = word.match(/[^\wçğıöşüÇĞİÖŞÜ0-9]+$/)
-  const trailingPunct = trailMatch ? trailMatch[0] : ''
-  const trailingOffset = trailingPunct.length
+  let leadingOffset = 0
+  while (leadingOffset < chars.length && !isWordChar(chars[leadingOffset])) {
+    leadingOffset++
+  }
+
+  let trailingOffset = 0
+  while (
+    trailingOffset < chars.length - leadingOffset &&
+    !isWordChar(chars[chars.length - 1 - trailingOffset])
+  ) {
+    trailingOffset++
+  }
 
   // Noktalamalardan arındırılmış temiz kelime uzunluğu
-  const cleanLength = Math.max(0, word.length - leadingOffset - trailingOffset)
+  const cleanLength = Math.max(0, chars.length - leadingOffset - trailingOffset)
 
   let coreOrpIndex = 0
   if (cleanLength <= 1) {
@@ -166,12 +180,12 @@ export function calculateTurkishORP(word: string): TurkishORPResult {
     coreOrpIndex = 4
   }
 
-  const rawOrpIndex = cleanLength > 0 ? leadingOffset + coreOrpIndex : Math.floor((word.length - 1) / 2)
-  const orpIndex = Math.min(Math.max(0, rawOrpIndex), Math.max(0, word.length - 1))
+  const rawOrpIndex = cleanLength > 0 ? leadingOffset + coreOrpIndex : Math.floor((chars.length - 1) / 2)
+  const orpIndex = Math.min(Math.max(0, rawOrpIndex), Math.max(0, chars.length - 1))
 
-  const leftPart = word.slice(0, orpIndex)
-  const focusChar = word[orpIndex] || ''
-  const rightPart = word.slice(orpIndex + 1)
+  const leftPart = chars.slice(0, orpIndex).join('')
+  const focusChar = chars[orpIndex] || ''
+  const rightPart = chars.slice(orpIndex + 1).join('')
 
   return {
     leftPart,
@@ -235,7 +249,7 @@ export function createChunks(
 
     for (const rawLine of lines) {
       // Başlık saptama kaldırıldı: Varsa Markdown # işaretleri sessizce ayıklanır, tüm kelimeler standart akışa dahil edilir
-      const line = rawLine.replace(/^#{1,6}\s+/, '').trim()
+      const line = rawLine.replace(/^#{1,6}\s*/, '').trim()
       if (!line) {
         if (curWords.length > 0) {
           flush(true, inFootnote, true)
@@ -248,11 +262,24 @@ export function createChunks(
       const lineWords = splitGluedTokens(line.split(/\s+/).filter(Boolean))
       for (let i = 0; i < lineWords.length; i++) {
         const w = lineWords[i]
-        if (/^\[dipnot/i.test(w)) inFootnote = true
+        const startsFootnote = /^\[dipnot/i.test(w)
+
+        if (startsFootnote) {
+          // Dipnot başlamadan önce bekleyen ana metin öbeğini kapat
+          if (curWords.length > 0) {
+            flush(false, inFootnote, false)
+          }
+          inFootnote = true
+        }
 
         if (!enableFootnotes && inFootnote) {
           if (w.includes(']')) inFootnote = false
           continue
+        }
+
+        // Çoklu kelime modunda açılış tırnağı veya parantezi varsa önceki öbeği kapat
+        if (curWords.length > 0 && /^[“"«(\[]/.test(w) && !inFootnote) {
+          flush(false, false, false)
         }
 
         const wIdx = globalWordIdx++
@@ -262,11 +289,20 @@ export function createChunks(
         curWords.push(w)
 
         const isFootnoteEnd = inFootnote && w.includes(']')
-        const isSentenceEnd = /[.!?…]["”’»)]*$/.test(w) || isFootnoteEnd
-        if (isFootnoteEnd) inFootnote = false
+        const hasSentencePunct = /[.!?…]["”’»)\]]*$/.test(w) && !isAbbreviation(w)
+        const isSentenceEnd = hasSentencePunct || isFootnoteEnd
+        const isClauseBoundary = /[,;:—–]["”’»)\]]*$/.test(w)
 
-        if (curWords.length >= Math.max(1, chunkSize) || isSentenceEnd) {
-          flush(isSentenceEnd, inFootnote || /^\[dipnot/i.test(curWords[0]))
+        if (
+          curWords.length >= Math.max(1, chunkSize) ||
+          isSentenceEnd ||
+          (chunkSize > 1 && isClauseBoundary)
+        ) {
+          flush(isSentenceEnd, inFootnote || startsFootnote)
+        }
+
+        if (isFootnoteEnd) {
+          inFootnote = false
         }
       }
     }
@@ -349,7 +385,8 @@ export function createChunks(
       continue
     }
 
-    const isSentenceEnd = /[.!?…]["”’»)]*$/.test(rawWord)
+    const isSentenceEnd = /[.!?…]["”’»)\]]*$/.test(rawWord) && !isAbbreviation(rawWord)
+    const isClauseBoundary = /[,;:—–]["”’»)\]]*$/.test(rawWord)
 
     const nextStartsSpecial =
       i + 1 < words.length && /^\[dipnot/i.test(words[i + 1])
@@ -357,6 +394,7 @@ export function createChunks(
     if (
       currentWords.length >= Math.max(1, chunkSize) ||
       isSentenceEnd ||
+      (chunkSize > 1 && isClauseBoundary) ||
       nextStartsSpecial ||
       i === words.length - 1
     ) {
@@ -390,10 +428,16 @@ export const TURKISH_ABBREVIATIONS = new Set([
 ])
 
 export function isAbbreviation(word: string): boolean {
-  const normalized = word.trim().toLowerCase().replace(/^[^\wçğıöşü0-9]+/, '')
+  const normalized = word
+    .trim()
+    .replace(/İ/g, 'i')
+    .replace(/I/g, 'ı')
+    .toLowerCase()
+    .replace(/\u0307/g, '')
+    .replace(/^[^\p{L}\p{N}]+/u, '')
   if (TURKISH_ABBREVIATIONS.has(normalized)) return true
   // Tek harfli isim kısaltmaları: örn. "M.", "A."
-  if (/^[a-zçğıöşü]\.$/i.test(normalized)) return true
+  if (/^[\p{L}]\.$/u.test(normalized)) return true
   return false
 }
 
@@ -426,7 +470,7 @@ export function calculateWordDelay(
   const baseDelay = 60000 / Math.max(1, baseWpm)
 
   // 1. Kelimenin noktalamasız harf sayısını (cleanLength) bul
-  const cleanWord = text.replace(/[^\wçğıöşüÇĞİÖŞÜ0-9]/g, '')
+  const cleanWord = text.replace(/[^\p{L}\p{N}]/gu, '')
   const cleanLength = cleanWord.length
 
   // Başlangıç çarpanını (multiplier) belirle:
@@ -505,18 +549,19 @@ export function formatRemaining(chunksLeft: number, wpm: number, chunkSize: numb
   return rest === 0 ? `${minutes} dk` : `${minutes} dk ${rest} sn`
 }
 
+function isSentenceBoundaryItem(item: ChunkItem | string | undefined): boolean {
+  if (!item) return false
+  if (typeof item === 'object') {
+    if (item.isSentenceEnd || item.isParagraphEnd) return true
+    const t = item.text.trim()
+    return /[.!?…]["”’»)\u201D\u2019\]]*$/.test(t) && !isAbbreviation(t)
+  }
+  const s = String(item).trim()
+  return /[.!?…]["”’»)\u201D\u2019\]]*$/.test(s) && !isAbbreviation(s)
+}
+
 /**
  * Akıllı Cümle Başı Bulma Algoritması (Sentence-Boundary Rewind Engine)
- *
- * 1. Cümle Sınırı Tespiti (Sentence Boundary Detection):
- *    Mevcut kelime indeksinden (currentIndex) geriye doğru taranır.
- *    Cümle bitiren noktalama (. ! ? …) veya cümle sonu bayrağı taşıyan ilk öğe bulunur.
- *    O bitiş noktasından hemen sonra gelen ilk öğe (boundary + 1), "mevcut cümlenin ilk kelimesidir".
- *
- * 2. Çok Yakın Durum Eşiği (Edge Case):
- *    Eğer kullanıcı zaten cümlenin ilk kelimesindeyse veya başlangıca 3 kelimeden yakınsa
- *    (distance < thresholdWords), bir önceki cümlenin ilk kelimesine (daha da öncesine) zıplanır.
- *    Metnin en başındaysak (currentIndex === 0) veya daha öncesi yoksa, 0'da sabitlenir.
  */
 export function findCurrentSentenceStartIndex(
   chunks: (ChunkItem | string)[],
@@ -528,13 +573,7 @@ export function findCurrentSentenceStartIndex(
 
   const isBoundary = (idx: number): boolean => {
     if (idx < 0 || idx >= chunks.length) return false
-    const item = chunks[idx]
-    if (!item) return false
-    if (typeof item === 'object') {
-      if (item.isSentenceEnd || item.isParagraphEnd) return true
-      return /[.!?…]["”’»)\u201D\u2019\]]*$/.test(item.text.trim())
-    }
-    return /[.!?…]["”’»)\u201D\u2019\]]*$/.test(String(item).trim())
+    return isSentenceBoundaryItem(chunks[idx])
   }
 
   for (let i = currentIndex - 1; i >= 0; i--) {
@@ -550,16 +589,6 @@ export function findCurrentSentenceStartIndex(
  * Akıllı Cümle Başı Geri Sarma Algoritması:
  * Geri sarma tetiklendiğinde (← tuşu veya sol dokunma alanı) sadece 1 kelime değil,
  * tam olarak önceki cümlenin ilk kelimesine konumlanmayı sağlar.
- *
- * 1. Cümle Sınırı Tespiti (Sentence Boundary Detection):
- *    Mevcut kelime indeksinden (currentIndex) geriye doğru taranır.
- *    Cümle bitiren noktalama (. ! ? …) veya cümle sonu bayrağı taşıyan ilk öğe bulunur.
- *    O bitiş noktasından hemen sonra gelen ilk öğe (boundary + 1), "mevcut cümlenin ilk kelimesidir".
- *
- * 2. Çok Yakın Durum Eşiği (Edge Case):
- *    Eğer kullanıcı zaten cümlenin ilk kelimesindeyse veya başlangıca 3 kelimeden yakınsa
- *    (distance < thresholdWords), bir önceki cümlenin ilk kelimesine (daha da öncesine) zıplanır.
- *    Metnin en başındaysak (currentIndex === 0) veya daha öncesi yoksa, 0'da sabitlenir.
  */
 export function findPreviousSentenceIndex(
   chunks: (ChunkItem | string)[],
@@ -572,13 +601,7 @@ export function findPreviousSentenceIndex(
 
   const isBoundary = (idx: number): boolean => {
     if (idx < 0 || idx >= chunks.length) return false
-    const item = chunks[idx]
-    if (!item) return false
-    if (typeof item === 'object') {
-      if (item.isSentenceEnd || item.isParagraphEnd) return true
-      return /[.!?…]["”’»)\u201D\u2019\]]*$/.test(item.text.trim())
-    }
-    return /[.!?…]["”’»)\u201D\u2019\]]*$/.test(String(item).trim())
+    return isSentenceBoundaryItem(chunks[idx])
   }
 
   // 1. Mevcut cümlenin bittiği önceki sınırı geriye doğru ara
@@ -644,13 +667,7 @@ export function findNextSentenceIndex(
 
   const isBoundary = (idx: number): boolean => {
     if (idx < 0 || idx >= chunks.length) return false
-    const item = chunks[idx]
-    if (!item) return false
-    if (typeof item === 'object') {
-      if (item.isSentenceEnd || item.isParagraphEnd) return true
-      return /[.!?…]["”’»)\u201D\u2019\]]*$/.test(item.text.trim())
-    }
-    return /[.!?…]["”’»)\u201D\u2019\]]*$/.test(String(item).trim())
+    return isSentenceBoundaryItem(chunks[idx])
   }
 
   for (let i = currentIndex; i < chunks.length - 1; i++) {

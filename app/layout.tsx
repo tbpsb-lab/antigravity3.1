@@ -1,12 +1,29 @@
-import { Analytics } from '@vercel/analytics/next'
 import type { Metadata, Viewport } from 'next'
 import { Geist, Geist_Mono, Inter, Literata } from 'next/font/google'
 import './globals.css'
 
-const inter = Inter({ subsets: ['latin', 'latin-ext'], variable: '--font-inter' })
-const geist = Geist({ subsets: ['latin', 'latin-ext'], variable: '--font-geist' })
-const geistMono = Geist_Mono({ subsets: ['latin', 'latin-ext'], variable: '--font-geist-mono' })
-const literata = Literata({ subsets: ['latin', 'latin-ext'], variable: '--font-literata' })
+const inter = Inter({
+  subsets: ['latin', 'latin-ext'],
+  variable: '--font-inter',
+  display: 'swap',
+})
+const geist = Geist({
+  subsets: ['latin', 'latin-ext'],
+  variable: '--font-geist',
+  display: 'swap',
+})
+const geistMono = Geist_Mono({
+  subsets: ['latin', 'latin-ext'],
+  variable: '--font-geist-mono',
+  display: 'swap',
+})
+const literata = Literata({
+  subsets: ['latin', 'latin-ext'],
+  variable: '--font-literata',
+  display: 'swap',
+})
+
+const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH || ''
 
 export const metadata: Metadata = {
   title: 'odak — Hızlı Okuma (RSVP)',
@@ -16,27 +33,27 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       {
-        url: '/icon-light-32x32.png',
+        url: `${BASE_PATH}/icon-light-32x32.png`,
         media: '(prefers-color-scheme: light)',
       },
       {
-        url: '/icon-dark-32x32.png',
+        url: `${BASE_PATH}/icon-dark-32x32.png`,
         media: '(prefers-color-scheme: dark)',
       },
       {
-        url: '/icon.svg',
+        url: `${BASE_PATH}/icon.svg`,
         type: 'image/svg+xml',
       },
     ],
-    apple: '/apple-icon.png',
+    apple: `${BASE_PATH}/apple-icon.png`,
   },
 }
 
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
+  maximumScale: 5,
+  userScalable: true,
   viewportFit: 'cover',
   colorScheme: 'light dark',
   themeColor: [
@@ -44,6 +61,9 @@ export const viewport: Viewport = {
     { media: '(prefers-color-scheme: dark)', color: '#000000' },
   ],
 }
+
+// İlk boyamada (First Paint) tema parlamasını (FOUC) %100 önleyen senkron başlatıcı
+const THEME_INIT_SCRIPT = `(function(){try{var s=localStorage.getItem('hizlioku_reader_settings');if(s){var p=JSON.parse(s);if(p&&(p.theme==='ios'||p.theme==='linear'||p.theme==='kindle')){document.documentElement.setAttribute('data-theme',p.theme);return;}}document.documentElement.setAttribute('data-theme','ios');}catch(e){document.documentElement.setAttribute('data-theme','ios');}})();`
 
 export default function RootLayout({
   children,
@@ -53,11 +73,14 @@ export default function RootLayout({
   return (
     <html
       lang="tr"
+      suppressHydrationWarning
       className={`${inter.variable} ${geist.variable} ${geistMono.variable} ${literata.variable}`}
     >
-      <body className="antialiased">
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+      </head>
+      <body suppressHydrationWarning className="antialiased">
         {children}
-        {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>
     </html>
   )

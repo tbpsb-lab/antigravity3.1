@@ -20,7 +20,8 @@ import {
 import Image from 'next/image'
 import { useEffect, useState } from 'react'
 import { cn } from '@/lib/utils'
-import { THEMES, type ThemeId } from '@/lib/rsvp'
+import { type ThemeId } from '@/lib/rsvp'
+import { useFocusTrap } from '@/lib/use-focus-trap'
 import logoVectorDarkCard from '@/assets/logos/odak-vector-dark-card.png'
 import logoVectorLightCard from '@/assets/logos/odak-vector-light-card.png'
 
@@ -30,12 +31,10 @@ type AboutModalProps = {
   theme: ThemeId
 }
 
-// Temaya Duyarlı Vektörel odak Rozeti (media_1793569995184_395e3cd8.jpg referansı - biçimi 1:1 korunmuştur)
 function OdakModalLogo({ theme }: { theme: ThemeId }) {
   const isNeon = theme === 'linear'
 
   if (isNeon) {
-    // 2. NEON TEMASI: Siyah fonlu vektörel logo (KOYU ZEMİN)
     return (
       <div className="relative shrink-0 w-24 sm:w-28 landscape-short:w-16 h-16 sm:h-18 landscape-short:h-9 rounded-2xl landscape-short:rounded-xl bg-[#1d1d1d] border border-purple-500/50 shadow-[0_0_20px_rgba(168,85,247,0.35)] p-1.5 landscape-short:p-1 flex items-center justify-center select-none transition-transform hover:scale-105 overflow-hidden">
         <Image
@@ -50,14 +49,13 @@ function OdakModalLogo({ theme }: { theme: ThemeId }) {
     )
   }
 
-  // 1. CAM & 3. KAĞIT TEMASI: Beyaz fonlu vektörel logo (AÇIK ZEMİN) - fondan ayrıştırılmış rozet kartı
   return (
     <div
       className={cn(
         'relative shrink-0 w-24 sm:w-28 landscape-short:w-16 h-16 sm:h-18 landscape-short:h-9 rounded-2xl landscape-short:rounded-xl bg-[#f4f4f4] p-1.5 landscape-short:p-1 flex items-center justify-center select-none transition-transform hover:scale-105 overflow-hidden',
         theme === 'ios'
           ? 'border border-white/90 dark:border-white/30 shadow-[0_4px_16px_rgba(56,189,248,0.25)]'
-          : 'border border-[#cfbe96] dark:border-[#524433] shadow-[0_2px_8px_rgba(0,0,0,0.12)]'
+          : 'border border-[#cfbe96] dark:border-[#524433] shadow-[0_2px_8px_rgba(0,0,0,0.12)]',
       )}
     >
       <Image
@@ -83,6 +81,7 @@ type TabId = (typeof TABS)[number]['id']
 
 export function AboutModal({ open, onClose, theme }: AboutModalProps) {
   const [activeTab, setActiveTab] = useState<TabId>('rsvp')
+  const dialogRef = useFocusTrap<HTMLDivElement>(open)
 
   const activeTabIndex = TABS.findIndex((t) => t.id === activeTab)
 
@@ -90,7 +89,10 @@ export function AboutModal({ open, onClose, theme }: AboutModalProps) {
   useEffect(() => {
     if (!open) return
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
+      if (e.key === 'Escape') {
+        e.stopPropagation()
+        onClose()
+      }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
@@ -100,6 +102,7 @@ export function AboutModal({ open, onClose, theme }: AboutModalProps) {
 
   return (
     <div
+      ref={dialogRef}
       role="dialog"
       aria-modal="true"
       aria-labelledby="about-modal-title"
@@ -114,7 +117,7 @@ export function AboutModal({ open, onClose, theme }: AboutModalProps) {
           'flex flex-col gap-3.5 md:gap-4 landscape-short:gap-2 border transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] animate-in zoom-in-95 max-h-[88dvh] landscape-short:max-h-[96dvh] overflow-hidden',
           theme === 'linear' && 'border-purple-500/40 shadow-[0_0_40px_rgba(168,85,247,0.3)] bg-[#07060b]/95 text-slate-100',
           theme === 'kindle' && 'border-[#cfbe96] shadow-[0_8px_30px_rgba(0,0,0,0.15)] bg-[#fcf8ee] text-[#22180e]',
-          theme === 'ios' && 'border-white/90 dark:border-white/25 shadow-[0_16px_50px_rgba(56,189,248,0.25)] bg-white/85 dark:bg-slate-900/85 backdrop-blur-3xl text-slate-900 dark:text-slate-100'
+          theme === 'ios' && 'border-white/90 dark:border-white/25 shadow-[0_16px_50px_rgba(56,189,248,0.25)] bg-white/85 dark:bg-slate-900/85 backdrop-blur-3xl text-slate-900 dark:text-slate-100',
         )}
       >
         {/* Kapat Butonu */}
@@ -127,39 +130,51 @@ export function AboutModal({ open, onClose, theme }: AboutModalProps) {
           <X className="size-4.5 landscape-short:size-3.5" />
         </button>
 
-        {/* Üst Alan: Sol Tarafta Temaya Özel Vektör Logo Rozeti, Sağında Başlık & Açıklama */}
+        {/* Üst Alan */}
         <div className="shrink-0 flex flex-row items-center gap-3.5 sm:gap-4.5 md:gap-5 landscape-short:gap-2.5 pb-0.5 landscape-short:pb-0">
           <OdakModalLogo theme={theme} />
 
           <div className="flex flex-col min-w-0 pr-8">
             <h2 id="about-modal-title" className="text-lg sm:text-xl md:text-2xl landscape-short:text-base font-bold tracking-tight text-foreground flex items-center gap-1.5 flex-wrap">
               <span className="font-extrabold text-foreground">odak</span>
-              <span className={cn(
-                'font-black',
-                theme === 'ios' && 'text-sky-500',
-                theme === 'linear' && 'text-purple-400',
-                theme === 'kindle' && 'text-[#b44c43]'
-              )}>•</span>
-              <span className={cn(
-                'font-bold',
-                theme === 'ios' && 'bg-gradient-to-r from-sky-600 to-indigo-600 dark:from-sky-400 dark:to-cyan-300 bg-clip-text text-transparent',
-                theme === 'linear' && 'text-purple-200',
-                theme === 'kindle' && 'text-[#3c2a18] dark:text-[#f2ebe0]'
-              )}>
+              <span
+                className={cn(
+                  'font-black',
+                  theme === 'ios' && 'text-sky-500',
+                  theme === 'linear' && 'text-purple-400',
+                  theme === 'kindle' && 'text-[#b44c43]',
+                )}
+              >
+                •
+              </span>
+              <span
+                className={cn(
+                  'font-bold',
+                  theme === 'ios' && 'bg-gradient-to-r from-sky-600 to-indigo-600 dark:from-sky-400 dark:to-cyan-300 bg-clip-text text-transparent',
+                  theme === 'linear' && 'text-purple-200',
+                  theme === 'kindle' && 'text-[#3c2a18] dark:text-[#f2ebe0]',
+                )}
+              >
                 Bilimsel Hızlı Okuma
               </span>
             </h2>
-            <p className={cn(
-              'text-xs sm:text-sm md:text-base mt-1 leading-snug font-medium landscape-short:hidden',
-              theme === 'ios' ? 'text-slate-600 dark:text-slate-300' : 'text-foreground/85 dark:text-foreground/80'
-            )}>
+            <p
+              className={cn(
+                'text-xs sm:text-sm md:text-base mt-1 leading-snug font-medium landscape-short:hidden',
+                theme === 'ios' ? 'text-slate-600 dark:text-slate-300' : 'text-foreground/85 dark:text-foreground/80',
+              )}
+            >
               Göz kaslarının mekanik yorgunluğunu sıfırlayan, zihnin anlama hızını katlayan yeni nesil RSVP platformu.
             </p>
           </div>
         </div>
 
-        {/* Entegre Dinamik Kompakt Sekme Çubuğu (Aktif sekme tam başlıkla açılır, diğerleri kendi simgelerini gösterir) */}
-        <div className="shrink-0 flex items-center justify-between gap-1.5 p-1 md:p-1.5 landscape-short:p-0.5 rounded-2xl bg-foreground/5 border border-border/60 select-none">
+        {/* Sekme Çubuğu */}
+        <div
+          role="tablist"
+          aria-label="odak bilgi bölümleri"
+          className="shrink-0 flex items-center justify-between gap-1.5 p-1 md:p-1.5 landscape-short:p-0.5 rounded-2xl bg-foreground/5 border border-border/60 select-none"
+        >
           {TABS.map((tab) => {
             const Icon = tab.icon
             const isActive = activeTab === tab.id
@@ -167,12 +182,14 @@ export function AboutModal({ open, onClose, theme }: AboutModalProps) {
               <button
                 key={tab.id}
                 type="button"
+                role="tab"
+                aria-selected={isActive}
                 onClick={() => setActiveTab(tab.id)}
                 className={cn(
                   'flex items-center justify-center transition-all duration-300 cursor-pointer outline-none rounded-xl h-9.5 md:h-11 landscape-short:h-8',
                   isActive
                     ? 'flex-1 gap-2 px-3.5 md:px-4 landscape-short:px-2.5 bg-background text-foreground shadow-sm font-bold border border-border/80'
-                    : 'size-9 md:size-11 landscape-short:size-8 text-muted-foreground hover:text-foreground hover:bg-foreground/10'
+                    : 'size-9 md:size-11 landscape-short:size-8 text-muted-foreground hover:text-foreground hover:bg-foreground/10',
                 )}
                 title={tab.label}
                 aria-label={tab.label}
@@ -190,21 +207,28 @@ export function AboutModal({ open, onClose, theme }: AboutModalProps) {
           })}
         </div>
 
-        {/* Sekmeler Arası Yatay Scroll / Slider Alanı */}
+        {/* Sekmeler Arası Yatay Slider Alanı */}
         <div className="relative w-full flex-1 min-h-0 overflow-hidden rounded-2xl">
           <div
             className="flex w-[400%] h-full transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]"
             style={{ transform: `translateX(-${activeTabIndex * 25}%)` }}
           >
             {/* 1. SLIDE: RSVP & Bilim */}
-            <div className="w-1/4 h-full max-h-[calc(88dvh-13.5rem)] landscape-short:max-h-[calc(96dvh-5.5rem)] overflow-y-auto theme-scrollbar px-1 pb-12 text-sm md:text-base leading-relaxed">
+            <div
+              role="tabpanel"
+              inert={activeTabIndex !== 0}
+              aria-hidden={activeTabIndex !== 0}
+              className="w-1/4 h-full max-h-[calc(88dvh-13.5rem)] landscape-short:max-h-[calc(96dvh-5.5rem)] overflow-y-auto theme-scrollbar px-1 pb-12 text-sm md:text-base leading-relaxed"
+            >
               <div className="flex flex-col gap-3.5">
-                <div className={cn(
-                  'p-4 sm:p-5 rounded-2xl border shadow-sm',
-                  theme === 'ios' && 'bg-white/85 dark:bg-slate-900/85 border-sky-200/80 dark:border-sky-500/25 text-slate-900 dark:text-slate-100 shadow-sm backdrop-blur-md',
-                  theme === 'linear' && 'bg-[#0e0c16] border-purple-500/40 text-slate-100',
-                  theme === 'kindle' && 'bg-[#fbf5e5] dark:bg-[#2b2319] border-[#cbba92] text-[#2c2014] dark:text-[#f2ebe0]'
-                )}>
+                <div
+                  className={cn(
+                    'p-4 sm:p-5 rounded-2xl border shadow-sm',
+                    theme === 'ios' && 'bg-white/85 dark:bg-slate-900/85 border-sky-200/80 dark:border-sky-500/25 text-slate-900 dark:text-slate-100 shadow-sm backdrop-blur-md',
+                    theme === 'linear' && 'bg-[#0e0c16] border-purple-500/40 text-slate-100',
+                    theme === 'kindle' && 'bg-[#fbf5e5] dark:bg-[#2b2319] border-[#cbba92] text-[#2c2014] dark:text-[#f2ebe0]',
+                  )}
+                >
                   <div className="flex items-center gap-2.5 font-bold mb-2 text-base text-foreground">
                     <Eye className="size-4.5 text-pivot shrink-0" />
                     <h4>Sakkad ve Regresyon Hareketlerini Sıfırlama</h4>
@@ -214,12 +238,14 @@ export function AboutModal({ open, onClose, theme }: AboutModalProps) {
                   </p>
                 </div>
 
-                <div className={cn(
-                  'p-4 sm:p-5 rounded-2xl border shadow-sm',
-                  theme === 'ios' && 'bg-white/85 dark:bg-slate-900/85 border-sky-200/80 dark:border-sky-500/25 text-slate-900 dark:text-slate-100 shadow-sm backdrop-blur-md',
-                  theme === 'linear' && 'bg-[#0e0c16] border-purple-500/40 text-slate-100',
-                  theme === 'kindle' && 'bg-[#fbf5e5] dark:bg-[#2b2319] border-[#cbba92] text-[#2c2014] dark:text-[#f2ebe0]'
-                )}>
+                <div
+                  className={cn(
+                    'p-4 sm:p-5 rounded-2xl border shadow-sm',
+                    theme === 'ios' && 'bg-white/85 dark:bg-slate-900/85 border-sky-200/80 dark:border-sky-500/25 text-slate-900 dark:text-slate-100 shadow-sm backdrop-blur-md',
+                    theme === 'linear' && 'bg-[#0e0c16] border-purple-500/40 text-slate-100',
+                    theme === 'kindle' && 'bg-[#fbf5e5] dark:bg-[#2b2319] border-[#cbba92] text-[#2c2014] dark:text-[#f2ebe0]',
+                  )}
+                >
                   <div className="flex items-center gap-2.5 font-bold mb-2 text-base text-foreground">
                     <div className="size-2.5 rounded-full bg-pivot pivot-glow shrink-0" />
                     <h4>ORP (Optimal Tanıma Noktası) & Kırmızı Lazer</h4>
@@ -229,12 +255,14 @@ export function AboutModal({ open, onClose, theme }: AboutModalProps) {
                   </p>
                 </div>
 
-                <div className={cn(
-                  'p-4 sm:p-5 rounded-2xl border shadow-sm',
-                  theme === 'ios' && 'bg-white/85 dark:bg-slate-900/85 border-sky-200/80 dark:border-sky-500/25 text-slate-900 dark:text-slate-100 shadow-sm backdrop-blur-md',
-                  theme === 'linear' && 'bg-[#0e0c16] border-purple-500/40 text-slate-100',
-                  theme === 'kindle' && 'bg-[#fbf5e5] dark:bg-[#2b2319] border-[#cbba92] text-[#2c2014] dark:text-[#f2ebe0]'
-                )}>
+                <div
+                  className={cn(
+                    'p-4 sm:p-5 rounded-2xl border shadow-sm',
+                    theme === 'ios' && 'bg-white/85 dark:bg-slate-900/85 border-sky-200/80 dark:border-sky-500/25 text-slate-900 dark:text-slate-100 shadow-sm backdrop-blur-md',
+                    theme === 'linear' && 'bg-[#0e0c16] border-purple-500/40 text-slate-100',
+                    theme === 'kindle' && 'bg-[#fbf5e5] dark:bg-[#2b2319] border-[#cbba92] text-[#2c2014] dark:text-[#f2ebe0]',
+                  )}
+                >
                   <div className="flex items-center gap-2.5 font-bold mb-2 text-base text-foreground">
                     <Zap className="size-4.5 text-amber-500 shrink-0" />
                     <h4>İç Seslendirme (Subvocalization) Bariyerini Aşma</h4>
@@ -247,15 +275,22 @@ export function AboutModal({ open, onClose, theme }: AboutModalProps) {
             </div>
 
             {/* 2. SLIDE: Özellikler */}
-            <div className="w-1/4 h-full max-h-[calc(88dvh-13.5rem)] landscape-short:max-h-[calc(96dvh-5.5rem)] overflow-y-auto theme-scrollbar px-1 pb-12 text-sm md:text-base leading-relaxed">
+            <div
+              role="tabpanel"
+              inert={activeTabIndex !== 1}
+              aria-hidden={activeTabIndex !== 1}
+              className="w-1/4 h-full max-h-[calc(88dvh-13.5rem)] landscape-short:max-h-[calc(96dvh-5.5rem)] overflow-y-auto theme-scrollbar px-1 pb-12 text-sm md:text-base leading-relaxed"
+            >
               <div className="flex flex-col gap-3">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                  <div className={cn(
-                    'p-4 rounded-2xl border shadow-sm',
-                    theme === 'ios' && 'bg-white/85 dark:bg-slate-900/85 border-sky-200/80 dark:border-sky-500/25 text-slate-900 dark:text-slate-100 shadow-sm backdrop-blur-md',
-                    theme === 'linear' && 'bg-[#0e0c16] border-purple-500/40 text-slate-100',
-                    theme === 'kindle' && 'bg-[#fbf5e5] dark:bg-[#2b2319] border-[#cbba92] text-[#2c2014] dark:text-[#f2ebe0]'
-                  )}>
+                  <div
+                    className={cn(
+                      'p-4 rounded-2xl border shadow-sm',
+                      theme === 'ios' && 'bg-white/85 dark:bg-slate-900/85 border-sky-200/80 dark:border-sky-500/25 text-slate-900 dark:text-slate-100 shadow-sm backdrop-blur-md',
+                      theme === 'linear' && 'bg-[#0e0c16] border-purple-500/40 text-slate-100',
+                      theme === 'kindle' && 'bg-[#fbf5e5] dark:bg-[#2b2319] border-[#cbba92] text-[#2c2014] dark:text-[#f2ebe0]',
+                    )}
+                  >
                     <h4 className="font-bold text-foreground flex items-center gap-2 mb-1.5 text-sm sm:text-base">
                       <Bookmark className="size-4 text-amber-500 shrink-0" />
                       Bölüm & Başlık Algılama
@@ -265,12 +300,14 @@ export function AboutModal({ open, onClose, theme }: AboutModalProps) {
                     </p>
                   </div>
 
-                  <div className={cn(
-                    'p-4 rounded-2xl border shadow-sm',
-                    theme === 'ios' && 'bg-white/85 dark:bg-slate-900/85 border-sky-200/80 dark:border-sky-500/25 text-slate-900 dark:text-slate-100 shadow-sm backdrop-blur-md',
-                    theme === 'linear' && 'bg-[#0e0c16] border-purple-500/40 text-slate-100',
-                    theme === 'kindle' && 'bg-[#fbf5e5] dark:bg-[#2b2319] border-[#cbba92] text-[#2c2014] dark:text-[#f2ebe0]'
-                  )}>
+                  <div
+                    className={cn(
+                      'p-4 rounded-2xl border shadow-sm',
+                      theme === 'ios' && 'bg-white/85 dark:bg-slate-900/85 border-sky-200/80 dark:border-sky-500/25 text-slate-900 dark:text-slate-100 shadow-sm backdrop-blur-md',
+                      theme === 'linear' && 'bg-[#0e0c16] border-purple-500/40 text-slate-100',
+                      theme === 'kindle' && 'bg-[#fbf5e5] dark:bg-[#2b2319] border-[#cbba92] text-[#2c2014] dark:text-[#f2ebe0]',
+                    )}
+                  >
                     <h4 className="font-bold text-foreground flex items-center gap-2 mb-1.5 text-sm sm:text-base">
                       <Compass className="size-4 text-sky-500 shrink-0" />
                       İlerleme Çubuğunda Başlık İmleri
@@ -280,12 +317,14 @@ export function AboutModal({ open, onClose, theme }: AboutModalProps) {
                     </p>
                   </div>
 
-                  <div className={cn(
-                    'p-4 rounded-2xl border shadow-sm',
-                    theme === 'ios' && 'bg-white/85 dark:bg-slate-900/85 border-sky-200/80 dark:border-sky-500/25 text-slate-900 dark:text-slate-100 shadow-sm backdrop-blur-md',
-                    theme === 'linear' && 'bg-[#0e0c16] border-purple-500/40 text-slate-100',
-                    theme === 'kindle' && 'bg-[#fbf5e5] dark:bg-[#2b2319] border-[#cbba92] text-[#2c2014] dark:text-[#f2ebe0]'
-                  )}>
+                  <div
+                    className={cn(
+                      'p-4 rounded-2xl border shadow-sm',
+                      theme === 'ios' && 'bg-white/85 dark:bg-slate-900/85 border-sky-200/80 dark:border-sky-500/25 text-slate-900 dark:text-slate-100 shadow-sm backdrop-blur-md',
+                      theme === 'linear' && 'bg-[#0e0c16] border-purple-500/40 text-slate-100',
+                      theme === 'kindle' && 'bg-[#fbf5e5] dark:bg-[#2b2319] border-[#cbba92] text-[#2c2014] dark:text-[#f2ebe0]',
+                    )}
+                  >
                     <h4 className="font-bold text-foreground flex items-center gap-2 mb-1.5 text-sm sm:text-base">
                       <RotateCcw className="size-4 text-emerald-500 shrink-0" />
                       Akıllı Cümle Başı & Context Peek
@@ -295,12 +334,14 @@ export function AboutModal({ open, onClose, theme }: AboutModalProps) {
                     </p>
                   </div>
 
-                  <div className={cn(
-                    'p-4 rounded-2xl border shadow-sm',
-                    theme === 'ios' && 'bg-white/85 dark:bg-slate-900/85 border-sky-200/80 dark:border-sky-500/25 text-slate-900 dark:text-slate-100 shadow-sm backdrop-blur-md',
-                    theme === 'linear' && 'bg-[#0e0c16] border-purple-500/40 text-slate-100',
-                    theme === 'kindle' && 'bg-[#fbf5e5] dark:bg-[#2b2319] border-[#cbba92] text-[#2c2014] dark:text-[#f2ebe0]'
-                  )}>
+                  <div
+                    className={cn(
+                      'p-4 rounded-2xl border shadow-sm',
+                      theme === 'ios' && 'bg-white/85 dark:bg-slate-900/85 border-sky-200/80 dark:border-sky-500/25 text-slate-900 dark:text-slate-100 shadow-sm backdrop-blur-md',
+                      theme === 'linear' && 'bg-[#0e0c16] border-purple-500/40 text-slate-100',
+                      theme === 'kindle' && 'bg-[#fbf5e5] dark:bg-[#2b2319] border-[#cbba92] text-[#2c2014] dark:text-[#f2ebe0]',
+                    )}
+                  >
                     <h4 className="font-bold text-foreground flex items-center gap-2 mb-1.5 text-sm sm:text-base">
                       <Layers className="size-4 text-purple-500 shrink-0" />
                       Kelime Bloklama (Chunking - &apos;C&apos;)
@@ -310,12 +351,14 @@ export function AboutModal({ open, onClose, theme }: AboutModalProps) {
                     </p>
                   </div>
 
-                  <div className={cn(
-                    'p-4 rounded-2xl border shadow-sm',
-                    theme === 'ios' && 'bg-white/85 dark:bg-slate-900/85 border-sky-200/80 dark:border-sky-500/25 text-slate-900 dark:text-slate-100 shadow-sm backdrop-blur-md',
-                    theme === 'linear' && 'bg-[#0e0c16] border-purple-500/40 text-slate-100',
-                    theme === 'kindle' && 'bg-[#fbf5e5] dark:bg-[#2b2319] border-[#cbba92] text-[#2c2014] dark:text-[#f2ebe0]'
-                  )}>
+                  <div
+                    className={cn(
+                      'p-4 rounded-2xl border shadow-sm',
+                      theme === 'ios' && 'bg-white/85 dark:bg-slate-900/85 border-sky-200/80 dark:border-sky-500/25 text-slate-900 dark:text-slate-100 shadow-sm backdrop-blur-md',
+                      theme === 'linear' && 'bg-[#0e0c16] border-purple-500/40 text-slate-100',
+                      theme === 'kindle' && 'bg-[#fbf5e5] dark:bg-[#2b2319] border-[#cbba92] text-[#2c2014] dark:text-[#f2ebe0]',
+                    )}
+                  >
                     <h4 className="font-bold text-foreground flex items-center gap-2 mb-1.5 text-sm sm:text-base">
                       <MousePointer className="size-4 text-cyan-500 shrink-0" />
                       Çift Yönlü 25 WPM Hassas Scroll
@@ -325,12 +368,14 @@ export function AboutModal({ open, onClose, theme }: AboutModalProps) {
                     </p>
                   </div>
 
-                  <div className={cn(
-                    'p-4 rounded-2xl border shadow-sm',
-                    theme === 'ios' && 'bg-white/85 dark:bg-slate-900/85 border-sky-200/80 dark:border-sky-500/25 text-slate-900 dark:text-slate-100 shadow-sm backdrop-blur-md',
-                    theme === 'linear' && 'bg-[#0e0c16] border-purple-500/40 text-slate-100',
-                    theme === 'kindle' && 'bg-[#fbf5e5] dark:bg-[#2b2319] border-[#cbba92] text-[#2c2014] dark:text-[#f2ebe0]'
-                  )}>
+                  <div
+                    className={cn(
+                      'p-4 rounded-2xl border shadow-sm',
+                      theme === 'ios' && 'bg-white/85 dark:bg-slate-900/85 border-sky-200/80 dark:border-sky-500/25 text-slate-900 dark:text-slate-100 shadow-sm backdrop-blur-md',
+                      theme === 'linear' && 'bg-[#0e0c16] border-purple-500/40 text-slate-100',
+                      theme === 'kindle' && 'bg-[#fbf5e5] dark:bg-[#2b2319] border-[#cbba92] text-[#2c2014] dark:text-[#f2ebe0]',
+                    )}
+                  >
                     <h4 className="font-bold text-foreground flex items-center gap-2 mb-1.5 text-sm sm:text-base">
                       <Sparkles className="size-4 text-pink-500 shrink-0" />
                       Ritmik Nefes Alma Algoritması
@@ -341,12 +386,14 @@ export function AboutModal({ open, onClose, theme }: AboutModalProps) {
                   </div>
                 </div>
 
-                <div className={cn(
-                  'p-3.5 rounded-2xl border flex items-center gap-3',
-                  theme === 'ios' && 'bg-white/85 dark:bg-slate-900/85 border-sky-200/80 dark:border-sky-500/25 shadow-sm backdrop-blur-md',
-                  theme === 'linear' && 'bg-[#0e0c16] border-purple-500/40',
-                  theme === 'kindle' && 'bg-[#fbf5e5] dark:bg-[#2b2319] border-[#cbba92]'
-                )}>
+                <div
+                  className={cn(
+                    'p-3.5 rounded-2xl border flex items-center gap-3',
+                    theme === 'ios' && 'bg-white/85 dark:bg-slate-900/85 border-sky-200/80 dark:border-sky-500/25 shadow-sm backdrop-blur-md',
+                    theme === 'linear' && 'bg-[#0e0c16] border-purple-500/40',
+                    theme === 'kindle' && 'bg-[#fbf5e5] dark:bg-[#2b2319] border-[#cbba92]',
+                  )}
+                >
                   <FileText className="size-5 text-muted-foreground shrink-0" />
                   <p className="text-xs text-foreground/90 leading-relaxed font-normal">
                     <strong>Akıllı Metin Temizleme:</strong> Satır sonlarında kesilen kelimeleri (<span className="font-mono">ör- / nek → örnek</span>) otomatik birleştirir, sayfa numaralarını ve başlık artıklarını arındırır, dipnotları isteğe göre akışa katar.
@@ -356,15 +403,21 @@ export function AboutModal({ open, onClose, theme }: AboutModalProps) {
             </div>
 
             {/* 3. SLIDE: Kullanım & Tuşlar */}
-            <div className="w-1/4 h-full max-h-[calc(88dvh-13.5rem)] landscape-short:max-h-[calc(96dvh-5.5rem)] overflow-y-auto theme-scrollbar px-1 pb-12 text-sm md:text-base leading-relaxed">
+            <div
+              role="tabpanel"
+              inert={activeTabIndex !== 2}
+              aria-hidden={activeTabIndex !== 2}
+              className="w-1/4 h-full max-h-[calc(88dvh-13.5rem)] landscape-short:max-h-[calc(96dvh-5.5rem)] overflow-y-auto theme-scrollbar px-1 pb-12 text-sm md:text-base leading-relaxed"
+            >
               <div className="flex flex-col gap-3.5">
-                {/* Masaüstü Klavye ve Fare */}
-                <div className={cn(
-                  'p-4 sm:p-5 rounded-2xl border shadow-sm',
-                  theme === 'ios' && 'bg-white/85 dark:bg-slate-900/85 border-sky-200/80 dark:border-sky-500/25 text-slate-900 dark:text-slate-100 shadow-sm backdrop-blur-md',
-                  theme === 'linear' && 'bg-[#0e0c16] border-purple-500/40 text-slate-100',
-                  theme === 'kindle' && 'bg-[#fbf5e5] dark:bg-[#2b2319] border-[#cbba92] text-[#2c2014] dark:text-[#f2ebe0]'
-                )}>
+                <div
+                  className={cn(
+                    'p-4 sm:p-5 rounded-2xl border shadow-sm',
+                    theme === 'ios' && 'bg-white/85 dark:bg-slate-900/85 border-sky-200/80 dark:border-sky-500/25 text-slate-900 dark:text-slate-100 shadow-sm backdrop-blur-md',
+                    theme === 'linear' && 'bg-[#0e0c16] border-purple-500/40 text-slate-100',
+                    theme === 'kindle' && 'bg-[#fbf5e5] dark:bg-[#2b2319] border-[#cbba92] text-[#2c2014] dark:text-[#f2ebe0]',
+                  )}
+                >
                   <h4 className="font-bold text-foreground mb-3 flex items-center gap-2 text-sm sm:text-base">
                     <Keyboard className="size-4.5 text-purple-500" />
                     Masaüstü: Klavye ve Fare Kısayolları
@@ -416,13 +469,14 @@ export function AboutModal({ open, onClose, theme }: AboutModalProps) {
                   </div>
                 </div>
 
-                {/* Mobil ve Tablet Dokunmatik Kullanım Rehberi */}
-                <div className={cn(
-                  'p-4 sm:p-5 rounded-2xl border shadow-sm',
-                  theme === 'ios' && 'bg-white/85 dark:bg-slate-900/85 border-sky-200/80 dark:border-sky-500/25 text-slate-900 dark:text-slate-100 shadow-sm backdrop-blur-md',
-                  theme === 'linear' && 'bg-[#0e0c16] border-purple-500/40 text-slate-100',
-                  theme === 'kindle' && 'bg-[#fbf5e5] dark:bg-[#2b2319] border-[#cbba92] text-[#2c2014] dark:text-[#f2ebe0]'
-                )}>
+                <div
+                  className={cn(
+                    'p-4 sm:p-5 rounded-2xl border shadow-sm',
+                    theme === 'ios' && 'bg-white/85 dark:bg-slate-900/85 border-sky-200/80 dark:border-sky-500/25 text-slate-900 dark:text-slate-100 shadow-sm backdrop-blur-md',
+                    theme === 'linear' && 'bg-[#0e0c16] border-purple-500/40 text-slate-100',
+                    theme === 'kindle' && 'bg-[#fbf5e5] dark:bg-[#2b2319] border-[#cbba92] text-[#2c2014] dark:text-[#f2ebe0]',
+                  )}
+                >
                   <h4 className="font-bold text-foreground mb-3 flex items-center gap-2 text-sm sm:text-base">
                     <Smartphone className="size-4.5 text-sky-500" />
                     Mobil ve Tablet: Dokunmatik Ekran Kullanımı
@@ -455,14 +509,21 @@ export function AboutModal({ open, onClose, theme }: AboutModalProps) {
             </div>
 
             {/* 4. SLIDE: Künye & Geliştirici Hikâyesi */}
-            <div className="w-1/4 h-full max-h-[calc(88dvh-13.5rem)] landscape-short:max-h-[calc(96dvh-5.5rem)] overflow-y-auto theme-scrollbar px-1 pb-12 text-sm md:text-base leading-relaxed">
+            <div
+              role="tabpanel"
+              inert={activeTabIndex !== 3}
+              aria-hidden={activeTabIndex !== 3}
+              className="w-1/4 h-full max-h-[calc(88dvh-13.5rem)] landscape-short:max-h-[calc(96dvh-5.5rem)] overflow-y-auto theme-scrollbar px-1 pb-12 text-sm md:text-base leading-relaxed"
+            >
               <div className="flex flex-col gap-3.5">
-                <div className={cn(
-                  'p-5 sm:p-6 rounded-2xl border shadow-sm flex flex-col gap-3',
-                  theme === 'ios' && 'bg-white/85 dark:bg-slate-900/85 border-sky-200/80 dark:border-sky-500/25 text-slate-900 dark:text-slate-100 shadow-sm backdrop-blur-md',
-                  theme === 'linear' && 'bg-[#0e0c16] border-purple-500/40 text-slate-100',
-                  theme === 'kindle' && 'bg-[#fbf5e5] dark:bg-[#2b2319] border-[#cbba92] text-[#2c2014] dark:text-[#f2ebe0]'
-                )}>
+                <div
+                  className={cn(
+                    'p-5 sm:p-6 rounded-2xl border shadow-sm flex flex-col gap-3',
+                    theme === 'ios' && 'bg-white/85 dark:bg-slate-900/85 border-sky-200/80 dark:border-sky-500/25 text-slate-900 dark:text-slate-100 shadow-sm backdrop-blur-md',
+                    theme === 'linear' && 'bg-[#0e0c16] border-purple-500/40 text-slate-100',
+                    theme === 'kindle' && 'bg-[#fbf5e5] dark:bg-[#2b2319] border-[#cbba92] text-[#2c2014] dark:text-[#f2ebe0]',
+                  )}
+                >
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 border-b border-border/60 pb-3">
                     <div>
                       <h4 className="font-bold text-base text-foreground">Alper BEYAZ</h4>
@@ -489,12 +550,14 @@ export function AboutModal({ open, onClose, theme }: AboutModalProps) {
                   </div>
                 </div>
 
-                <div className={cn(
-                  'p-4 rounded-2xl border shadow-sm',
-                  theme === 'ios' && 'bg-white/85 dark:bg-slate-900/85 border-sky-200/80 dark:border-sky-500/25 text-slate-900 dark:text-slate-100 shadow-sm backdrop-blur-md',
-                  theme === 'linear' && 'bg-[#0e0c16] border-purple-500/40 text-slate-100',
-                  theme === 'kindle' && 'bg-[#fbf5e5] dark:bg-[#2b2319] border-[#cbba92] text-[#2c2014] dark:text-[#f2ebe0]'
-                )}>
+                <div
+                  className={cn(
+                    'p-4 rounded-2xl border shadow-sm',
+                    theme === 'ios' && 'bg-white/85 dark:bg-slate-900/85 border-sky-200/80 dark:border-sky-500/25 text-slate-900 dark:text-slate-100 shadow-sm backdrop-blur-md',
+                    theme === 'linear' && 'bg-[#0e0c16] border-purple-500/40 text-slate-100',
+                    theme === 'kindle' && 'bg-[#fbf5e5] dark:bg-[#2b2319] border-[#cbba92] text-[#2c2014] dark:text-[#f2ebe0]',
+                  )}
+                >
                   <div className="flex items-center gap-2 font-bold text-foreground mb-1.5 text-xs sm:text-sm">
                     <ShieldCheck className="size-4 text-emerald-500 shrink-0" />
                     <h4>%100 Cihaz İçi Gizlilik (Yerel Bellek)</h4>

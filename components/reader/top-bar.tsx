@@ -1,8 +1,8 @@
 'use client'
 
-import { FileText, Maximize, Minimize } from 'lucide-react'
+import { FileText, Maximize, Minimize, Volume2, VolumeX } from 'lucide-react'
 import Image from 'next/image'
-import type { ReactNode, Ref } from 'react'
+import { memo, type ReactNode, type Ref } from 'react'
 import { cn } from '@/lib/utils'
 import { type ThemeId } from '@/lib/rsvp'
 import logoCam from '@/assets/logos/logo-cam.png'
@@ -21,9 +21,11 @@ type TopBarProps = {
   docTitle?: string
   isFullscreen?: boolean
   onToggleFullscreen?: () => void
+  neuroAudioEnabled?: boolean
+  onToggleNeuroAudio?: () => void
 }
 
-// odak Vektörel Reticle Logosu (media_1793567364624_c3c8ac16.jpg ve media_1793568060338_3eb1a36e.jpg referansı)
+// odak Vektörel Reticle Logosu
 export function OdakWordmarkSvg({
   mode = 'cam',
   className,
@@ -35,11 +37,6 @@ export function OdakWordmarkSvg({
   const isKagit = mode === 'kagit'
   const isKoyuZemin = mode === 'koyu-zemin'
 
-  // Renk tanımları:
-  // Neon: Elektrik cyan (#a5f3fc) ve neon kırmızı
-  // Kağıt: Sepya koyu kahverengi (#4a3520) ve tuğla bordo (#b44c43)
-  // Koyu Zemin: Tam beyaz (#ffffff) ve kırmızı (#ef4444)
-  // Cam & Açık Zemin: Koyu antrasit (#1e293b) ve kırmızı (#ef4444) (media_1793568060338_3eb1a36e.jpg referansı)
   const textColor = isNeon
     ? '#a5f3fc'
     : isKagit
@@ -89,7 +86,7 @@ export function OdakWordmarkSvg({
         className={isNeon ? 'drop-shadow-[0_0_6px_#ef4444]' : undefined}
       />
 
-      {/* 4 Köşe Vizör Parantezi (media_1793567364624_c3c8ac16.jpg geometrisi) */}
+      {/* 4 Köşe Vizör Parantezi */}
       <path
         d="M 38 13 H 25 A 12 12 0 0 0 13 25 V 27"
         stroke={bracketColor}
@@ -123,7 +120,7 @@ export function OdakWordmarkSvg({
         className={isNeon ? 'drop-shadow-[0_0_4px_#38bdf8]' : undefined}
       />
 
-      {/* Bütüncül 'odak' Logosu - Kesintisiz, doğal harf aralıklı, biçimi bozulmayan vektör */}
+      {/* Bütüncül 'odak' Logosu */}
       <text
         x="51"
         y="43.5"
@@ -150,16 +147,15 @@ export function OdakWordmarkSvg({
   )
 }
 
-// Temaya Uyum Sağlayan Özel Biçimli Mini Logo (1.5 kat büyütülmüş, tek satırlık başlık çubuğunu daraltmadan aşağı taşan rozet)
+// Temaya Uyum Sağlayan Özel Biçimli Mini Logo
 function ThemedAppLogo({ theme, className }: { theme: ThemeId; className?: string }) {
   if (theme === 'linear') {
-    // 2. NEON SİYAH: Mor Neon Elips Kapsül, Elektrik Cyan Çentikler & Neon Kırmızı Lazer
     return (
       <span
         aria-hidden="true"
         className={cn(
           'relative block h-10 w-[80px] sm:h-11 sm:w-[106px] landscape-short:h-9 landscape-short:w-[74px] shrink-0 select-none overflow-visible origin-left transition-transform duration-300',
-          className
+          className,
         )}
       >
         <span className="absolute top-0 left-0 w-[80px] h-[62px] sm:w-[106px] sm:h-[82px] landscape-short:w-[74px] landscape-short:h-[58px] drop-shadow-[0_0_16px_rgba(168,85,247,0.55)]">
@@ -177,13 +173,12 @@ function ThemedAppLogo({ theme, className }: { theme: ThemeId; className?: strin
   }
 
   if (theme === 'kindle') {
-    // 3. KAĞIT: Parşömen Yuvarlak Kare, Sağ Alt Köşe Kıvrımı, Sepya Mürekkep Baskı & Bordo Lazer
     return (
       <span
         aria-hidden="true"
         className={cn(
           'relative block h-10 w-[62px] sm:h-11 sm:w-[82px] landscape-short:h-9 landscape-short:w-[58px] shrink-0 select-none overflow-visible origin-left transition-transform duration-300',
-          className
+          className,
         )}
       >
         <span className="absolute top-0 left-0 w-[62px] h-[62px] sm:w-[82px] sm:h-[82px] landscape-short:w-[58px] landscape-short:h-[58px] drop-shadow-[0_3px_10px_rgba(0,0,0,0.14)]">
@@ -200,13 +195,12 @@ function ThemedAppLogo({ theme, className }: { theme: ThemeId; className?: strin
     )
   }
 
-  // 1. CAM (Varsayılan): Yuvarlak Saydam Cam Lens, Canlı Cyan Kırılma, Koyu Antrasit Tipografi & Kırmızı Odak
   return (
     <span
       aria-hidden="true"
       className={cn(
         'relative block h-10 w-[62px] sm:h-11 sm:w-[82px] landscape-short:h-9 landscape-short:w-[58px] shrink-0 select-none overflow-visible origin-left transition-transform duration-300',
-        className
+        className,
       )}
     >
       <span className="absolute top-0 left-0 w-[62px] h-[62px] sm:w-[82px] sm:h-[82px] landscape-short:w-[58px] landscape-short:h-[58px] drop-shadow-[0_4px_16px_rgba(56,189,248,0.4)]">
@@ -223,7 +217,7 @@ function ThemedAppLogo({ theme, className }: { theme: ThemeId; className?: strin
   )
 }
 
-export function TopBar({
+export const TopBar = memo(function TopBar({
   ref,
   theme,
   onOpenText,
@@ -233,6 +227,8 @@ export function TopBar({
   docTitle,
   isFullscreen = false,
   onToggleFullscreen,
+  neuroAudioEnabled = false,
+  onToggleNeuroAudio,
 }: TopBarProps) {
   return (
     <header
@@ -266,12 +262,49 @@ export function TopBar({
           </button>
         </div>
 
-        {/* Sağ Alan: 1. Aa Görünüm, 2. Metin Yükle, 3. Tam Ekran (En Sağda) */}
+        {/* Sağ Alan: 1. Nöro-Odak Sesi, 2. Aa Görünüm, 3. Metin Yükle, 4. Tam Ekran (En Sağda) */}
         <div className="flex items-center gap-2 md:gap-3">
-          {/* 1. Görünüm & Okuma Ayarları (Aa: Tema + Tipografi + Boyut + Chunk + Dipnot + Kalibrasyon) */}
+          {/* 1. Nöroakustik Odak Sesi (40Hz Gama + Pembe Gürültü) */}
+          {onToggleNeuroAudio && (
+            <button
+              type="button"
+              onClick={onToggleNeuroAudio}
+              aria-pressed={neuroAudioEnabled}
+              aria-label={
+                neuroAudioEnabled
+                  ? 'Nöroakustik odak sesini kapat (40Hz Gama + Pembe Gürültü — M)'
+                  : 'Nöroakustik odak sesini aç (40Hz Gama + Pembe Gürültü — M)'
+              }
+              title={
+                neuroAudioEnabled
+                  ? 'Nöroakustik Odak Sesi Açık: 40Hz Gama + Pembe Gürültü (Kapatmak için tıklayın veya M)'
+                  : 'Nöroakustik Odak Sesi Kapalı: 40Hz Gama + Pembe Gürültü (Açmak için tıklayın veya M)'
+              }
+              className={cn(
+                'ctl panel relative size-10 md:size-12 landscape-short:size-9 transition-colors cursor-pointer',
+                neuroAudioEnabled
+                  ? 'text-primary border-primary/40 bg-primary/10'
+                  : 'text-muted-foreground hover:text-foreground',
+              )}
+            >
+              {neuroAudioEnabled ? (
+                <>
+                  <Volume2 className="size-4 md:size-5" />
+                  <span
+                    aria-hidden="true"
+                    className="pointer-events-none absolute top-1.5 right-1.5 size-1.5 rounded-full bg-primary animate-pulse"
+                  />
+                </>
+              ) : (
+                <VolumeX className="size-4 md:size-5" />
+              )}
+            </button>
+          )}
+
+          {/* 2. Görünüm & Okuma Ayarları */}
           {fontControl}
 
-          {/* 2. Okuma ve İçerik Merkezi / Metin Yükle */}
+          {/* 3. Okuma ve İçerik Merkezi / Metin Yükle */}
           <button
             type="button"
             onClick={onOpenText}
@@ -282,7 +315,7 @@ export function TopBar({
             <FileText className="size-4 md:size-5" />
           </button>
 
-          {/* 3. Tam Ekran Butonu (En Sağda) */}
+          {/* 4. Tam Ekran Butonu (En Sağda) */}
           {onToggleFullscreen && (
             <button
               type="button"
@@ -302,4 +335,4 @@ export function TopBar({
       </div>
     </header>
   )
-}
+})

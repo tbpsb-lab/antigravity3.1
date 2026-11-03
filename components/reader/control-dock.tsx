@@ -1,7 +1,7 @@
 'use client'
 
 import { ChevronDown, ChevronUp } from 'lucide-react'
-import { useCallback, useEffect, useRef, useState, type CSSProperties, type Ref } from 'react'
+import { memo, useCallback, useEffect, useRef, useState, type Ref } from 'react'
 import { cn } from '@/lib/utils'
 
 export type ChapterMarker = {
@@ -22,28 +22,32 @@ type ControlDockProps = {
   onSeek: (index: number) => void
 }
 
-export function ControlDock({
+export const ControlDock = memo(function ControlDock({
   ref,
   hidden,
   index,
   total,
-  wpm,
   playing,
-  chunkSize = 1,
   chapters = [],
   onSeek,
 }: ControlDockProps) {
   const last = Math.max(0, total - 1)
-  const progress = last > 0 ? (index / last) * 100 : 0
+  const progress = last > 0 ? Math.min(100, Math.max(0, (index / last) * 100)) : 0
 
   // Açılır / Kapanır tek satırlık panel durumu
   const [isHovered, setIsHovered] = useState(false)
   const [isManuallyExpanded, setIsManuallyExpanded] = useState(false)
-  const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const touchStartYRef = useRef<number | null>(null)
   const footerRef = useRef<HTMLElement | null>(null)
 
   const isExpanded = isHovered || isManuallyExpanded
+
+  useEffect(() => {
+    return () => {
+      if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current)
+    }
+  }, [])
 
   // Okuma başladığında paneli otomatik daralt
   useEffect(() => {
@@ -53,7 +57,7 @@ export function ControlDock({
     }
   }, [playing])
 
-  // Masaüstü fare ve Apple Pencil hover desteği (Dokunmatik cihazlarda hover ile kilitlenmeyi engelle)
+  // Masaüstü fare ve Apple Pencil hover desteği
   const isTouchDevice = () => {
     if (typeof window === 'undefined') return false
     return 'ontouchstart' in window || navigator.maxTouchPoints > 0 || window.matchMedia('(pointer: coarse)').matches
@@ -73,7 +77,7 @@ export function ControlDock({
     }, 600)
   }
 
-  // Dokunmatik / tık ile açma kapama (Mobilde çift tıklamayı ve hover kilitlenmesini kesinlikle engeller)
+  // Dokunmatik / tık ile açma kapama
   const lastToggleTimeRef = useRef(0)
   const handleToggleExpand = (e?: React.SyntheticEvent) => {
     if (e) {
@@ -88,7 +92,7 @@ export function ControlDock({
     setIsManuallyExpanded((prev) => !prev)
   }
 
-  // Alt sınırdan herhangi bir yerden yukarı/aşağı kaydırma jesti
+  // Alt sınırdan yukarı/aşağı kaydırma jesti
   const handleTouchStart = (e: React.TouchEvent) => {
     if (e.touches.length === 1) {
       touchStartYRef.current = e.touches[0].clientY
@@ -99,12 +103,9 @@ export function ControlDock({
     if (touchStartYRef.current === null) return
     const deltaY = e.changedTouches[0].clientY - touchStartYRef.current
     touchStartYRef.current = null
-    // Yukarı kaydırma (10px): Aç
     if (deltaY < -10) {
       setIsManuallyExpanded(true)
-    }
-    // Aşağı kaydırma (10px): Kapat
-    else if (deltaY > 10) {
+    } else if (deltaY > 10) {
       setIsManuallyExpanded(false)
       setIsHovered(false)
     }
@@ -136,7 +137,11 @@ export function ControlDock({
   const seekFromClientX = useCallback(
     (clientX: number, snap = true) => {
       const track = trackRef.current
-      if (!track || last <= 0) return
+      if (!track || total <= 0) return
+      if (last === 0) {
+        onSeek(0)
+        return
+      }
 
       const rect = track.getBoundingClientRect()
       if (rect.width <= 0) return
@@ -149,15 +154,15 @@ export function ControlDock({
       if (snap && chapters.length > 0) {
         const closeChapter = chapters.find((ch) => Math.abs(ch.percent - targetPercent) < 2.2)
         if (closeChapter) {
-          onSeek(closeChapter.index)
+          onSeek(Math.max(0, Math.min(last, closeChapter.index)))
           return
         }
       }
 
-      const targetIdx = Math.round(clampedPct * last)
+      const targetIdx = Math.max(0, Math.min(last, Math.round(clampedPct * last)))
       onSeek(targetIdx)
     },
-    [last, chapters, onSeek],
+    [total, last, chapters, onSeek],
   )
 
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -224,7 +229,7 @@ export function ControlDock({
         hidden && 'pointer-events-none translate-y-8 opacity-0',
       )}
     >
-      {/* 1. Genişletildiğinde Çıkan Tek Satırlık Kompakt Kontrol Paneli - Okuma Penceresi Hizasına Uyumlu */}
+      {/* 1. Genişletildiğinde Çıkan Tek Satırlık Kompakt Kontrol Paneli */}
       <div
         className={cn(
           'w-full max-w-4xl lg:max-w-5xl xl:max-w-6xl px-4 sm:px-8 pb-1.5 transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]',
@@ -234,7 +239,6 @@ export function ControlDock({
         )}
       >
         <div className="panel flex h-11 sm:h-12 w-full items-center gap-3 sm:gap-4 px-3.5 sm:px-5 shadow-xl">
-          {/* Kesintisiz Pointer Tabanlı Scrubber ve YouTube Tarzı Bölüm İşaretçileri */}
           <div
             ref={trackRef}
             role="slider"
@@ -256,16 +260,13 @@ export function ControlDock({
             }}
             className="relative flex-1 h-9 flex items-center cursor-pointer touch-none select-none py-2"
           >
-            {/* Scrubber Ray Arka Planı (Track Background) */}
             <div className="relative w-full h-1.5 rounded-full bg-foreground/15 overflow-hidden">
-              {/* Aktif İlerleme Doldurma Çubuğu (Fill) */}
               <div
                 className="h-full bg-primary transition-[width] duration-75 ease-out"
                 style={{ width: `${progress}%` }}
               />
             </div>
 
-            {/* YouTube Tarzı Bölüm Başlığı Çentikleri (Dividers - Asla dokunmayı/kaydırmayı engellemez) */}
             {chapters.map((ch, idx) => (
               <div
                 key={idx}
@@ -275,13 +276,11 @@ export function ControlDock({
               />
             ))}
 
-            {/* Scrubber Tutamacı (Thumb - Yumuşak ve sürüklemede büyüme efekti) */}
             <div
               style={{ left: `${progress}%` }}
               className="pointer-events-none absolute -translate-x-1/2 size-4 sm:size-4.5 rounded-full bg-foreground border-2 border-background shadow-md z-20 transition-transform active:scale-125"
             />
 
-            {/* YouTube Tarzı Bölüm Adı Önizleme Baloncuğu (Tooltip) */}
             {hoverInfo && (
               <div
                 style={{ left: `${hoverInfo.percent}%` }}
@@ -294,7 +293,7 @@ export function ControlDock({
         </div>
       </div>
 
-      {/* 2. Büyütülmüş Minik Şeffaf Açma/Kapatma Tuşu - OKUMA PENCERESİNİN SAĞ ALT HİZASINDA */}
+      {/* 2. Minik Şeffaf Açma/Kapatma Tuşu */}
       <div className="relative flex h-7 sm:h-8 w-full max-w-4xl lg:max-w-5xl xl:max-w-6xl items-end justify-end px-4 sm:px-8 pointer-events-auto">
         <button
           type="button"
@@ -311,13 +310,12 @@ export function ControlDock({
         </button>
       </div>
 
-      {/* 3. İncecik Progress Bar Çizgisi (Her zaman en alt sınırda, bölüm kesitleriyle) */}
+      {/* 3. İncecik Progress Bar Çizgisi */}
       <div className="relative h-[2.5px] w-full bg-foreground/10 overflow-hidden shrink-0">
         <div
           className="h-full bg-primary transition-[width] duration-150 ease-out"
           style={{ width: `${progress}%` }}
         />
-        {/* İnce Çizgi Üzerindeki Bölüm Ayrım Noktaları */}
         {chapters.map((ch, idx) => (
           <div
             key={idx}
@@ -328,4 +326,4 @@ export function ControlDock({
       </div>
     </footer>
   )
-}
+})

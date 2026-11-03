@@ -1,12 +1,13 @@
 'use client'
 
 import { AlertCircle, BookOpen, Clipboard, FileText, Link2, Loader2, Sparkles, Upload, Video, X } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { SAMPLE_TEXT, tokenize } from '@/lib/rsvp'
-import { CURATED_LIBRARY, type CuratedPassage } from '@/lib/curated-library'
+import { CURATED_LIBRARY } from '@/lib/curated-library'
 import { fetchArticleFromUrl } from '@/lib/article-parser'
-import { extractYouTubeId, fetchYouTubeTranscript } from '@/lib/youtube-parser'
+import { fetchYouTubeTranscript } from '@/lib/youtube-parser'
 import { parsePdfDocument } from '@/lib/pdf-book-parser'
+import { useFocusTrap } from '@/lib/use-focus-trap'
 import { cn } from '@/lib/utils'
 
 type TextSheetProps = {
@@ -24,7 +25,6 @@ export function TextSheet({ open, initialText, onClose, onApply }: TextSheetProp
 }
 
 function TextSheetBody({ initialText, onClose, onApply }: Omit<TextSheetProps, 'open'>) {
-  // Kullanıcı tercihi: Sıralama: Metin, PDF, Site & Haber Linki, YouTube
   const [activeTab, setActiveTab] = useState<TabType>('text')
   const [draft, setDraft] = useState(initialText)
   const [url, setUrl] = useState('')
@@ -35,18 +35,22 @@ function TextSheetBody({ initialText, onClose, onApply }: Omit<TextSheetProps, '
   const [isDragOver, setIsDragOver] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
-  const count = tokenize(draft).length
+  const dialogRef = useFocusTrap<HTMLDivElement>(true)
+  const count = useMemo(() => tokenize(draft).length, [draft])
 
   // ESC ile kapatma
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !loading) onClose()
+      if (e.key === 'Escape' && !loading) {
+        e.stopPropagation()
+        onClose()
+      }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose, loading])
 
-  // Manuel Pano Yapıştırma (iPad / iOS sistem 'Yapıştır' popover'ını engellemek için otomatik değil, sadece kullanıcı butona dokunduğunda çalışır)
+  // Manuel Pano Yapıştırma
   const handlePasteFromClipboard = async () => {
     try {
       if (typeof navigator !== 'undefined' && navigator.clipboard?.readText) {
@@ -76,7 +80,7 @@ function TextSheetBody({ initialText, onClose, onApply }: Omit<TextSheetProps, '
       setStatusMessage('')
       onApply(article.text, article.title)
     } catch (err: any) {
-      setErrorMessage(err.message || 'Haber metni çekilirken bir hata oluştu.')
+      setErrorMessage(err?.message || 'Haber metni çekilirken bir hata oluştu.')
       setStatusMessage('')
     } finally {
       setLoading(false)
@@ -99,7 +103,7 @@ function TextSheetBody({ initialText, onClose, onApply }: Omit<TextSheetProps, '
       setStatusMessage('')
       onApply(yt.text, yt.title)
     } catch (err: any) {
-      setErrorMessage(err.message || 'YouTube transkripti çekilemedi.')
+      setErrorMessage(err?.message || 'YouTube transkripti çekilemedi.')
       setStatusMessage('')
     } finally {
       setLoading(false)
@@ -120,7 +124,7 @@ function TextSheetBody({ initialText, onClose, onApply }: Omit<TextSheetProps, '
       setStatusMessage('')
       onApply(book.text, book.title)
     } catch (err: any) {
-      setErrorMessage(err.message || 'PDF ayrıştırılırken bir hata oluştu.')
+      setErrorMessage(err?.message || 'PDF ayrıştırılırken bir hata oluştu.')
       setStatusMessage('')
     } finally {
       setLoading(false)
@@ -131,11 +135,13 @@ function TextSheetBody({ initialText, onClose, onApply }: Omit<TextSheetProps, '
     <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-6 landscape-short:items-center landscape-short:p-2">
       <button
         type="button"
+        tabIndex={-1}
         aria-label="Kapat"
         onClick={loading ? undefined : onClose}
         className="absolute inset-0 bg-black/50 backdrop-blur-md animate-in fade-in duration-300"
       />
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="text-sheet-title"
@@ -160,9 +166,11 @@ function TextSheetBody({ initialText, onClose, onApply }: Omit<TextSheetProps, '
         </div>
 
         {/* 5 Sekmeli Seçim Çubuğu: Metin, Hazır Seçkiler, PDF, Link, YouTube */}
-        <div className="flex items-center gap-1 overflow-x-auto rounded-xl bg-foreground/5 p-1">
+        <div role="tablist" aria-label="İçerik kaynağı" className="flex items-center gap-1 overflow-x-auto rounded-xl bg-foreground/5 p-1">
           <button
             type="button"
+            role="tab"
+            aria-selected={activeTab === 'text'}
             onClick={() => setActiveTab('text')}
             className={cn(
               'ctl h-8 flex-1 min-w-[70px] gap-1.5 rounded-lg px-2 text-xs font-medium transition-colors',
@@ -175,6 +183,8 @@ function TextSheetBody({ initialText, onClose, onApply }: Omit<TextSheetProps, '
 
           <button
             type="button"
+            role="tab"
+            aria-selected={activeTab === 'library'}
             onClick={() => setActiveTab('library')}
             className={cn(
               'ctl h-8 flex-1 min-w-[80px] gap-1.5 rounded-lg px-2 text-xs font-medium transition-colors',
@@ -187,6 +197,8 @@ function TextSheetBody({ initialText, onClose, onApply }: Omit<TextSheetProps, '
 
           <button
             type="button"
+            role="tab"
+            aria-selected={activeTab === 'pdf'}
             onClick={() => setActiveTab('pdf')}
             className={cn(
               'ctl h-8 flex-1 min-w-[65px] gap-1.5 rounded-lg px-2 text-xs font-medium transition-colors',
@@ -199,6 +211,8 @@ function TextSheetBody({ initialText, onClose, onApply }: Omit<TextSheetProps, '
 
           <button
             type="button"
+            role="tab"
+            aria-selected={activeTab === 'url'}
             onClick={() => setActiveTab('url')}
             className={cn(
               'ctl h-8 flex-1 min-w-[65px] gap-1.5 rounded-lg px-2 text-xs font-medium transition-colors',
@@ -211,6 +225,8 @@ function TextSheetBody({ initialText, onClose, onApply }: Omit<TextSheetProps, '
 
           <button
             type="button"
+            role="tab"
+            aria-selected={activeTab === 'youtube'}
             onClick={() => setActiveTab('youtube')}
             className={cn(
               'ctl h-8 flex-1 min-w-[80px] gap-1.5 rounded-lg px-2 text-xs font-medium transition-colors',
@@ -224,7 +240,11 @@ function TextSheetBody({ initialText, onClose, onApply }: Omit<TextSheetProps, '
 
         {/* Durum / İlerleme Çubuğu */}
         {statusMessage && (
-          <div className="flex items-center gap-2 rounded-xl bg-primary/10 border border-primary/20 p-2.5 text-xs text-primary font-medium animate-pulse">
+          <div
+            role="status"
+            aria-live="polite"
+            className="flex items-center gap-2 rounded-xl bg-primary/10 border border-primary/20 p-2.5 text-xs text-primary font-medium animate-pulse"
+          >
             <Loader2 className="size-3.5 animate-spin shrink-0" />
             <span>{statusMessage}</span>
           </div>
@@ -232,7 +252,11 @@ function TextSheetBody({ initialText, onClose, onApply }: Omit<TextSheetProps, '
 
         {/* Hata Bildirimi */}
         {errorMessage && (
-          <div className="flex items-start gap-2 rounded-xl bg-destructive/10 border border-destructive/20 p-2.5 text-xs text-destructive animate-in fade-in">
+          <div
+            role="alert"
+            aria-live="assertive"
+            className="flex items-start gap-2 rounded-xl bg-destructive/10 border border-destructive/20 p-2.5 text-xs text-destructive animate-in fade-in"
+          >
             <AlertCircle className="size-4 shrink-0 mt-0.5" />
             <div className="flex flex-col gap-1">
               <span className="leading-snug whitespace-pre-line">{errorMessage}</span>
@@ -252,9 +276,12 @@ function TextSheetBody({ initialText, onClose, onApply }: Omit<TextSheetProps, '
           </div>
         )}
 
-        {/* SEKME 1: METİN YAPIŞTIR (Sabit modern radius: rounded-2xl, köşelerde ASLA yazı kesilmez) */}
+        {/* SEKME 1: METİN YAPIŞTIR */}
         {activeTab === 'text' && (
           <div className="flex flex-col gap-2.5">
+            <label htmlFor="reader-text" className="sr-only">
+              Okunacak metin
+            </label>
             <textarea
               id="reader-text"
               ref={textareaRef}
@@ -300,7 +327,7 @@ function TextSheetBody({ initialText, onClose, onApply }: Omit<TextSheetProps, '
           </div>
         )}
 
-        {/* SEKME 2: HAZIR SEÇKİLER KÜTÜPHANESİ (1 Dakikalık Klasik ve Bilimsel Metinler) */}
+        {/* SEKME 2: HAZIR SEÇKİLER KÜTÜPHANESİ */}
         {activeTab === 'library' && (
           <div className="flex flex-col gap-2.5">
             <p className="text-xs text-muted-foreground">
@@ -350,7 +377,7 @@ function TextSheetBody({ initialText, onClose, onApply }: Omit<TextSheetProps, '
           </div>
         )}
 
-        {/* SEKME 2: PDF YÜKLE & OCR */}
+        {/* SEKME 3: PDF YÜKLE */}
         {activeTab === 'pdf' && (
           <div className="flex flex-col gap-2.5">
             <input
@@ -364,7 +391,8 @@ function TextSheetBody({ initialText, onClose, onApply }: Omit<TextSheetProps, '
                 }
               }}
             />
-            <div
+            <button
+              type="button"
               onClick={() => fileInputRef.current?.click()}
               onDragOver={(e) => {
                 e.preventDefault()
@@ -379,7 +407,7 @@ function TextSheetBody({ initialText, onClose, onApply }: Omit<TextSheetProps, '
                 }
               }}
               className={cn(
-                'flex flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed p-6 text-center cursor-pointer transition-colors landscape-short:p-3',
+                'flex flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed p-6 text-center cursor-pointer transition-colors landscape-short:p-3 outline-none focus-visible:ring-2 focus-visible:ring-ring',
                 isDragOver ? 'border-primary bg-primary/5' : 'border-border/80 hover:border-primary/60 hover:bg-foreground/5',
               )}
             >
@@ -392,11 +420,11 @@ function TextSheetBody({ initialText, onClose, onApply }: Omit<TextSheetProps, '
                   Satır sonu hecelemeler birleştirilir, basımevi künyesi ve kaynakça sayfaları otomatik atlanır.
                 </p>
               </div>
-            </div>
+            </button>
           </div>
         )}
 
-        {/* SEKME 3: SİTE & HABER LİNKİ */}
+        {/* SEKME 4: SİTE & HABER LİNKİ */}
         {activeTab === 'url' && (
           <form onSubmit={handleFetchArticle} className="flex flex-col gap-2.5">
             <div className="relative">
@@ -429,7 +457,7 @@ function TextSheetBody({ initialText, onClose, onApply }: Omit<TextSheetProps, '
           </form>
         )}
 
-        {/* SEKME 4: YOUTUBE TRANSKRİPT */}
+        {/* SEKME 5: YOUTUBE TRANSKRİPT */}
         {activeTab === 'youtube' && (
           <form onSubmit={handleFetchYouTube} className="flex flex-col gap-2.5">
             <div className="relative">

@@ -1,6 +1,15 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState, type CSSProperties, type PointerEvent, type TouchEvent } from 'react'
+import {
+  memo,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type PointerEvent,
+  type TouchEvent,
+} from 'react'
 import { cn } from '@/lib/utils'
 import { calculateTurkishORP, WPM_STEP, type ChunkItem } from '@/lib/rsvp'
 import { triggerHaptic } from '@/lib/haptics'
@@ -30,7 +39,7 @@ type RsvpDisplayProps = {
   onCycleChunkSize?: () => void
 }
 
-export function RsvpDisplay({
+export const RsvpDisplay = memo(function RsvpDisplay({
   word,
   chunk,
   chunkSize = 1,
@@ -38,7 +47,6 @@ export function RsvpDisplay({
   wpm,
   index = 0,
   total = 0,
-  isResting = false,
   fontFamily,
   fontScale,
   isPulsing = false,
@@ -46,7 +54,6 @@ export function RsvpDisplay({
   onPrev,
   onNext,
   onSeek,
-  onWpmChange,
   onWpmSet,
   onWpmDragEnd,
   onCycleChunkSize,
@@ -63,6 +70,12 @@ export function RsvpDisplay({
     [containerRef],
   )
 
+  // İlerleme Çubuğu Sürükleme / Scrubbing Kontrolleri (Mobil Touch + Masaüstü Mouse Drag)
+  const [isScrubbing, setIsScrubbing] = useState(false)
+  const isScrubbingRef = useRef(false)
+  const progressBarRef = useRef<HTMLDivElement | null>(null)
+  const lastScrubIndexRef = useRef<number>(-1)
+
   // 1 & 2. KURAL: Piksel Eşiği (25px) ve Kademe (25 WPM) ile Canlı Hız Kontrolü
   const touchStateRef = useRef<{
     startY: number
@@ -73,7 +86,10 @@ export function RsvpDisplay({
   } | null>(null)
 
   const handleTouchStart = (e: TouchEvent) => {
-    if (e.touches.length !== 1) return
+    if (e.touches.length !== 1 || isScrubbingRef.current) return
+    const target = e.target as HTMLElement | null
+    if (target?.closest('[role="progressbar"]')) return
+
     const touch = e.touches[0]
     lastHapticStepRef.current = 0
     touchStateRef.current = {
@@ -85,41 +101,14 @@ export function RsvpDisplay({
     }
   }
 
-  const handleTouchMove = (e: TouchEvent) => {
-    if (!touchStateRef.current || e.touches.length !== 1) return
-    const touch = e.touches[0]
-    const deltaY = touch.clientY - touchStateRef.current.startY
-    const deltaX = touch.clientX - touchStateRef.current.startX
-
-    if (!touchStateRef.current.isSwiping && Math.abs(deltaY) > 8 && Math.abs(deltaY) > Math.abs(deltaX)) {
-      touchStateRef.current.isSwiping = true
-      touchStateRef.current.hasSwiped = true
-    }
-
-    if (touchStateRef.current.isSwiping) {
-      if (e.cancelable) {
-        e.preventDefault()
-      }
-      // Dikey eksendeki her 25 piksel = 1 kademe (25 WPM)
-      const pixelDistance = -deltaY // Yukarı = pozitif
-      const steps = Math.trunc(pixelDistance / 25)
-      if (steps !== lastHapticStepRef.current) {
-        lastHapticStepRef.current = steps
-        triggerHaptic('step')
-      }
-      const targetWpm = touchStateRef.current.startWpm + steps * WPM_STEP
-      onWpmSet?.(targetWpm)
-    }
-  }
-
   // Mobil Chrome'da aşağı kaydırma (swipe down) sırasında tarayıcının pull-to-refresh
-  // yenileme animasyonunu %100 engelleyen native pasif-olmayan touchmove dinleyicisi
+  // yenileme animasyonunu %100 engelleyen tekil native pasif-olmayan touchmove dinleyicisi
   useEffect(() => {
     const el = stageNodeRef.current
     if (!el) return
 
-    const onNativeTouchMove = (e: TouchEvent) => {
-      if (!touchStateRef.current || e.touches.length !== 1) return
+    const onNativeTouchMove = (e: globalThis.TouchEvent) => {
+      if (!touchStateRef.current || e.touches.length !== 1 || isScrubbingRef.current) return
       const touch = e.touches[0]
       const deltaY = touch.clientY - touchStateRef.current.startY
       const deltaX = touch.clientX - touchStateRef.current.startX
@@ -133,7 +122,8 @@ export function RsvpDisplay({
         if (e.cancelable) {
           e.preventDefault()
         }
-        const pixelDistance = -deltaY
+        // Dikey eksendeki her 25 piksel = 1 kademe (25 WPM)
+        const pixelDistance = -deltaY // Yukarı = pozitif
         const steps = Math.trunc(pixelDistance / 25)
         if (steps !== lastHapticStepRef.current) {
           lastHapticStepRef.current = steps
@@ -176,33 +166,36 @@ export function RsvpDisplay({
 
   // Single word Turkish ORP split (Noktalamadan arındırılmış Türkçe kök odaklı ORP)
   const { leftPart, focusChar, rightPart } = calculateTurkishORP(cleanDisplayText)
-  const maxSideChars = Math.max(leftPart.length, rightPart.length, 1)
+  const maxSideChars = Math.max(Array.from(leftPart).length, Array.from(rightPart).length, 1)
 
-  // Yatay taşmayı %100 önleyen dinamik Fit-to-Width oranı
+  // Yatay taşmayı %100 önleyen dinamik Fit-to-Width oranı (Mobil + Masaüstü md: font tabanlarıyla tam uyumlu)
   let autoFitScale = 1
   const containerWidth = containerSize.width || 0
 
   if (containerWidth > 0) {
-    const padding = containerWidth < 540 ? 16 : 32
+    const isDesktopStage = containerWidth >= 680
+    const padding = containerWidth < 540 ? 16 : 36
     const availableHalfWidth = Math.max(80, containerWidth / 2 - padding)
     const availableFullWidth = Math.max(160, containerWidth - padding * 2)
 
+    const estimatedBasePx = isDesktopStage
+      ? Math.min(72, Math.max(38.4, containerWidth * 0.068))
+      : Math.min(56, Math.max(28, containerWidth * 0.052))
+
+    const currentPx = estimatedBasePx * fontScale
+
     if (isSingleWordMode) {
-      // Tek kelime modu: Merkeze göre kanat hesabı (monospace 0.60ch çarpanı)
-      const estimatedBasePx = Math.min(56, Math.max(26, containerWidth * 0.052))
-      const currentPx = estimatedBasePx * fontScale
-      const requiredHalfWidth = maxSideChars * currentPx * 0.6
+      // Tek kelime modu: Merkeze göre kanat hesabı (geniş karakterler için 0.66ch güvenli çarpan)
+      const requiredHalfWidth = maxSideChars * currentPx * 0.66
       if (requiredHalfWidth > availableHalfWidth) {
-        autoFitScale = Math.min(1, Math.max(0.38, availableHalfWidth / requiredHalfWidth))
+        autoFitScale = Math.min(1, Math.max(0.28, availableHalfWidth / requiredHalfWidth))
       }
     } else {
       // Çoklu kelime modu: Tüm öbeğin genişliği hesabı
-      const estimatedBasePx = Math.min(56, Math.max(26, containerWidth * 0.052))
-      const currentPx = estimatedBasePx * fontScale
-      const totalChars = cleanDisplayText.length
-      const requiredFullWidth = totalChars * currentPx * 0.52
+      const totalChars = Array.from(cleanDisplayText).length
+      const requiredFullWidth = totalChars * currentPx * 0.58
       if (requiredFullWidth > availableFullWidth) {
-        autoFitScale = Math.min(1, Math.max(0.35, availableFullWidth / requiredFullWidth))
+        autoFitScale = Math.min(1, Math.max(0.28, availableFullWidth / requiredFullWidth))
       }
     }
   }
@@ -217,20 +210,18 @@ export function RsvpDisplay({
     fontVariantLigatures: 'none',
   } as CSSProperties
 
-  // İlerleme Çubuğu Sürükleme / Scrubbing Kontrolleri (Mobil Touch + Masaüstü Mouse Drag)
-  const [isScrubbing, setIsScrubbing] = useState(false)
-  const isScrubbingRef = useRef(false)
-  const progressBarRef = useRef<HTMLDivElement | null>(null)
-  const lastScrubIndexRef = useRef<number>(-1)
-
   const seekFromPointerEvent = useCallback(
     (clientX: number) => {
       const el = progressBarRef.current
-      if (!el || !onSeek || total <= 1) return
+      if (!el || !onSeek || total <= 0) return
+      if (total === 1) {
+        onSeek(0)
+        return
+      }
       const rect = el.getBoundingClientRect()
       if (rect.width <= 0) return
       const pct = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width))
-      const targetIdx = Math.round(pct * (total - 1))
+      const targetIdx = Math.max(0, Math.min(total - 1, Math.round(pct * (total - 1))))
       if (targetIdx !== lastScrubIndexRef.current) {
         lastScrubIndexRef.current = targetIdx
         onSeek(targetIdx)
@@ -268,13 +259,16 @@ export function RsvpDisplay({
     triggerHaptic('jump')
   }
 
+  const progressPct =
+    total > 1 ? Math.min(100, Math.max(0, (index / (total - 1)) * 100)) : total === 1 ? 100 : 0
+
   return (
     <section aria-label="Okuma penceresi" className="relative w-full">
       <div
         ref={setStageRef}
         onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
+        onTouchCancel={handleTouchEnd}
         className={cn(
           'rsvp-stage group relative flex flex-col justify-center min-h-[96px] sm:min-h-[110px] md:min-h-[140px] w-full overflow-hidden px-4 py-3.5 text-left outline-none transition-all duration-500 sm:px-8 sm:py-5 md:px-10 md:py-6 [@media(max-height:640px)]:py-2.5 landscape-short:py-1.5 select-none touch-none overscroll-none',
           isPulsing && 'pulse-jump',
@@ -322,46 +316,46 @@ export function RsvpDisplay({
         {/* İlk Açılış İçin Yarı Saydam Dokunma Rehberi (Tap Guide Overlay) */}
         <TapGuide />
 
-        {/* Dipnot Rozeti (Bölüm Başlığı rozeti yerine başlık tipografik vurgu ile sunulur) */}
+        {/* Dipnot Rozeti */}
         {isFootnote && (
           <div className="pointer-events-none absolute left-1/2 top-3.5 -translate-x-1/2 text-center">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/15 px-2.5 py-0.5 font-mono text-[11px] font-medium text-amber-500 dark:text-amber-400">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/15 px-2.5 py-0.5 font-mono text-[11px] font-medium text-amber-700 dark:text-amber-400">
               Dipnot
             </span>
           </div>
         )}
 
-        {/* RSVP Göstergesi */}
-        <span className="@container block w-full">
+        {/* RSVP Göstergesi (Aktif okuma sırasında ekran okuyuculardan izole edilir) */}
+        <span aria-hidden={playing} className="@container block w-full">
           {isSingleWordMode ? (
             /* 1. TEK KELİME MODU: Sabit Odak Noktası (Fixed Reticle) ve Kırmızı ORP Harfi */
             <span
               aria-live="off"
               style={wordStyle}
-              className="reader-word relative grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-baseline whitespace-pre py-[0.08em] leading-[1.3] transition-[font-size] duration-100 ease-out [--word-base:clamp(1.75rem,5.2cqi,3.5rem)] md:[--word-base:clamp(2.4rem,6.8cqi,4.5rem)] landscape-short:[--word-base:clamp(1.4rem,8vh,2.5rem)] select-none tracking-normal"
+              className="reader-word relative grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-baseline whitespace-pre py-[0.08em] leading-[1.3] [--word-base:clamp(1.75rem,5.2cqi,3.5rem)] md:[--word-base:clamp(2.4rem,6.8cqi,4.5rem)] landscape-short:[--word-base:clamp(1.4rem,8vh,2.5rem)] select-none tracking-normal"
             >
               {/* Sol parça: Sağa yaslı */}
               <span className="min-w-0 text-right overflow-visible">
                 {leftPart}
               </span>
 
-              {/* Sabit Merkez Hücre: Kırmızı (#ef4444) Odak Harfi ve Üst/Alt Dikey Kılavuz Çizgileri (Reticle Ticks) */}
+              {/* Sabit Merkez Hücre: Tema Uyumlu (var(--pivot)) Odak Harfi ve Üst/Alt Dikey Kılavuz Çizgileri */}
               <span className="relative inline-block shrink-0 text-center">
                 {/* Üst Dikey Kılavuz Çizgisi (Top Reticle Tick) */}
                 <span
                   aria-hidden="true"
-                  className="pointer-events-none absolute -top-[0.52em] left-1/2 h-[0.38em] w-[2px] -translate-x-1/2 rounded-full bg-[#ef4444]"
+                  className="pointer-events-none absolute -top-[0.52em] left-1/2 h-[0.38em] w-[2px] -translate-x-1/2 rounded-full bg-pivot"
                 />
 
-                {/* Kırmızı Odak Harfi: Harf genişliğine tam oturan, taşma ve üst üste binmeyi önleyen doğal boyutlandırma */}
-                <span className="text-[#ef4444] font-bold text-center inline-block drop-shadow-[0_0_6px_rgba(239,68,68,0.35)]">
+                {/* Odak Harfi */}
+                <span className="text-pivot font-bold text-center inline-block drop-shadow-[0_0_6px_rgba(239,68,68,0.28)]">
                   {focusChar || '\u00A0'}
                 </span>
 
                 {/* Alt Dikey Kılavuz Çizgisi (Bottom Reticle Tick) */}
                 <span
                   aria-hidden="true"
-                  className="pointer-events-none absolute -bottom-[0.52em] left-1/2 h-[0.38em] w-[2px] -translate-x-1/2 rounded-full bg-[#ef4444]"
+                  className="pointer-events-none absolute -bottom-[0.52em] left-1/2 h-[0.38em] w-[2px] -translate-x-1/2 rounded-full bg-pivot"
                 />
               </span>
 
@@ -376,8 +370,8 @@ export function RsvpDisplay({
               aria-live="off"
               style={wordStyle}
               className={cn(
-                'reader-word relative flex w-full items-center justify-center py-[0.08em] text-center transition-[font-size] duration-100 ease-out select-none max-w-full flex-nowrap gap-x-[0.3em] items-baseline leading-[1.3] [--word-base:clamp(1.75rem,5.2cqi,3.5rem)] md:[--word-base:clamp(2.4rem,6.8cqi,4.5rem)] landscape-short:[--word-base:clamp(1.4rem,8vh,2.5rem)]',
-                isFootnote && 'italic text-amber-600/90 dark:text-amber-300/90 flex-wrap text-balance',
+                'reader-word relative flex w-full items-center justify-center py-[0.08em] text-center select-none max-w-full flex-nowrap gap-x-[0.3em] items-baseline leading-[1.3] [--word-base:clamp(1.75rem,5.2cqi,3.5rem)] md:[--word-base:clamp(2.4rem,6.8cqi,4.5rem)] landscape-short:[--word-base:clamp(1.4rem,8vh,2.5rem)]',
+                isFootnote && 'italic text-amber-800 dark:text-amber-300 flex-wrap text-balance',
               )}
             >
               {displayWords.map((w, idx) => (
@@ -445,7 +439,7 @@ export function RsvpDisplay({
               <div
                 className="h-full bg-primary/85 transition-[width] duration-75 ease-out rounded-full"
                 style={{
-                  width: `${Math.min(100, Math.max(0, ((index + 1) / total) * 100))}%`,
+                  width: `${progressPct}%`,
                 }}
               />
             </div>
@@ -455,7 +449,7 @@ export function RsvpDisplay({
               <div
                 className="pointer-events-none absolute bottom-0 -translate-x-1/2 size-3 sm:size-3.5 rounded-full bg-primary shadow-[0_0_10px_rgba(59,130,246,0.7)] border-2 border-background transition-transform"
                 style={{
-                  left: `${Math.min(100, Math.max(0, ((index + 1) / total) * 100))}%`,
+                  left: `${progressPct}%`,
                 }}
               />
             )}
@@ -464,4 +458,4 @@ export function RsvpDisplay({
       </div>
     </section>
   )
-}
+})

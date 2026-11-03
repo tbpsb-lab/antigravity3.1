@@ -86,7 +86,10 @@ export function saveReadingProgress(
     // Son okunan doküman indeks listesini güncelle (en fazla 50 doküman sakla)
     const listKey = 'hizlioku_docs_index'
     const rawList = localStorage.getItem(listKey)
-    let list: string[] = rawList ? JSON.parse(rawList) : []
+    const parsedList = rawList ? JSON.parse(rawList) : []
+    let list: string[] = Array.isArray(parsedList)
+      ? parsedList.filter((k): k is string => typeof k === 'string')
+      : []
     list = list.filter((k) => k !== docKey)
     list.unshift(docKey)
     if (list.length > MAX_SAVED_DOCS) {
@@ -121,7 +124,15 @@ export function loadReadingProgress(title: string, text: string): SavedProgress 
     const { docKey, contentKey } = getDocumentFingerprints(title, text)
     const raw = localStorage.getItem(STORAGE_PREFIX + docKey) || localStorage.getItem(STORAGE_PREFIX + contentKey)
     if (!raw) return null
-    return JSON.parse(raw) as SavedProgress
+    const parsed = JSON.parse(raw)
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return null
+    const index = typeof parsed.index === 'number' && Number.isFinite(parsed.index) ? Math.max(0, Math.floor(parsed.index)) : 0
+    const wordIndex = typeof parsed.wordIndex === 'number' && Number.isFinite(parsed.wordIndex) ? Math.max(0, Math.floor(parsed.wordIndex)) : 0
+    return {
+      ...parsed,
+      index,
+      wordIndex,
+    } as SavedProgress
   } catch {
     return null
   }
@@ -133,7 +144,12 @@ export function loadLastActiveDoc(): { title: string; text: string } | null {
   try {
     const raw = localStorage.getItem(LAST_DOC_KEY)
     if (!raw) return null
-    return JSON.parse(raw) as { title: string; text: string }
+    const parsed = JSON.parse(raw)
+    if (!parsed || typeof parsed !== 'object' || typeof parsed.text !== 'string') return null
+    return {
+      title: typeof parsed.title === 'string' ? parsed.title : 'odak',
+      text: parsed.text,
+    }
   } catch {
     return null
   }

@@ -8,9 +8,18 @@
 
 import turkishWordsData from './turkish_words.json'
 
+// Türkçe'ye özgü güvenli küçük harf dönüşümü (İ -> i, I -> ı ve combining dot \u0307 temizliği)
+export function toTurkishLower(str: string): string {
+  return str
+    .replace(/İ/g, 'i')
+    .replace(/I/g, 'ı')
+    .toLowerCase()
+    .replace(/\u0307/g, '')
+}
+
 // 1. ADIM: Sözlük Kurulumu - O(1) arama için JavaScript Set nesnesi
 export const turkishDictSet: Set<string> = new Set(
-  (turkishWordsData as string[]).map((w) => w.toLowerCase()),
+  (turkishWordsData as string[]).map((w) => toTurkishLower(w)),
 )
 
 const KALIN_VOWELS = new Set(['a', 'ı', 'o', 'u', 'A', 'I', 'O', 'U'])
@@ -131,7 +140,7 @@ export function checkStemInDict(stem: string): boolean {
  */
 export function isValidTurkishWord(word: string): boolean {
   if (!word || word.length < 2) return false
-  const w = word.toLowerCase()
+  const w = toTurkishLower(word)
 
   // a) Doğrudan sözlükte var mı?
   if (turkishDictSet.has(w)) return true
@@ -182,11 +191,12 @@ export function splitWithDictionary(word: string): string[] {
   const trailMatch = word.match(/[^\wçğıöşüÇĞİÖŞÜ0-9]+$/)
   const trailPunct = trailMatch ? trailMatch[0] : ''
 
-  const core = word.slice(leadPunct.length, word.length - trailPunct.length)
+  const rawCore = word.slice(leadPunct.length, word.length - trailPunct.length)
+  const core = rawCore.normalize('NFC').replace(/\u0307/g, '')
   if (core.length < 10) return [word]
   if (/[\d\-]/.test(core)) return [word]
 
-  const lowerCore = core.toLowerCase()
+  const lowerCore = toTurkishLower(core)
 
   // 1. Kural: Kelime zaten tek başına geçerli bir Türkçe kelimeyse ASLA BÖLME!
   if (isValidTurkishWord(lowerCore)) {

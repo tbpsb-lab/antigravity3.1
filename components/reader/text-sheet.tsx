@@ -78,24 +78,37 @@ export const TextSheet = memo(function TextSheet({
   }, [])
 
   useEffect(() => {
+    // Ana okuma penceresinin (TapGuide) tanıtımı bittikten sonra içerik merkezinin tanıtımını aç
+    const handleTapGuideCompleted = () => {
+      try {
+        const hasSeen = localStorage.getItem('hasSeenTapGuide')
+        if (!hasSeen && !calloutDismissedRef.current && !open) {
+          setShowCallout(true)
+          if (calloutTimerRef.current) clearTimeout(calloutTimerRef.current)
+          // Okuma ve içerik merkezi tanıtımında birazcık daha fazla zaman dur (6.5 sn)
+          calloutTimerRef.current = setTimeout(() => {
+            dismissCallout()
+          }, 6500)
+        }
+      } catch {}
+    }
+
+    // Güvenlik yedek zamanlayıcısı: TapGuide dinleyicisi kaçırılırsa 5 sn sonra devreye girer
+    let fallbackTimer: ReturnType<typeof setTimeout> | null = null
     try {
       const hasSeen = localStorage.getItem('hasSeenTapGuide')
       if (!hasSeen) {
-        // Okuma jestleri merkezde başladıktan 1.5 sn sonra butonun dibinde açılır
-        const showTimer = setTimeout(() => {
-          if (!calloutDismissedRef.current && !open) {
-            setShowCallout(true)
-          }
-        }, 1500)
-
-        // 7.5 sn sonra otomatik kapanır
-        calloutTimerRef.current = setTimeout(() => {
-          dismissCallout()
-        }, 7500)
-
-        return () => clearTimeout(showTimer)
+        fallbackTimer = setTimeout(() => {
+          handleTapGuideCompleted()
+        }, 5000)
       }
     } catch {}
+
+    window.addEventListener('tap-guide-completed', handleTapGuideCompleted)
+    return () => {
+      window.removeEventListener('tap-guide-completed', handleTapGuideCompleted)
+      if (fallbackTimer) clearTimeout(fallbackTimer)
+    }
   }, [open, dismissCallout])
 
   // Eğer kullanıcı butona tıklayıp paneli açarsa callout'u derhal kapat
@@ -290,63 +303,46 @@ export const TextSheet = memo(function TextSheet({
         <FileText className="size-4 md:size-5" />
       </button>
 
-      {/* 1.5. İlk Ziyaret İçin Okuma ve İçerik Merkezi Şeffaf Yönlendirme Penceresi */}
+      {/* 1.5. İlk Ziyaret İçin Okuma ve İçerik Merkezi Cam Tanıtım Penceresi */}
       {showCallout && !open && (
         <div
           ref={calloutRef}
           role="tooltip"
-          aria-label="Okuma ve İçerik Merkezi Rehberi"
+          aria-label="Okuma ve İçerik Merkezi Tanıtımı"
           onClick={(e) => {
             e.stopPropagation()
             dismissCallout()
             onToggle?.()
           }}
           className={cn(
-            'absolute top-full mt-2.5 z-50 select-none cursor-pointer transition-all duration-300 ease-out',
+            'panel absolute top-full mt-2.5 z-50 select-none cursor-pointer transition-all duration-300 ease-out',
             // Mobil ve Masaüstü Konumlandırma: Butonun tam altına hizalı
-            'right-[-3.5rem] sm:right-0 w-[270px] sm:w-[290px]',
-            'p-3 sm:p-3.5 rounded-2xl sm:rounded-3xl shadow-2xl',
-            // Şeffaf / Buzlu Cam Tasarımı (Tüm Temalarla Uyumlu)
-            'bg-background/85 dark:bg-slate-900/90 backdrop-blur-md border border-primary/45 text-foreground',
+            'right-[-3.5rem] sm:right-0 w-[240px] sm:w-[260px]',
+            'p-2.5 sm:p-3 rounded-2xl shadow-xl',
+            // Cam Tema İle Birebir Uyumlu Buzlu Cam Fonu
+            'bg-[var(--panel)] border border-[var(--panel-border)] backdrop-blur-[var(--panel-blur)]',
+            'text-foreground',
             'animate-in fade-in zoom-in-95 duration-300',
             calloutFading ? 'opacity-0 scale-95 pointer-events-none' : 'opacity-100 scale-100 pointer-events-auto',
           )}
         >
-          {/* Butonu İşaret Eden Yukarı Doğru Şeffaf Ok (Arrow Pointer) */}
+          {/* Butonu İşaret Eden Yukarı Doğru Cam Ok (Arrow Pointer) */}
           <div
-            className="absolute -top-1.5 right-[4.75rem] sm:right-5 size-3 rotate-45 border-t border-l border-primary/45 bg-background/90 dark:bg-slate-900/95"
+            className="absolute -top-1.5 right-[4.75rem] sm:right-5 size-3 rotate-45 border-t border-l border-[var(--panel-border)] bg-[var(--panel)] shadow-2xs backdrop-blur-[var(--panel-blur)]"
             aria-hidden="true"
           />
 
-          <div className="relative z-10">
-            <div className="flex items-start justify-between gap-1.5">
-              <div className="flex items-center gap-1.5 text-primary text-[11px] sm:text-xs font-bold tracking-tight">
-                <Sparkles className="size-3.5 text-primary animate-pulse" />
-                <span>Okuma ve İçerik Merkezi</span>
-              </div>
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  dismissCallout()
-                }}
-                className="size-5 -mr-1 -mt-1 flex items-center justify-center rounded-full text-muted-foreground hover:text-foreground hover:bg-foreground/10 transition-colors"
-                aria-label="Kapat"
-                title="Kapat"
-              >
-                <X className="size-3" />
-              </button>
+          <div className="relative z-10 flex items-start gap-2.5">
+            <div className="size-7 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
+              <FileText className="size-4 text-primary" />
             </div>
-
-            <p className="mt-1 text-[11px] sm:text-xs text-foreground/85 leading-relaxed font-normal">
-              Kendi metinlerinizi yapıştırabilir, <strong>PDF</strong> yükleyebilir veya <strong>Web & YouTube</strong> linklerini aktarabilirsiniz.
-            </p>
-
-            <div className="mt-2 flex items-center justify-between text-[10px] text-muted-foreground font-mono">
-              <span className="text-primary font-semibold hover:underline flex items-center gap-1">
-                Açmak için dokunun →
-              </span>
-              <span>Kapat (Tık)</span>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-semibold text-foreground leading-tight">
+                Okuma & İçerik Merkezi
+              </p>
+              <p className="text-[11px] text-muted-foreground mt-1 leading-snug">
+                Metin, PDF veya linklerinizi buradan yükleyebilirsiniz.
+              </p>
             </div>
           </div>
         </div>

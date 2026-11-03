@@ -45,15 +45,24 @@ export function TapGuide({ onDismiss }: TapGuideProps) {
       if (!hasSeen) {
         setVisible(true)
 
-        // Adım 1: Oynat / Durdur (2.4 sn sonra)
+        // Adım 1: Oynat / Durdur (2.2 sn sonra)
         stepTimer1Ref.current = setTimeout(() => {
           setGuideStep(1)
-        }, 2400)
+        }, 2200)
 
-        // Otomatik Kapanış (5.4 sn sonra)
+        // Merkez Kılavuzunun Doğal Bitişi (4.6 sn sonra)
+        // Ana okuma tanıtımı bittiğinde içerik merkezi tanıtımını tetikle
         timerRef.current = setTimeout(() => {
-          dismiss()
-        }, 5400)
+          if (!isDismissingRef.current) {
+            isDismissingRef.current = true
+            setFading(true)
+            window.dispatchEvent(new Event('tap-guide-completed'))
+            fadeTimerRef.current = setTimeout(() => {
+              setVisible(false)
+              onDismiss?.()
+            }, 400)
+          }
+        }, 4600)
       }
     } catch {}
 

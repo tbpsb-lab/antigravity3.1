@@ -245,7 +245,10 @@ export const TopBar = memo(function TopBar({
         <div className="flex min-w-0 items-center gap-2.5 md:gap-3.5 overflow-visible">
           <button
             type="button"
-            onClick={onOpenAbout}
+            onClick={(e) => {
+              ;(e.currentTarget as HTMLButtonElement)?.blur()
+              onOpenAbout()
+            }}
             className="flex min-w-0 items-center gap-2.5 md:gap-3.5 text-left group cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-2xl p-1 -m-1 transition-all active:scale-95 overflow-visible"
             title="odak Hakkında, RSVP Mantığı ve Kılavuz"
             aria-label="odak Hakkında, RSVP Mantığı ve Kılavuz"
@@ -268,7 +271,13 @@ export const TopBar = memo(function TopBar({
           {onToggleNeuroAudio && (
             <button
               type="button"
-              onClick={onToggleNeuroAudio}
+              onClick={(e) => {
+                ;(e.currentTarget as HTMLButtonElement)?.blur()
+                onToggleNeuroAudio()
+              }}
+              onPointerUp={(e) => {
+                ;(e.currentTarget as HTMLButtonElement)?.blur()
+              }}
               aria-pressed={neuroAudioEnabled}
               aria-label={
                 neuroAudioEnabled
@@ -307,7 +316,10 @@ export const TopBar = memo(function TopBar({
           {/* 3. Okuma ve İçerik Merkezi / Metin Yükle */}
           <button
             type="button"
-            onClick={onOpenText}
+            onClick={(e) => {
+              ;(e.currentTarget as HTMLButtonElement)?.blur()
+              onOpenText()
+            }}
             className="ctl panel size-10 md:size-12 landscape-short:size-9 text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
             aria-label="Okuma ve İçerik Merkezi (Metin Yükle)"
             title="Okuma ve İçerik Merkezi (Metin Yükle)"
@@ -319,7 +331,10 @@ export const TopBar = memo(function TopBar({
           {onToggleFullscreen && (
             <button
               type="button"
-              onClick={onToggleFullscreen}
+              onClick={(e) => {
+                ;(e.currentTarget as HTMLButtonElement)?.blur()
+                onToggleFullscreen()
+              }}
               className="ctl panel size-10 md:size-12 landscape-short:size-9 text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
               aria-label={isFullscreen ? 'Tam ekrandan çık (F)' : 'Tam ekran modu (F)'}
               title={isFullscreen ? 'Tam ekrandan çık (F)' : 'Tam ekran modu (F)'}

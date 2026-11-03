@@ -5,6 +5,7 @@ import {
   Compass,
   Eye,
   FileText,
+  Headphones,
   Keyboard,
   Layers,
   Maximize,
@@ -14,6 +15,8 @@ import {
   Smartphone,
   Sparkles,
   Touchpad,
+  Volume2,
+  Waves,
   X,
   Zap,
 } from 'lucide-react'
@@ -271,6 +274,31 @@ export function AboutModal({ open, onClose, theme }: AboutModalProps) {
                     Pek çok okur, okurken kelimeleri zihninde fısıldar. Bu alışkanlık okuma hızınızı konuşma sınırına (dakikada ~200-250 kelime) kilitler. RSVP ile hızınızı kademeli olarak 400-600 WPM seviyesine çıkardığınızda, iç ses susar; zihniniz doğrudan görsel kavramaya geçer ve düşünce hızınızla okuma hızınız eşitlenir.
                   </p>
                 </div>
+
+                <div
+                  className={cn(
+                    'p-4 sm:p-5 rounded-2xl border shadow-sm',
+                    theme === 'ios' && 'bg-white/85 dark:bg-slate-900/85 border-sky-200/80 dark:border-sky-500/25 text-slate-900 dark:text-slate-100 shadow-sm backdrop-blur-md',
+                    theme === 'linear' && 'bg-[#0e0c16] border-purple-500/40 text-slate-100',
+                    theme === 'kindle' && 'bg-[#fbf5e5] dark:bg-[#2b2319] border-[#cbba92] text-[#2c2014] dark:text-[#f2ebe0]',
+                  )}
+                >
+                  <div className="flex items-center gap-2.5 font-bold mb-2 text-base text-foreground">
+                    <Waves className="size-4.5 text-indigo-500 shrink-0" />
+                    <h4>Nöroakustik Çapa: Pembe Gürültü (1/f) & 40 Hz Gama Vuruşları</h4>
+                  </div>
+                  <p className="text-xs sm:text-sm leading-relaxed text-foreground/90 font-normal">
+                    Gözler hızlandıkça zihnin çevresel seslerle dikkatinin dağılmasını önlemek için sisteme <strong>çift katmanlı akustik rezonans motoru</strong> entegre edilmiştir:
+                  </p>
+                  <ul className="mt-2 text-xs sm:text-sm space-y-1.5 list-disc pl-4 text-foreground/90 font-normal">
+                    <li>
+                      <strong>Pembe Gürültü (1/f Spektrumu):</strong> Beyaz gürültünün aksine her oktavda eşit enerji taşır (yağmur ve okyanus dalgası frekansı). Beyin korteksindeki akustik ani değişimleri absorbe eder ve bilişsel yorgunluğu azaltır. Hem hoparlörde hem kulaklıkta etkilidir.
+                    </li>
+                    <li>
+                      <strong>40 Hz Gama Binaural Vuruşları (Stereo Kulaklık Gerektirir):</strong> Sol kulağa 200 Hz, sağ kulağa 240 Hz saf sinüs dalgası iletilir. Beynin beyin sapındaki <em>superior olivary</em> çekirdeği aradaki 40 Hz&apos;lik gama farkını birleştirerek nöral senkronizasyon (odaklanma ve yüksek kavrama hali) oluşturur.
+                    </li>
+                  </ul>
+                </div>
               </div>
             </div>
 
@@ -292,28 +320,11 @@ export function AboutModal({ open, onClose, theme }: AboutModalProps) {
                     )}
                   >
                     <h4 className="font-bold text-foreground flex items-center gap-2 mb-1.5 text-sm sm:text-base">
-                      <Bookmark className="size-4 text-amber-500 shrink-0" />
-                      Bölüm & Başlık Algılama
+                      <Volume2 className="size-4 text-indigo-500 shrink-0" />
+                      Nöroakustik Ses Motoru (M Tuşu)
                     </h4>
                     <p className="text-xs leading-relaxed text-foreground/85">
-                      PDF, EPUB veya metinlerdeki tüm bölüm başlıklarını, Roma rakamlarını ve hiyerarşik başlıkları akıllı regex motoruyla otomatik tespit eder.
-                    </p>
-                  </div>
-
-                  <div
-                    className={cn(
-                      'p-4 rounded-2xl border shadow-sm',
-                      theme === 'ios' && 'bg-white/85 dark:bg-slate-900/85 border-sky-200/80 dark:border-sky-500/25 text-slate-900 dark:text-slate-100 shadow-sm backdrop-blur-md',
-                      theme === 'linear' && 'bg-[#0e0c16] border-purple-500/40 text-slate-100',
-                      theme === 'kindle' && 'bg-[#fbf5e5] dark:bg-[#2b2319] border-[#cbba92] text-[#2c2014] dark:text-[#f2ebe0]',
-                    )}
-                  >
-                    <h4 className="font-bold text-foreground flex items-center gap-2 mb-1.5 text-sm sm:text-base">
-                      <Compass className="size-4 text-sky-500 shrink-0" />
-                      İlerleme Çubuğunda Başlık İmleri
-                    </h4>
-                    <p className="text-xs leading-relaxed text-foreground/85">
-                      Alt ilerleme çubuğunda (scrubber) her bölümün konumunda özel dikey imler bulunur. Tıklayarak veya <kbd className="px-1 py-0.5 rounded bg-muted text-[10px]">Shift+←/→</kbd> ile bölümler arasında sıçrayabilirsiniz.
+                      Web Audio API ile harici dosya indirmeden saf algoritmik <strong>Pembe Gürültü (1/f)</strong> ve <strong>40 Hz Gama Vuruşları</strong> (Sol 200Hz, Sağ 240Hz) sentezler. Çevresel gürültüyü maskeler, derin odaklanma sağlar.
                     </p>
                   </div>
 
@@ -330,7 +341,41 @@ export function AboutModal({ open, onClose, theme }: AboutModalProps) {
                       Akıllı Cümle Başı & Context Peek
                     </h4>
                     <p className="text-xs leading-relaxed text-foreground/85">
-                      Duraklatıldığında okunan cümlenin bağlamını (peek) sunar; geri sarma tuşuna basıldığında kelime kelime değil, akıllıca doğrudan cümlenin başına döner.
+                      Duraklatıldığında okunan cümlenin 3 satırlı bağlamını (peek) sunar; geri sarma tuşuna (<kbd className="px-1 py-0.5 rounded bg-muted text-[10px]">←</kbd>) basıldığında kelime kelime değil, doğrudan cümlenin başına zıplar ve hafif bir nabızla parlar.
+                    </p>
+                  </div>
+
+                  <div
+                    className={cn(
+                      'p-4 rounded-2xl border shadow-sm',
+                      theme === 'ios' && 'bg-white/85 dark:bg-slate-900/85 border-sky-200/80 dark:border-sky-500/25 text-slate-900 dark:text-slate-100 shadow-sm backdrop-blur-md',
+                      theme === 'linear' && 'bg-[#0e0c16] border-purple-500/40 text-slate-100',
+                      theme === 'kindle' && 'bg-[#fbf5e5] dark:bg-[#2b2319] border-[#cbba92] text-[#2c2014] dark:text-[#f2ebe0]',
+                    )}
+                  >
+                    <h4 className="font-bold text-foreground flex items-center gap-2 mb-1.5 text-sm sm:text-base">
+                      <Zap className="size-4 text-amber-500 shrink-0" />
+                      Sapma Telafili RSVP Zamanlayıcısı
+                    </h4>
+                    <p className="text-xs leading-relaxed text-foreground/85">
+                      Tarayıcı gecikmelerini (timer drift) milisaniye hassasiyetiyle telafi eder. İlk 5 kelimede %60&apos;tan %100 hıza <strong>yumuşak kalkış (ramp-up)</strong> yapar; her 500 kelimede bir cümle sonunda 0.5 sn dinlenme aralığı verir.
+                    </p>
+                  </div>
+
+                  <div
+                    className={cn(
+                      'p-4 rounded-2xl border shadow-sm',
+                      theme === 'ios' && 'bg-white/85 dark:bg-slate-900/85 border-sky-200/80 dark:border-sky-500/25 text-slate-900 dark:text-slate-100 shadow-sm backdrop-blur-md',
+                      theme === 'linear' && 'bg-[#0e0c16] border-purple-500/40 text-slate-100',
+                      theme === 'kindle' && 'bg-[#fbf5e5] dark:bg-[#2b2319] border-[#cbba92] text-[#2c2014] dark:text-[#f2ebe0]',
+                    )}
+                  >
+                    <h4 className="font-bold text-foreground flex items-center gap-2 mb-1.5 text-sm sm:text-base">
+                      <Bookmark className="size-4 text-amber-500 shrink-0" />
+                      Bölüm & Başlık Algılama
+                    </h4>
+                    <p className="text-xs leading-relaxed text-foreground/85">
+                      PDF, EPUB veya metinlerdeki tüm bölüm başlıklarını, Roma rakamlarını ve hiyerarşik başlıkları otomatik tespit eder; alt çubukta özel imlerle gösterir.
                     </p>
                   </div>
 
@@ -364,24 +409,7 @@ export function AboutModal({ open, onClose, theme }: AboutModalProps) {
                       Çift Yönlü 25 WPM Hassas Scroll
                     </h4>
                     <p className="text-xs leading-relaxed text-foreground/85">
-                      Farenin tekerleğiyle gerek masaüstü modunda gerekse okuma akışı devam ederken ritmi hiç bozmadan 25&apos;er kelimelik hassas hız kontrolü.
-                    </p>
-                  </div>
-
-                  <div
-                    className={cn(
-                      'p-4 rounded-2xl border shadow-sm',
-                      theme === 'ios' && 'bg-white/85 dark:bg-slate-900/85 border-sky-200/80 dark:border-sky-500/25 text-slate-900 dark:text-slate-100 shadow-sm backdrop-blur-md',
-                      theme === 'linear' && 'bg-[#0e0c16] border-purple-500/40 text-slate-100',
-                      theme === 'kindle' && 'bg-[#fbf5e5] dark:bg-[#2b2319] border-[#cbba92] text-[#2c2014] dark:text-[#f2ebe0]',
-                    )}
-                  >
-                    <h4 className="font-bold text-foreground flex items-center gap-2 mb-1.5 text-sm sm:text-base">
-                      <Sparkles className="size-4 text-pink-500 shrink-0" />
-                      Ritmik Nefes Alma Algoritması
-                    </h4>
-                    <p className="text-xs leading-relaxed text-foreground/85">
-                      Nokta, soru işareti, iki nokta, virgül ve uzun teknik kelimelerde doğal mikro-duraklamalar eklenerek okuma akışının edebi ritmi korunur.
+                      Farenin tekerleğiyle gerek arayüzde gerekse okuma akışı devam ederken ritmi hiç bozmadan 25&apos;er kelimelik hassas hız kontrolü.
                     </p>
                   </div>
                 </div>
@@ -396,7 +424,7 @@ export function AboutModal({ open, onClose, theme }: AboutModalProps) {
                 >
                   <FileText className="size-5 text-muted-foreground shrink-0" />
                   <p className="text-xs text-foreground/90 leading-relaxed font-normal">
-                    <strong>Akıllı Metin Temizleme:</strong> Satır sonlarında kesilen kelimeleri (<span className="font-mono">ör- / nek → örnek</span>) otomatik birleştirir, sayfa numaralarını ve başlık artıklarını arındırır, dipnotları isteğe göre akışa katar.
+                    <strong>Gelişmiş İçerik Merkezi & Akıllı Ayrıştırma:</strong> Cihaz içi PDF.js ayrıştırıcı, EPUB, TXT, Web makaleleri ve YouTube altyazı desteği. Satır sonu tire birleştirme, dipnot izolasyonu ve %100 yerel gizlilik.
                   </p>
                 </div>
               </div>
@@ -424,8 +452,15 @@ export function AboutModal({ open, onClose, theme }: AboutModalProps) {
                   </h4>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs sm:text-sm">
                     <div className="flex items-center justify-between p-2 rounded-xl bg-muted/40">
-                      <span className="text-foreground/90 font-medium">Başlat / Duraklat</span>
+                      <span className="text-foreground/90 font-medium">Başlat / Duraklat (Zen Modu)</span>
                       <kbd className="px-2 py-0.5 rounded-md bg-background border border-border/80 text-xs font-mono font-semibold">Boşluk (Space)</kbd>
+                    </div>
+                    <div className="flex items-center justify-between p-2 rounded-xl bg-muted/40">
+                      <span className="text-foreground/90 font-medium flex items-center gap-1.5">
+                        <Volume2 className="size-3.5 text-indigo-500" />
+                        Nöro-Odak Sesi (Gama & Pembe)
+                      </span>
+                      <kbd className="px-2 py-0.5 rounded-md bg-background border border-border/80 text-xs font-mono font-semibold">M Tuşu</kbd>
                     </div>
                     <div className="flex items-center justify-between p-2 rounded-xl bg-muted/40">
                       <span className="text-foreground/90 font-medium">Hız Kontrolü (±25 WPM)</span>
@@ -436,15 +471,15 @@ export function AboutModal({ open, onClose, theme }: AboutModalProps) {
                       <kbd className="px-2 py-0.5 rounded-md bg-background border border-border/80 text-xs font-mono font-semibold">← (Sol Ok)</kbd>
                     </div>
                     <div className="flex items-center justify-between p-2 rounded-xl bg-muted/40">
-                      <span className="text-foreground/90 font-medium">Önceki Başlığa / Bölüme Atla</span>
-                      <kbd className="px-2 py-0.5 rounded-md bg-background border border-border/80 text-xs font-mono font-semibold">Shift + ←</kbd>
-                    </div>
-                    <div className="flex items-center justify-between p-2 rounded-xl bg-muted/40">
-                      <span className="text-foreground/90 font-medium">1 Kelime İleri Sar</span>
+                      <span className="text-foreground/90 font-medium">Sonraki Cümleye İlerle</span>
                       <kbd className="px-2 py-0.5 rounded-md bg-background border border-border/80 text-xs font-mono font-semibold">→ (Sağ Ok)</kbd>
                     </div>
                     <div className="flex items-center justify-between p-2 rounded-xl bg-muted/40">
-                      <span className="text-foreground/90 font-medium">Sonraki Başlığa / Bölüme Atla</span>
+                      <span className="text-foreground/90 font-medium">Önceki Başlık / Sayfaya Atla</span>
+                      <kbd className="px-2 py-0.5 rounded-md bg-background border border-border/80 text-xs font-mono font-semibold">Shift + ←</kbd>
+                    </div>
+                    <div className="flex items-center justify-between p-2 rounded-xl bg-muted/40">
+                      <span className="text-foreground/90 font-medium">Sonraki Başlık / Sayfaya Atla</span>
                       <kbd className="px-2 py-0.5 rounded-md bg-background border border-border/80 text-xs font-mono font-semibold">Shift + →</kbd>
                     </div>
                     <div className="flex items-center justify-between p-2 rounded-xl bg-muted/40">
@@ -452,7 +487,7 @@ export function AboutModal({ open, onClose, theme }: AboutModalProps) {
                       <kbd className="px-2 py-0.5 rounded-md bg-background border border-border/80 text-xs font-mono font-semibold">C Tuşu</kbd>
                     </div>
                     <div className="flex items-center justify-between p-2 rounded-xl bg-muted/40">
-                      <span className="text-foreground/90 font-medium">Temaları Değiştir</span>
+                      <span className="text-foreground/90 font-medium">Temaları Değiştir (Cam, Neon, Kağıt)</span>
                       <kbd className="px-2 py-0.5 rounded-md bg-background border border-border/80 text-xs font-mono font-semibold">1, 2, 3 Tuşları</kbd>
                     </div>
                     <div className="flex items-center justify-between p-2 rounded-xl bg-muted/40">

@@ -46,7 +46,7 @@ export function ReaderApp() {
   const [fontScale, setFontScale] = useState(1)
   const [chunkSize, setChunkSize] = useState<number>(1)
   const [readFootnotes, setReadFootnotes] = useState<boolean>(true)
-  const [neuroAudioEnabled, setNeuroAudioEnabled] = useState<boolean>(true)
+  const [neuroAudioEnabled, setNeuroAudioEnabled] = useState<boolean>(false)
   const [audioToast, setAudioToast] = useState<string | null>(null)
   const [, setChunkBadge] = useState<string | null>(null)
   const [, setResumeBadge] = useState<string | null>(null)
@@ -752,10 +752,10 @@ export function ReaderApp() {
       }
     }
 
-    // Üst bar, açık ayar menüsü veya bağlam butonları odaklanmışken Space/Enter tuşunun kendi butonunu tetiklemesine izin ver
+    // Açık modal veya diyalog içerisindeyken Space/Enter tuşunun diyaloğa ait kalmasına izin ver
     if (
       (e.code === 'Space' || e.code === 'Enter') &&
-      target?.closest('header, [role="dialog"], [role="radiogroup"], [role="switch"], [role="slider"]')
+      target?.closest('[role="dialog"]')
     ) {
       return
     }
@@ -763,6 +763,9 @@ export function ReaderApp() {
     switch (e.code) {
       case 'Space':
         e.preventDefault()
+        if (document.activeElement instanceof HTMLElement && document.activeElement !== document.body) {
+          document.activeElement.blur()
+        }
         togglePlay()
         break
       case 'Escape':
@@ -838,7 +841,8 @@ export function ReaderApp() {
     if (typeof settings.chunkSize === 'number') setChunkSize(settings.chunkSize)
     if (typeof settings.wpm === 'number') setWpm(settings.wpm)
     if (typeof settings.readFootnotes === 'boolean') setReadFootnotes(settings.readFootnotes)
-    if (typeof settings.neuroAudioEnabled === 'boolean') setNeuroAudioEnabled(settings.neuroAudioEnabled)
+    // Ses modu varsayılan olarak daima kapalı başlar (Autoplay ve kullanıcı isteği gereği)
+    setNeuroAudioEnabled(false)
 
     const activeChunkSize = settings.chunkSize ?? 1
     const activeFootnotes = settings.readFootnotes ?? true

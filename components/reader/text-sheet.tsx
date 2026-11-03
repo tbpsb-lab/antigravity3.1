@@ -54,6 +54,84 @@ export const TextSheet = memo(function TextSheet({
   const [errorMessage, setErrorMessage] = useState('')
   const [isDragOver, setIsDragOver] = useState(false)
 
+  // İlk Ziyaret İçin Okuma ve İçerik Merkezi Butonuna Yönlendiren Şeffaf Tanıtım Penceresi
+  const [showCallout, setShowCallout] = useState(false)
+  const [calloutFading, setCalloutFading] = useState(false)
+  const calloutTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const calloutFadeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const calloutDismissedRef = useRef(false)
+  const calloutRef = useRef<HTMLDivElement>(null)
+
+  const dismissCallout = useCallback(() => {
+    if (calloutDismissedRef.current) return
+    calloutDismissedRef.current = true
+    if (calloutTimerRef.current) clearTimeout(calloutTimerRef.current)
+    if (calloutFadeTimerRef.current) clearTimeout(calloutFadeTimerRef.current)
+    setCalloutFading(true)
+    try {
+      localStorage.setItem('hasSeenTapGuide', 'true')
+      window.dispatchEvent(new Event('dismiss-onboarding'))
+    } catch {}
+    calloutFadeTimerRef.current = setTimeout(() => {
+      setShowCallout(false)
+    }, 350)
+  }, [])
+
+  useEffect(() => {
+    try {
+      const hasSeen = localStorage.getItem('hasSeenTapGuide')
+      if (!hasSeen) {
+        // Okuma jestleri merkezde başladıktan 1.5 sn sonra butonun dibinde açılır
+        const showTimer = setTimeout(() => {
+          if (!calloutDismissedRef.current && !open) {
+            setShowCallout(true)
+          }
+        }, 1500)
+
+        // 7.5 sn sonra otomatik kapanır
+        calloutTimerRef.current = setTimeout(() => {
+          dismissCallout()
+        }, 7500)
+
+        return () => clearTimeout(showTimer)
+      }
+    } catch {}
+  }, [open, dismissCallout])
+
+  // Eğer kullanıcı butona tıklayıp paneli açarsa callout'u derhal kapat
+  useEffect(() => {
+    if (open && showCallout) {
+      dismissCallout()
+    }
+  }, [open, showCallout, dismissCallout])
+
+  // Dışarıdan tetiklenen onboarding kapatma olayını (merkez pencereye tıklama vb.) dinle
+  useEffect(() => {
+    const handleExternalDismiss = () => {
+      dismissCallout()
+    }
+    window.addEventListener('dismiss-onboarding', handleExternalDismiss)
+    return () => {
+      window.removeEventListener('dismiss-onboarding', handleExternalDismiss)
+      if (calloutTimerRef.current) clearTimeout(calloutTimerRef.current)
+      if (calloutFadeTimerRef.current) clearTimeout(calloutFadeTimerRef.current)
+    }
+  }, [dismissCallout])
+
+  // Callout açıkken sayfanın herhangi bir yerine tıklandığında kapat
+  useEffect(() => {
+    if (!showCallout) return
+
+    const handlePointerDown = (e: PointerEvent) => {
+      if (calloutRef.current && !calloutRef.current.contains(e.target as Node)) {
+        dismissCallout()
+      }
+    }
+
+    window.addEventListener('pointerdown', handlePointerDown)
+    return () => window.removeEventListener('pointerdown', handlePointerDown)
+  }, [showCallout, dismissCallout])
+
   const rootRef = useRef<HTMLDivElement>(null)
   const dialogRef = useFocusTrap<HTMLDivElement>(open)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -211,6 +289,68 @@ export const TextSheet = memo(function TextSheet({
       >
         <FileText className="size-4 md:size-5" />
       </button>
+
+      {/* 1.5. İlk Ziyaret İçin Okuma ve İçerik Merkezi Şeffaf Yönlendirme Penceresi */}
+      {showCallout && !open && (
+        <div
+          ref={calloutRef}
+          role="tooltip"
+          aria-label="Okuma ve İçerik Merkezi Rehberi"
+          onClick={(e) => {
+            e.stopPropagation()
+            dismissCallout()
+            onToggle?.()
+          }}
+          className={cn(
+            'absolute top-full mt-2.5 z-50 select-none cursor-pointer transition-all duration-300 ease-out',
+            // Mobil ve Masaüstü Konumlandırma: Butonun tam altına hizalı
+            'right-[-3.5rem] sm:right-0 w-[270px] sm:w-[290px]',
+            'p-3 sm:p-3.5 rounded-2xl sm:rounded-3xl shadow-2xl',
+            // Şeffaf / Buzlu Cam Tasarımı (Tüm Temalarla Uyumlu)
+            'bg-background/85 dark:bg-slate-900/90 backdrop-blur-md border border-primary/45 text-foreground',
+            'animate-in fade-in zoom-in-95 duration-300',
+            calloutFading ? 'opacity-0 scale-95 pointer-events-none' : 'opacity-100 scale-100 pointer-events-auto',
+          )}
+        >
+          {/* Butonu İşaret Eden Yukarı Doğru Şeffaf Ok (Arrow Pointer) */}
+          <div
+            className="absolute -top-1.5 right-[4.75rem] sm:right-5 size-3 rotate-45 border-t border-l border-primary/45 bg-background/90 dark:bg-slate-900/95"
+            aria-hidden="true"
+          />
+
+          <div className="relative z-10">
+            <div className="flex items-start justify-between gap-1.5">
+              <div className="flex items-center gap-1.5 text-primary text-[11px] sm:text-xs font-bold tracking-tight">
+                <Sparkles className="size-3.5 text-primary animate-pulse" />
+                <span>Okuma ve İçerik Merkezi</span>
+              </div>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  dismissCallout()
+                }}
+                className="size-5 -mr-1 -mt-1 flex items-center justify-center rounded-full text-muted-foreground hover:text-foreground hover:bg-foreground/10 transition-colors"
+                aria-label="Kapat"
+                title="Kapat"
+              >
+                <X className="size-3" />
+              </button>
+            </div>
+
+            <p className="mt-1 text-[11px] sm:text-xs text-foreground/85 leading-relaxed font-normal">
+              Kendi metinlerinizi yapıştırabilir, <strong>PDF</strong> yükleyebilir veya <strong>Web & YouTube</strong> linklerini aktarabilirsiniz.
+            </p>
+
+            <div className="mt-2 flex items-center justify-between text-[10px] text-muted-foreground font-mono">
+              <span className="text-primary font-semibold hover:underline flex items-center gap-1">
+                Açmak için dokunun →
+              </span>
+              <span>Kapat (Tık)</span>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 2. Aa Tarzı Açılan Yüzen Popover Paneli (Ayrı pencere / backdrop overlay yok) */}
       <div

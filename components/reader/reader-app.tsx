@@ -54,7 +54,7 @@ export function ReaderApp() {
 
   const [headerRef, headerHeight] = useElementHeight<HTMLElement>()
   const [text, setText] = useState(SAMPLE_TEXT)
-  const [docTitle, setDocTitle] = useState('odak')
+  const [docTitle, setDocTitle] = useState('Hızlı Okuma Penceresi')
   const [index, setIndex] = useState(0)
   const [wpm, setWpm] = useState(300)
   const [playing, setPlaying] = useState(false)
@@ -908,9 +908,10 @@ export function ReaderApp() {
 
   const applyText = useCallback(
     (next: string, title?: string) => {
-      const nextTitle = title || docTitle
+      const cleanTitle = title?.trim()
+      const nextTitle = cleanTitle && cleanTitle !== 'odak' ? cleanTitle : 'Hızlı Okuma Penceresi'
       setText(next)
-      if (title) setDocTitle(title)
+      setDocTitle(nextTitle)
       setPlaying(false)
       setSheetOpen(false)
       setCompletionOpen(false)
@@ -932,7 +933,7 @@ export function ReaderApp() {
         setIndex(0)
       }
     },
-    [docTitle, chunkSize, readFootnotes],
+    [chunkSize, readFootnotes],
   )
 
   const handleToggleSheet = useCallback(() => {

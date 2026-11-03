@@ -259,9 +259,9 @@ export const TopBar = memo(function TopBar({
             <div className="min-w-0 max-[359px]:sr-only max-w-[150px] min-[400px]:max-w-[220px] sm:max-w-xs md:max-w-sm truncate">
               <p
                 className="text-xs sm:text-sm md:text-base font-medium tracking-tight text-foreground/85 group-hover:text-primary transition-colors truncate"
-                title={docTitle && docTitle !== 'odak' ? docTitle : 'Hızlı okuma penceresi'}
+                title={docTitle && docTitle !== 'odak' ? docTitle : 'Hızlı Okuma Penceresi'}
               >
-                {docTitle && docTitle !== 'odak' ? docTitle : 'Hızlı okuma penceresi'}
+                {docTitle && docTitle !== 'odak' ? docTitle : 'Hızlı Okuma Penceresi'}
               </p>
             </div>
           </button>

@@ -34,6 +34,7 @@ import { SpeedTestModal } from './speed-test-modal'
 import { CompletionModal } from './completion-modal'
 import { AboutModal } from './about-modal'
 import { PaperCornerCurl } from './paper-corner-curl'
+import { GlassCornerCurl } from './glass-corner-curl'
 import { FONT_FACES, FontSettings, type FontFace } from './font-settings'
 import { triggerHaptic } from '@/lib/haptics'
 import { NeuroAudioEngine } from '@/lib/neuro-audio'
@@ -1222,6 +1223,9 @@ export function ReaderApp() {
 
       {/* Kağıt Temasına Özel Sağ Alt Köşe Sayfa Kıvrımı */}
       <PaperCornerCurl visible={theme === 'kindle'} />
+
+      {/* Cam Temasına Özel Sağ Alt Köşe Cam Kıvrımı */}
+      <GlassCornerCurl visible={theme === 'ios'} />
 
       <SpeedTestModal
         open={speedTestOpen}

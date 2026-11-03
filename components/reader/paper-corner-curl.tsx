@@ -40,7 +40,7 @@ export const PaperCornerCurl = memo(function PaperCornerCurl({
         width={96}
         height={96}
         priority
-        className="w-full h-full object-contain object-bottom-right pointer-events-none select-none"
+        className="w-full h-full object-contain pointer-events-none select-none"
       />
     </div>
   )

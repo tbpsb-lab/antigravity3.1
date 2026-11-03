@@ -93,14 +93,14 @@ export const TextSheet = memo(function TextSheet({
       } catch {}
     }
 
-    // Güvenlik yedek zamanlayıcısı: TapGuide dinleyicisi kaçırılırsa 5 sn sonra devreye girer
+    // Güvenlik yedek zamanlayıcısı: TapGuide dinleyicisi kaçırılırsa 6.8 sn sonra devreye girer
     let fallbackTimer: ReturnType<typeof setTimeout> | null = null
     try {
       const hasSeen = localStorage.getItem('hasSeenTapGuide')
       if (!hasSeen) {
         fallbackTimer = setTimeout(() => {
           handleTapGuideCompleted()
-        }, 5000)
+        }, 6800)
       }
     } catch {}
 

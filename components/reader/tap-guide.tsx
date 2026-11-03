@@ -45,12 +45,12 @@ export function TapGuide({ onDismiss }: TapGuideProps) {
       if (!hasSeen) {
         setVisible(true)
 
-        // Adım 1: Oynat / Durdur (2.2 sn sonra)
+        // Adım 1: Oynat / Durdur (2.8 sn sonra)
         stepTimer1Ref.current = setTimeout(() => {
           setGuideStep(1)
-        }, 2200)
+        }, 2800)
 
-        // Merkez Kılavuzunun Doğal Bitişi (4.6 sn sonra)
+        // Merkez Kılavuzunun Doğal Bitişi (5.8 sn sonra)
         // Ana okuma tanıtımı bittiğinde içerik merkezi tanıtımını tetikle
         timerRef.current = setTimeout(() => {
           if (!isDismissingRef.current) {
@@ -62,7 +62,7 @@ export function TapGuide({ onDismiss }: TapGuideProps) {
               onDismiss?.()
             }, 400)
           }
-        }, 4600)
+        }, 5800)
       }
     } catch {}
 

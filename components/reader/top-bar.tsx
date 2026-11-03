@@ -13,7 +13,8 @@ type TopBarProps = {
   ref?: Ref<HTMLElement>
   theme: ThemeId
   onThemeChange?: (theme: ThemeId) => void
-  onOpenText: () => void
+  onOpenText?: () => void
+  textControl?: ReactNode
   onOpenSpeedTest?: () => void
   onOpenAbout?: () => void
   hidden: boolean
@@ -221,6 +222,7 @@ export const TopBar = memo(function TopBar({
   ref,
   theme,
   onOpenText,
+  textControl,
   onOpenAbout,
   hidden,
   fontControl,
@@ -247,7 +249,7 @@ export const TopBar = memo(function TopBar({
             type="button"
             onClick={(e) => {
               ;(e.currentTarget as HTMLButtonElement)?.blur()
-              onOpenAbout()
+              onOpenAbout?.()
             }}
             className="flex min-w-0 items-center gap-2.5 md:gap-3.5 text-left group cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-2xl p-1 -m-1 transition-all active:scale-95 overflow-visible"
             title="odak Hakkında, RSVP Mantığı ve Kılavuz"
@@ -268,21 +270,25 @@ export const TopBar = memo(function TopBar({
         {/* Sağ Alan: 1. Metin Yükle, 2. Aa Görünüm & Ayarlar, 3. Tam Ekran */}
         <div className="flex items-center gap-2 md:gap-3">
           {/* 1. Okuma ve İçerik Merkezi / Metin Yükle */}
-          <button
-            type="button"
-            onClick={(e) => {
-              ;(e.currentTarget as HTMLButtonElement)?.blur()
-              onOpenText()
-            }}
-            onPointerUp={(e) => {
-              ;(e.currentTarget as HTMLButtonElement)?.blur()
-            }}
-            className="ctl panel size-10 md:size-12 landscape-short:size-9 text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-            aria-label="Okuma ve İçerik Merkezi (Metin Yükle)"
-            title="Okuma ve İçerik Merkezi (Metin Yükle)"
-          >
-            <FileText className="size-4 md:size-5" />
-          </button>
+          {textControl ? (
+            textControl
+          ) : (
+            <button
+              type="button"
+              onClick={(e) => {
+                ;(e.currentTarget as HTMLButtonElement)?.blur()
+                onOpenText?.()
+              }}
+              onPointerUp={(e) => {
+                ;(e.currentTarget as HTMLButtonElement)?.blur()
+              }}
+              className="ctl panel size-10 md:size-12 landscape-short:size-9 text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+              aria-label="Okuma ve İçerik Merkezi (Metin Yükle)"
+              title="Okuma ve İçerik Merkezi (Metin Yükle)"
+            >
+              <FileText className="size-4 md:size-5" />
+            </button>
+          )}
 
           {/* 2. Görünüm & Okuma Ayarları (Aa) */}
           {fontControl}

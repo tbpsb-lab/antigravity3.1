@@ -1,7 +1,7 @@
 'use client'
 
 import { Minus, Plus, Type, Volume2, VolumeX, Zap } from 'lucide-react'
-import { memo, useEffect, useId, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useId, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
 import { cn } from '@/lib/utils'
 import { type ThemeId } from '@/lib/rsvp'
@@ -54,6 +54,8 @@ type FontSettingsProps = {
   neuroAudioEnabled?: boolean
   onNeuroAudioChange?: (val: boolean) => void
   onOpenSpeedTest?: () => void
+  isOpen?: boolean
+  onOpenChange?: (open: boolean) => void
 }
 
 // Temaların Özel Malzeme ve Şekil İkonları
@@ -96,8 +98,24 @@ export const FontSettings = memo(function FontSettings({
   neuroAudioEnabled = false,
   onNeuroAudioChange,
   onOpenSpeedTest,
+  isOpen: controlledOpen,
+  onOpenChange,
 }: FontSettingsProps) {
-  const [open, setOpen] = useState(false)
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false)
+  const isControlled = controlledOpen !== undefined
+  const open = isControlled ? controlledOpen : uncontrolledOpen
+
+  const setOpen = useCallback(
+    (next: boolean | ((prev: boolean) => boolean)) => {
+      const nextVal = typeof next === 'function' ? next(open) : next
+      if (!isControlled) {
+        setUncontrolledOpen(nextVal)
+      }
+      onOpenChange?.(nextVal)
+    },
+    [isControlled, open, onOpenChange],
+  )
+
   const rootRef = useRef<HTMLDivElement>(null)
   const dialogRef = useFocusTrap<HTMLDivElement>(open)
   const panelId = useId()

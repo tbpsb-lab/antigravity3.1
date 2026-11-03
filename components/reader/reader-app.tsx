@@ -58,12 +58,13 @@ export function ReaderApp() {
   const [wpm, setWpm] = useState(300)
   const [playing, setPlaying] = useState(false)
   const [sheetOpen, setSheetOpen] = useState(false)
+  const [fontOpen, setFontOpen] = useState(false)
   const [speedTestOpen, setSpeedTestOpen] = useState(false)
   const [completionOpen, setCompletionOpen] = useState(false)
   const [aboutOpen, setAboutOpen] = useState(false)
   const [showSpeedTestBanner, setShowSpeedTestBanner] = useState(false)
 
-  const anyModalOpen = sheetOpen || speedTestOpen || completionOpen || aboutOpen
+  const anyModalOpen = sheetOpen || fontOpen || speedTestOpen || completionOpen || aboutOpen
 
   // ~500 Kelimelik Doğal Nefes / Dinlenme Aralığı Durumu
   const [isResting, setIsResting] = useState(false)
@@ -256,6 +257,8 @@ export function ReaderApp() {
 
     // Autoplay Policy: Doğrudan kullanıcı tıklama / tuş etkileşimi içinde ses motorunu başlat veya durdur
     if (nextPlaying) {
+      setSheetOpen(false)
+      setFontOpen(false)
       if (neuroAudioEnabled) {
         getAudioEngine().start()
       }
@@ -927,24 +930,61 @@ export function ReaderApp() {
     [docTitle, chunkSize, readFootnotes],
   )
 
-  const handleOpenText = useCallback(() => {
+  const handleToggleSheet = useCallback(() => {
     setPlaying(false)
-    setSheetOpen(true)
+    setSheetOpen((prev) => {
+      const next = !prev
+      if (next) setFontOpen(false)
+      return next
+    })
+  }, [])
+
+  const handleCloseSheet = useCallback(() => {
+    setSheetOpen(false)
+  }, [])
+
+  const handleToggleFont = useCallback((next: boolean) => {
+    setFontOpen(next)
+    if (next) {
+      setSheetOpen(false)
+    }
   }, [])
 
   const handleOpenAbout = useCallback(() => {
     setPlaying(false)
+    setSheetOpen(false)
+    setFontOpen(false)
     setAboutOpen(true)
   }, [])
 
   const handleOpenSpeedTest = useCallback(() => {
     setPlaying(false)
+    setSheetOpen(false)
+    setFontOpen(false)
     setSpeedTestOpen(true)
   }, [])
+
+  const textControlElement = useMemo(
+    () => (
+      <TextSheet
+        open={sheetOpen}
+        initialText={text}
+        onToggle={handleToggleSheet}
+        onClose={handleCloseSheet}
+        onApply={(newText, title) => {
+          applyText(newText, title)
+          handleCloseSheet()
+        }}
+      />
+    ),
+    [sheetOpen, text, handleToggleSheet, handleCloseSheet, applyText],
+  )
 
   const fontControlElement = useMemo(
     () => (
       <FontSettings
+        isOpen={fontOpen}
+        onOpenChange={handleToggleFont}
         theme={theme}
         onThemeChange={handleThemeChange}
         face={fontFace}
@@ -961,6 +1001,8 @@ export function ReaderApp() {
       />
     ),
     [
+      fontOpen,
+      handleToggleFont,
       theme,
       handleThemeChange,
       fontFace,
@@ -991,9 +1033,9 @@ export function ReaderApp() {
       <TopBar
         ref={headerRef}
         docTitle={docTitle}
+        textControl={textControlElement}
         fontControl={fontControlElement}
         theme={theme}
-        onOpenText={handleOpenText}
         onOpenAbout={handleOpenAbout}
         isFullscreen={isFullscreen}
         onToggleFullscreen={toggleFullscreen}
@@ -1176,13 +1218,6 @@ export function ReaderApp() {
       {/* Kağıt Temasına Özel Sağ Alt Köşe Sayfa Kıvrımı */}
       <PaperCornerCurl visible={theme === 'kindle'} />
 
-      <TextSheet
-        open={sheetOpen}
-        initialText={text}
-        onClose={() => setSheetOpen(false)}
-        onApply={applyText}
-      />
-
       <SpeedTestModal
         open={speedTestOpen}
         onClose={() => setSpeedTestOpen(false)}
@@ -1205,6 +1240,7 @@ export function ReaderApp() {
         onOpenNewText={() => {
           setCompletionOpen(false)
           setSheetOpen(true)
+          setFontOpen(false)
         }}
       />
 

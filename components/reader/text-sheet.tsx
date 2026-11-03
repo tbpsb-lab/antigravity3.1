@@ -10,10 +10,9 @@ import {
   Loader2,
   Sparkles,
   Upload,
-  Video,
   X,
 } from 'lucide-react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { SAMPLE_TEXT, tokenize } from '@/lib/rsvp'
 import { CURATED_LIBRARY } from '@/lib/curated-library'
 import { fetchArticleFromUrl } from '@/lib/article-parser'
@@ -22,9 +21,10 @@ import { parsePdfDocument } from '@/lib/pdf-book-parser'
 import { useFocusTrap } from '@/lib/use-focus-trap'
 import { cn } from '@/lib/utils'
 
-type TextSheetProps = {
+export type TextSheetProps = {
   open: boolean
   initialText: string
+  onToggle?: () => void
   onClose: () => void
   onApply: (text: string, title?: string) => void
 }
@@ -37,12 +37,13 @@ const TABS = [
 
 type TabType = (typeof TABS)[number]['id']
 
-export function TextSheet({ open, initialText, onClose, onApply }: TextSheetProps) {
-  if (!open) return null
-  return <TextSheetBody initialText={initialText} onClose={onClose} onApply={onApply} />
-}
-
-function TextSheetBody({ initialText, onClose, onApply }: Omit<TextSheetProps, 'open'>) {
+export const TextSheet = memo(function TextSheet({
+  open,
+  initialText,
+  onToggle,
+  onClose,
+  onApply,
+}: TextSheetProps) {
   const [activeTab, setActiveTab] = useState<TabType>('text')
   const [draft, setDraft] = useState(initialText)
   const [url, setUrl] = useState('')
@@ -50,24 +51,46 @@ function TextSheetBody({ initialText, onClose, onApply }: Omit<TextSheetProps, '
   const [statusMessage, setStatusMessage] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
   const [isDragOver, setIsDragOver] = useState(false)
+
+  const rootRef = useRef<HTMLDivElement>(null)
+  const dialogRef = useFocusTrap<HTMLDivElement>(open)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
-  const dialogRef = useFocusTrap<HTMLDivElement>(true)
-  const count = useMemo(() => tokenize(draft).length, [draft])
+  const panelId = useId()
 
+  const count = useMemo(() => tokenize(draft).length, [draft])
   const activeTabIndex = TABS.findIndex((t) => t.id === activeTab)
 
-  // ESC ile kapatma
+  // Metin veya açık olma durumu güncellendiğinde senkronize et
   useEffect(() => {
+    if (open) {
+      setDraft(initialText)
+      setErrorMessage('')
+      setStatusMessage('')
+    }
+  }, [open, initialText])
+
+  // Dışarı tıklama ve ESC ile kapatma (FontSettings ile birebir aynı etkileşim)
+  useEffect(() => {
+    if (!open) return
+    const onPointer = (e: PointerEvent) => {
+      if (!rootRef.current?.contains(e.target as Node)) {
+        onClose()
+      }
+    }
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && !loading) {
         e.stopPropagation()
         onClose()
       }
     }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [onClose, loading])
+    document.addEventListener('pointerdown', onPointer)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('pointerdown', onPointer)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [open, loading, onClose])
 
   // Manuel Pano Yapıştırma
   const handlePasteFromClipboard = async () => {
@@ -140,20 +163,48 @@ function TextSheetBody({ initialText, onClose, onApply }: Omit<TextSheetProps, '
   }
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-label="Metin ve İçerik Merkezi"
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/65 backdrop-blur-md animate-in fade-in duration-300"
-      onClick={(e) => {
-        if (e.target === e.currentTarget && !loading) onClose()
-      }}
-    >
+    <div ref={rootRef} className="relative">
+      {/* 1. Tetikleyici Buton (Aa butonu ile birebir aynı kontrol yapısı) */}
+      <button
+        type="button"
+        onClick={(e) => {
+          ;(e.currentTarget as HTMLButtonElement)?.blur()
+          onToggle?.()
+        }}
+        onPointerUp={(e) => {
+          ;(e.currentTarget as HTMLButtonElement)?.blur()
+        }}
+        aria-expanded={open}
+        aria-controls={panelId}
+        aria-label="Okuma ve İçerik Merkezi (Metin Yükle)"
+        title="Okuma ve İçerik Merkezi (Metin Yükle)"
+        className={cn(
+          'ctl panel size-10 md:size-12 landscape-short:size-9 cursor-pointer transition-colors',
+          open ? 'ctl-primary text-foreground' : 'text-muted-foreground hover:text-foreground',
+        )}
+      >
+        <FileText className="size-4 md:size-5" />
+      </button>
+
+      {/* 2. Aa Tarzı Açılan Yüzen Popover Paneli (Ayrı pencere / backdrop overlay yok) */}
       <div
         ref={dialogRef}
-        className="panel panel-solid relative flex w-full max-w-lg sm:max-w-xl flex-col gap-3 rounded-3xl p-4 sm:p-5 shadow-2xl animate-in zoom-in-95 duration-300 overflow-hidden"
+        id={panelId}
+        role="dialog"
+        aria-modal={open ? 'true' : undefined}
+        aria-label="Okuma ve İçerik Merkezi"
+        inert={!open}
+        className={cn(
+          'panel panel-solid z-50 p-3 sm:p-3.5 transition-all duration-200 ease-out shadow-2xl flex flex-col gap-2.5 rounded-2xl sm:rounded-3xl',
+          'max-h-[calc(100dvh-4.5rem)] overflow-y-auto overscroll-contain touch-pan-y landscape-short:max-h-[calc(100dvh-3.25rem)]',
+          // Mobil: Top-bar'ın hemen altında, ekran kenarlarından taşmayan sabit ve kompakt yerleşim
+          'fixed inset-x-3 top-[calc(max(0.75rem,env(safe-area-inset-top))+3.25rem)] max-w-md mx-auto origin-top',
+          // Masaüstü / Tablet (sm ve üzeri): Butona bağlı absolute açılan popover
+          'sm:absolute sm:inset-x-auto sm:top-full sm:mt-2 sm:right-0 sm:w-[28rem] sm:max-w-[calc(100vw-2rem)] sm:mx-0 sm:origin-top-right',
+          open ? 'scale-100 opacity-100 pointer-events-auto' : 'pointer-events-none scale-95 opacity-0',
+        )}
       >
-        {/* Üst Kısım: Sekme Çubuğu ve Kapat Butonu (Başlık satırı yok) */}
+        {/* Üst Kısım: Sekme Çubuğu ve Kapat Butonu */}
         <div className="flex items-center justify-between gap-2 shrink-0">
           <div
             role="tablist"
@@ -174,15 +225,15 @@ function TextSheetBody({ initialText, onClose, onApply }: Omit<TextSheetProps, '
                     setErrorMessage('')
                   }}
                   className={cn(
-                    'flex items-center justify-center transition-all duration-300 cursor-pointer outline-none rounded-xl h-8.5 select-none',
+                    'flex items-center justify-center transition-all duration-300 cursor-pointer outline-none rounded-xl h-8 select-none',
                     isActive
                       ? 'flex-1 gap-1.5 px-3 bg-background text-foreground shadow-xs font-semibold text-xs border border-border/80'
-                      : 'size-8.5 text-muted-foreground hover:text-foreground hover:bg-foreground/5',
+                      : 'size-8 text-muted-foreground hover:text-foreground hover:bg-foreground/5',
                   )}
                   title={tab.label}
                   aria-label={tab.label}
                 >
-                  <Icon className="size-4 shrink-0" />
+                  <Icon className="size-3.5 shrink-0" />
                   {isActive && <span className="truncate">{tab.label}</span>}
                 </button>
               )
@@ -193,7 +244,7 @@ function TextSheetBody({ initialText, onClose, onApply }: Omit<TextSheetProps, '
             type="button"
             onClick={onClose}
             disabled={loading}
-            className="ctl size-9.5 rounded-2xl panel shrink-0 grid place-items-center text-muted-foreground hover:text-foreground transition-all hover:scale-105 active:scale-95 cursor-pointer disabled:opacity-40"
+            className="ctl size-8 rounded-xl panel shrink-0 grid place-items-center text-muted-foreground hover:text-foreground transition-all hover:scale-105 active:scale-95 cursor-pointer disabled:opacity-40"
             aria-label="Kapat"
           >
             <X className="size-4" />
@@ -225,7 +276,7 @@ function TextSheetBody({ initialText, onClose, onApply }: Omit<TextSheetProps, '
         )}
 
         {/* Sekmeler Arası Sabit Yükseklikli Yatay Kaydırma (Jitter / Zıplama Yok) */}
-        <div className="relative w-full h-[275px] sm:h-[290px] overflow-hidden rounded-2xl">
+        <div className="relative w-full h-[255px] sm:h-[270px] landscape-short:h-[180px] overflow-hidden rounded-2xl">
           <div
             className="flex w-[300%] h-full transition-transform duration-400 ease-[cubic-bezier(0.16,1,0.3,1)]"
             style={{ transform: `translateX(-${activeTabIndex * (100 / 3)}%)` }}
@@ -235,7 +286,7 @@ function TextSheetBody({ initialText, onClose, onApply }: Omit<TextSheetProps, '
               role="tabpanel"
               inert={activeTabIndex !== 0}
               aria-hidden={activeTabIndex !== 0}
-              className="w-1/3 h-full flex flex-col justify-between px-1"
+              className="w-1/3 h-full flex flex-col justify-between px-0.5"
             >
               {/* Gizli PDF Dosya Girişi */}
               <input
@@ -289,45 +340,45 @@ function TextSheetBody({ initialText, onClose, onApply }: Omit<TextSheetProps, '
               </div>
 
               {/* Alt Eylem Çubuğu */}
-              <div className="flex items-center justify-between gap-2 pt-2.5 shrink-0">
-                <div className="flex items-center gap-1.5 flex-wrap">
+              <div className="flex items-center justify-between gap-2 pt-2 shrink-0">
+                <div className="flex items-center gap-1 flex-wrap">
                   <button
                     type="button"
                     onClick={() => setDraft(SAMPLE_TEXT)}
-                    className="ctl h-8 rounded-lg px-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                    className="ctl h-7.5 rounded-lg px-2 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
                   >
                     Örnek
                   </button>
                   <button
                     type="button"
                     onClick={handlePasteFromClipboard}
-                    className="ctl h-8 rounded-lg px-2 text-xs text-muted-foreground hover:text-foreground gap-1 transition-colors"
+                    className="ctl h-7.5 rounded-lg px-2 text-[11px] text-muted-foreground hover:text-foreground gap-1 transition-colors"
                     title="Panodaki metni yapıştır"
                   >
-                    <Clipboard className="size-3.5" />
-                    <span className="hidden min-[420px]:inline">Panodan</span>
+                    <Clipboard className="size-3" />
+                    <span>Panodan</span>
                   </button>
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
                     disabled={loading}
-                    className="ctl h-8 rounded-lg px-2 text-xs text-muted-foreground hover:text-foreground gap-1 transition-colors"
+                    className="ctl h-7.5 rounded-lg px-2 text-[11px] text-muted-foreground hover:text-foreground gap-1 transition-colors"
                     title="PDF Dosyası Yükle"
                   >
-                    <Upload className="size-3.5 text-primary" />
+                    <Upload className="size-3 text-primary" />
                     <span>PDF</span>
                   </button>
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <span className="font-mono text-[11px] tabular-nums text-muted-foreground">
+                  <span className="font-mono text-[10px] tabular-nums text-muted-foreground">
                     {count} k
                   </span>
                   <button
                     type="button"
                     onClick={() => onApply(draft)}
                     disabled={count === 0 || loading}
-                    className="ctl ctl-primary h-8.5 rounded-xl px-3.5 text-xs font-semibold disabled:opacity-40"
+                    className="ctl ctl-primary h-8 rounded-xl px-3 text-xs font-semibold disabled:opacity-40"
                   >
                     Metni Oku
                   </button>
@@ -340,9 +391,9 @@ function TextSheetBody({ initialText, onClose, onApply }: Omit<TextSheetProps, '
               role="tabpanel"
               inert={activeTabIndex !== 1}
               aria-hidden={activeTabIndex !== 1}
-              className="w-1/3 h-full flex flex-col justify-between px-1"
+              className="w-1/3 h-full flex flex-col justify-between px-0.5"
             >
-              <form onSubmit={handleFetchWebOrYouTube} className="flex flex-col gap-3 flex-1 justify-center">
+              <form onSubmit={handleFetchWebOrYouTube} className="flex flex-col gap-2.5 flex-1 justify-center">
                 <div className="relative">
                   <Globe className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
                   <input
@@ -354,11 +405,11 @@ function TextSheetBody({ initialText, onClose, onApply }: Omit<TextSheetProps, '
                     }}
                     disabled={loading}
                     placeholder="https://... (Web makalesi veya YouTube video linki)"
-                    className="h-11 w-full rounded-2xl border border-border bg-background pl-9 pr-3 text-xs sm:text-sm text-foreground outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60"
+                    className="h-10 w-full rounded-2xl border border-border bg-background pl-9 pr-3 text-xs sm:text-sm text-foreground outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60"
                   />
                 </div>
 
-                <div className="rounded-2xl border border-border/60 bg-muted/20 p-3 space-y-1.5 text-xs text-muted-foreground">
+                <div className="rounded-2xl border border-border/60 bg-muted/20 p-2.5 space-y-1 text-xs text-muted-foreground">
                   <div className="flex items-center gap-1.5 text-foreground font-medium">
                     <Sparkles className="size-3.5 text-primary" />
                     <span>Otomatik İçerik Damıtıcı</span>
@@ -374,9 +425,9 @@ function TextSheetBody({ initialText, onClose, onApply }: Omit<TextSheetProps, '
                 <button
                   type="submit"
                   disabled={loading || !url.trim()}
-                  className="ctl ctl-primary h-10 w-full rounded-2xl text-xs sm:text-sm font-semibold gap-2 disabled:opacity-40"
+                  className="ctl ctl-primary h-9.5 w-full rounded-2xl text-xs sm:text-sm font-semibold gap-2 disabled:opacity-40 cursor-pointer"
                 >
-                  <Sparkles className="size-4" />
+                  <Sparkles className="size-3.5" />
                   <span>İçeriği Çek ve Oku</span>
                 </button>
               </form>
@@ -387,13 +438,13 @@ function TextSheetBody({ initialText, onClose, onApply }: Omit<TextSheetProps, '
               role="tabpanel"
               inert={activeTabIndex !== 2}
               aria-hidden={activeTabIndex !== 2}
-              className="w-1/3 h-full overflow-y-auto theme-scrollbar px-1 flex flex-col gap-2"
+              className="w-1/3 h-full overflow-y-auto theme-scrollbar px-0.5 flex flex-col gap-2"
             >
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 gap-2">
                 {CURATED_LIBRARY.map((item) => (
                   <div
                     key={item.id}
-                    className="flex flex-col justify-between rounded-2xl border border-border/80 bg-background/90 p-3 shadow-xs hover:border-primary/50 transition-all text-left group"
+                    className="flex flex-col justify-between rounded-2xl border border-border/80 bg-background/90 p-2.5 shadow-xs hover:border-primary/50 transition-all text-left group"
                   >
                     <div className="space-y-1">
                       <div className="flex items-center justify-between gap-1">
@@ -434,4 +485,4 @@ function TextSheetBody({ initialText, onClose, onApply }: Omit<TextSheetProps, '
       </div>
     </div>
   )
-}
+})

@@ -625,13 +625,22 @@ html[data-theme='kindle']::-webkit-scrollbar-track {
     padding-top: max(0.25rem, env(safe-area-inset-top)) !important;
     padding-bottom: 0 !important;
   }
-  header.top-bar-stage button.ctl {
+  /* Sadece üst barın doğrudan araç çubuğu ikon butonlarını hedefler; açılır popover/diyalog içindeki butonları bozmaz */
+  header.top-bar-stage > div > div button.ctl:not([role="dialog"] button):not(.panel-solid button):not([role="tab"]):not([role="tabpanel"] button) {
     width: 2.125rem !important;
     height: 2.125rem !important;
   }
-  header.top-bar-stage button.ctl svg {
+  header.top-bar-stage > div > div button.ctl:not([role="dialog"] button):not(.panel-solid button):not([role="tab"]):not([role="tabpanel"] button) svg {
     width: 1rem !important;
     height: 1rem !important;
+  }
+
+  /* Açılır panel (dialog) içindeki butonların boyut ve esnekliklerini koru */
+  header.top-bar-stage [role="dialog"] button.ctl,
+  header.top-bar-stage .panel-solid button.ctl,
+  [role="dialog"] button.ctl {
+    width: auto !important;
+    height: auto !important;
   }
 
   .context-peek-box {

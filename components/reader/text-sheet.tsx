@@ -221,10 +221,10 @@ export const TextSheet = memo(function TextSheet({
         aria-label="Okuma ve İçerik Merkezi"
         inert={!open}
         className={cn(
-          'panel panel-solid z-50 p-3 sm:p-3.5 transition-all duration-200 ease-out shadow-2xl flex flex-col gap-2.5 rounded-2xl sm:rounded-3xl',
-          'max-h-[calc(100dvh-4.5rem)] overflow-y-auto overscroll-contain touch-pan-y landscape-short:max-h-[calc(100dvh-3.25rem)]',
+          'panel panel-solid z-50 p-3 sm:p-3.5 transition-all duration-200 ease-out shadow-2xl flex flex-col gap-2 rounded-2xl sm:rounded-3xl',
+          'max-h-[calc(100dvh-4rem)] overflow-y-auto overscroll-contain touch-pan-y landscape-short:max-h-[calc(100dvh-2.75rem)] landscape-short:p-2 landscape-short:gap-1.5',
           // Mobil: Top-bar'ın hemen altında, ekran kenarlarından taşmayan sabit ve kompakt yerleşim
-          'fixed inset-x-3 top-[calc(max(0.75rem,env(safe-area-inset-top))+3.25rem)] max-w-md mx-auto origin-top',
+          'fixed inset-x-3 top-[calc(max(0.75rem,env(safe-area-inset-top))+3.25rem)] landscape-short:top-[calc(max(0.25rem,env(safe-area-inset-top))+2.5rem)] max-w-md mx-auto origin-top',
           // Masaüstü / Tablet (sm ve üzeri): Butona bağlı absolute açılan popover
           'sm:absolute sm:inset-x-auto sm:top-full sm:mt-2 sm:right-0 sm:w-[28rem] sm:max-w-[calc(100vw-2rem)] sm:mx-0 sm:origin-top-right',
           open ? 'scale-100 opacity-100 pointer-events-auto' : 'pointer-events-none scale-95 opacity-0',
@@ -251,7 +251,7 @@ export const TextSheet = memo(function TextSheet({
                     setErrorMessage('')
                   }}
                   className={cn(
-                    'flex items-center justify-center transition-all duration-300 cursor-pointer outline-none rounded-xl h-8 select-none',
+                    'flex items-center justify-center transition-all duration-300 cursor-pointer outline-none rounded-xl h-8 select-none whitespace-nowrap shrink-0',
                     isActive
                       ? 'flex-1 gap-1.5 px-3 bg-background text-foreground shadow-xs font-semibold text-xs border border-border/80'
                       : 'size-8 text-muted-foreground hover:text-foreground hover:bg-foreground/5',
@@ -270,10 +270,10 @@ export const TextSheet = memo(function TextSheet({
             type="button"
             onClick={onClose}
             disabled={loading}
-            className="ctl size-8 rounded-xl panel shrink-0 grid place-items-center text-muted-foreground hover:text-foreground transition-all hover:scale-105 active:scale-95 cursor-pointer disabled:opacity-40"
+            className="ctl !size-8 !w-8 !h-8 rounded-xl panel shrink-0 grid place-items-center text-muted-foreground hover:text-foreground transition-all hover:scale-105 active:scale-95 cursor-pointer disabled:opacity-40"
             aria-label="Kapat"
           >
-            <X className="size-4" />
+            <X className="size-4 shrink-0" />
           </button>
         </div>
 
@@ -302,7 +302,7 @@ export const TextSheet = memo(function TextSheet({
         )}
 
         {/* Sekmeler Arası Sabit Yükseklikli Yatay Kaydırma (Jitter / Zıplama Yok) */}
-        <div className="relative w-full h-[265px] sm:h-[280px] landscape-short:h-[185px] overflow-hidden rounded-2xl">
+        <div className="relative w-full h-[265px] sm:h-[280px] landscape-short:h-[220px] overflow-hidden rounded-2xl">
           <div
             className="flex w-[300%] h-full transition-transform duration-400 ease-[cubic-bezier(0.16,1,0.3,1)]"
             style={{ transform: `translateX(-${activeTabIndex * (100 / 3)}%)` }}
@@ -361,50 +361,50 @@ export const TextSheet = memo(function TextSheet({
                   value={draft}
                   onChange={(e) => setDraft(e.target.value)}
                   placeholder="Metninizi buraya yapıştırın veya PDF dosyasını sürükleyin..."
-                  className="w-full h-full resize-none p-3 font-mono text-xs leading-relaxed text-foreground outline-none placeholder:text-muted-foreground/75 bg-transparent"
+                  className="w-full h-full resize-none p-2.5 sm:p-3 font-mono text-xs leading-relaxed text-foreground outline-none placeholder:text-muted-foreground/75 bg-transparent"
                 />
               </div>
 
               {/* Alt Eylem Çubuğu */}
-              <div className="flex items-center justify-between gap-2 pt-2 shrink-0">
-                <div className="flex items-center gap-1 flex-wrap">
+              <div className="flex items-center justify-between gap-1.5 sm:gap-2 pt-1.5 sm:pt-2 shrink-0">
+                <div className="flex items-center gap-1 shrink-0">
                   <button
                     type="button"
                     onClick={() => setDraft(SAMPLE_TEXT)}
-                    className="ctl h-7.5 rounded-lg px-2 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+                    className="ctl !h-7 sm:!h-7.5 !w-auto rounded-lg px-2 text-[11px] text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap shrink-0"
                   >
                     Örnek
                   </button>
                   <button
                     type="button"
                     onClick={handlePasteFromClipboard}
-                    className="ctl h-7.5 rounded-lg px-2 text-[11px] text-muted-foreground hover:text-foreground gap-1 transition-colors"
+                    className="ctl !h-7 sm:!h-7.5 !w-auto rounded-lg px-2 text-[11px] text-muted-foreground hover:text-foreground gap-1 transition-colors whitespace-nowrap shrink-0"
                     title="Panodaki metni yapıştır"
                   >
-                    <Clipboard className="size-3" />
+                    <Clipboard className="size-3 shrink-0" />
                     <span>Panodan</span>
                   </button>
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
                     disabled={loading}
-                    className="ctl h-7.5 rounded-lg px-2 text-[11px] text-muted-foreground hover:text-foreground gap-1 transition-colors"
+                    className="ctl !h-7 sm:!h-7.5 !w-auto rounded-lg px-2 text-[11px] text-muted-foreground hover:text-foreground gap-1 transition-colors whitespace-nowrap shrink-0"
                     title="PDF Dosyası Yükle"
                   >
-                    <Upload className="size-3 text-primary" />
+                    <Upload className="size-3 text-primary shrink-0" />
                     <span>PDF</span>
                   </button>
                 </div>
 
-                <div className="flex items-center gap-2">
-                  <span className="font-mono text-[10px] tabular-nums text-muted-foreground">
+                <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                  <span className="font-mono text-[10px] tabular-nums text-muted-foreground shrink-0">
                     {count} k
                   </span>
                   <button
                     type="button"
                     onClick={() => onApply(draft)}
                     disabled={count === 0 || loading}
-                    className="ctl ctl-primary h-8 rounded-xl px-3 text-xs font-semibold disabled:opacity-40"
+                    className="ctl ctl-primary !h-7.5 sm:!h-8 !w-auto rounded-xl px-3 text-xs font-semibold disabled:opacity-40 whitespace-nowrap shrink-0"
                   >
                     Metni Oku
                   </button>
@@ -419,8 +419,8 @@ export const TextSheet = memo(function TextSheet({
               aria-hidden={activeTabIndex !== 1}
               className="w-1/3 h-full flex flex-col justify-between px-0.5"
             >
-              <form onSubmit={handleFetchWebOrYouTube} className="flex flex-col gap-2.5 flex-1 justify-center">
-                <div className="relative">
+              <form onSubmit={handleFetchWebOrYouTube} className="flex flex-col gap-2 sm:gap-2.5 flex-1 justify-center">
+                <div className="relative shrink-0">
                   <Globe className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
                   <input
                     type="url"
@@ -431,29 +431,29 @@ export const TextSheet = memo(function TextSheet({
                     }}
                     disabled={loading}
                     placeholder="https://... (Web makalesi veya YouTube video linki)"
-                    className="h-10 w-full rounded-2xl border border-border bg-background pl-9 pr-3 text-xs sm:text-sm text-foreground outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60"
+                    className="h-9 sm:h-10 w-full rounded-2xl border border-border bg-background pl-9 pr-3 text-xs sm:text-sm text-foreground outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60 shrink-0"
                   />
                 </div>
 
-                <div className="rounded-2xl border border-border/60 bg-muted/20 p-2.5 space-y-1 text-xs text-muted-foreground">
+                <div className="rounded-2xl border border-border/60 bg-muted/20 p-2 sm:p-2.5 space-y-0.5 sm:space-y-1 text-xs text-muted-foreground shrink-0">
                   <div className="flex items-center gap-1.5 text-foreground font-medium">
-                    <Sparkles className="size-3.5 text-primary" />
+                    <Sparkles className="size-3.5 text-primary shrink-0" />
                     <span>Otomatik İçerik Damıtıcı</span>
                   </div>
-                  <p className="text-[11px] leading-relaxed">
-                    • <strong>Web & Haber Linki:</strong> Reklam ve menüler temizlenir, ana metin ayıklanır.
+                  <p className="text-[10px] sm:text-[11px] leading-snug">
+                    • <strong>Web:</strong> Reklam ve menüler temizlenir, ana metin ayıklanır.
                   </p>
-                  <p className="text-[11px] leading-relaxed">
-                    • <strong>YouTube Linki:</strong> Konuşmalar otomatik yazıya dökülür; zaman damgaları arındırılır.
+                  <p className="text-[10px] sm:text-[11px] leading-snug">
+                    • <strong>YouTube:</strong> Konuşmalar otomatik yazıya dökülür; zaman damgaları arındırılır.
                   </p>
                 </div>
 
                 <button
                   type="submit"
                   disabled={loading || !url.trim()}
-                  className="ctl ctl-primary h-9.5 w-full rounded-2xl text-xs sm:text-sm font-semibold gap-2 disabled:opacity-40 cursor-pointer"
+                  className="ctl ctl-primary !h-8.5 sm:!h-9.5 !w-full rounded-2xl text-xs sm:text-sm font-semibold gap-2 disabled:opacity-40 cursor-pointer whitespace-nowrap shrink-0"
                 >
-                  <Sparkles className="size-3.5" />
+                  <Sparkles className="size-3.5 shrink-0" />
                   <span>İçeriği Çek ve Oku</span>
                 </button>
               </form>
@@ -474,7 +474,7 @@ export const TextSheet = memo(function TextSheet({
                       setDraft(item.text)
                       onApply(item.text, item.title)
                     }}
-                    className="flex flex-col justify-between rounded-xl sm:rounded-2xl border border-border/80 bg-background/90 hover:bg-primary/5 hover:border-primary/60 p-2 sm:p-2.5 shadow-xs transition-all text-left group select-none cursor-pointer"
+                    className="flex flex-col justify-between rounded-xl sm:rounded-2xl border border-border/80 bg-background/90 hover:bg-primary/5 hover:border-primary/60 p-1.5 sm:p-2.5 shadow-xs transition-all text-left group select-none cursor-pointer"
                   >
                     <div className="space-y-0.5 sm:space-y-1 min-w-0">
                       <div className="flex items-center justify-between gap-1">
@@ -485,18 +485,18 @@ export const TextSheet = memo(function TextSheet({
                           ~{item.estimatedSeconds} sn • {item.wordCount} k
                         </span>
                       </div>
-                      <h4 className="text-[11px] sm:text-xs font-bold tracking-tight text-foreground group-hover:text-primary transition-colors line-clamp-1 leading-snug">
+                      <h4 className="text-[10.5px] sm:text-xs font-bold tracking-tight text-foreground group-hover:text-primary transition-colors line-clamp-1 leading-snug">
                         {item.title}
                       </h4>
-                      <p className="text-[9.5px] sm:text-[10px] text-foreground/75 truncate leading-tight">
+                      <p className="text-[9px] sm:text-[10px] text-foreground/75 truncate leading-tight">
                         {item.author}
                       </p>
-                      <p className="text-[8.5px] sm:text-[9.5px] text-muted-foreground leading-tight line-clamp-2">
+                      <p className="text-[8px] sm:text-[9.5px] text-muted-foreground leading-tight line-clamp-1 sm:line-clamp-2">
                         {item.description}
                       </p>
                     </div>
 
-                    <div className="pt-1.5 shrink-0">
+                    <div className="pt-1 sm:pt-1.5 shrink-0">
                       <button
                         type="button"
                         onClick={(e) => {
@@ -504,7 +504,7 @@ export const TextSheet = memo(function TextSheet({
                           setDraft(item.text)
                           onApply(item.text, item.title)
                         }}
-                        className="ctl ctl-primary flex h-6 sm:h-6.5 w-full items-center justify-center gap-1 rounded-lg sm:rounded-xl text-[10px] sm:text-[11px] font-semibold cursor-pointer transition-all active:scale-95 shadow-xs"
+                        className="ctl ctl-primary flex !h-5.5 sm:!h-6.5 !w-full items-center justify-center gap-1 rounded-md sm:rounded-xl text-[9.5px] sm:text-[11px] font-semibold cursor-pointer transition-all active:scale-95 shadow-xs whitespace-nowrap shrink-0"
                       >
                         <Sparkles className="size-2.5 sm:size-3 shrink-0" />
                         <span>Hemen Oku</span>

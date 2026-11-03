@@ -30,7 +30,6 @@ export const NeonCornerCurl = memo(function NeonCornerCurl({
         'pointer-events-none fixed bottom-0 right-0 z-20 select-none overflow-hidden leading-none',
         'w-[4.8rem] h-[4.8rem] sm:w-24 sm:h-24 md:w-[7.2rem] md:h-[7.2rem] landscape-short:w-[4.2rem] landscape-short:h-[4.2rem]',
         'animate-in fade-in zoom-in-95 duration-500 ease-out',
-        'drop-shadow-[-2px_-2px_12px_rgba(168,85,247,0.5)] drop-shadow-[0_0_20px_rgba(168,85,247,0.3)]',
         className,
       )}
     >

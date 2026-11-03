@@ -13,7 +13,7 @@ import {
   X,
 } from 'lucide-react'
 import { memo, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
-import { SAMPLE_TEXT, tokenize } from '@/lib/rsvp'
+import { SAMPLE_TEXT, tokenize, type ThemeId } from '@/lib/rsvp'
 import { CURATED_LIBRARY } from '@/lib/curated-library'
 import { fetchArticleFromUrl } from '@/lib/article-parser'
 import { fetchYouTubeTranscript } from '@/lib/youtube-parser'
@@ -27,6 +27,7 @@ export type TextSheetProps = {
   onToggle?: () => void
   onClose: () => void
   onApply: (text: string, title?: string) => void
+  onThemeChange?: (theme: ThemeId) => void
 }
 
 const TABS = [
@@ -43,6 +44,7 @@ export const TextSheet = memo(function TextSheet({
   onToggle,
   onClose,
   onApply,
+  onThemeChange,
 }: TextSheetProps) {
   const [activeTab, setActiveTab] = useState<TabType>('text')
   const [draft, setDraft] = useState(initialText)
@@ -70,7 +72,7 @@ export const TextSheet = memo(function TextSheet({
     }
   }, [open, initialText])
 
-  // Dışarı tıklama ve ESC ile kapatma (FontSettings ile birebir aynı etkileşim)
+  // Dışarı tıklama, ESC ve 1-2-3 tema kısayolları (FontSettings ile birebir aynı etkileşim)
   useEffect(() => {
     if (!open) return
     const onPointer = (e: PointerEvent) => {
@@ -82,6 +84,30 @@ export const TextSheet = memo(function TextSheet({
       if (e.key === 'Escape' && !loading) {
         e.stopPropagation()
         onClose()
+        return
+      }
+
+      if (e.ctrlKey || e.metaKey || e.altKey) return
+
+      // Kullanıcı metin alanına (textarea) veya URL kutusuna (input) yazıyorsa sayı yazmasına izin ver
+      const target = e.target as HTMLElement | null
+      const isTyping = Boolean(
+        target?.closest('input, textarea, select, [contenteditable="true"]')
+      )
+
+      if (isTyping) {
+        return
+      }
+
+      if (e.key === '1' || e.code === 'Digit1' || e.code === 'Numpad1') {
+        e.preventDefault()
+        onThemeChange?.('ios')
+      } else if (e.key === '2' || e.code === 'Digit2' || e.code === 'Numpad2') {
+        e.preventDefault()
+        onThemeChange?.('cyberpunk')
+      } else if (e.key === '3' || e.code === 'Digit3' || e.code === 'Numpad3') {
+        e.preventDefault()
+        onThemeChange?.('kindle')
       }
     }
     document.addEventListener('pointerdown', onPointer)
@@ -90,7 +116,7 @@ export const TextSheet = memo(function TextSheet({
       document.removeEventListener('pointerdown', onPointer)
       document.removeEventListener('keydown', onKey)
     }
-  }, [open, loading, onClose])
+  }, [open, loading, onClose, onThemeChange])
 
   // Manuel Pano Yapıştırma
   const handlePasteFromClipboard = async () => {

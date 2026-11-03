@@ -64,7 +64,7 @@ export function ReaderApp() {
   const [aboutOpen, setAboutOpen] = useState(false)
   const [showSpeedTestBanner, setShowSpeedTestBanner] = useState(false)
 
-  const anyModalOpen = sheetOpen || speedTestOpen || completionOpen || aboutOpen
+  const anyModalOpen = speedTestOpen || completionOpen || aboutOpen
 
   // ~500 Kelimelik Doğal Nefes / Dinlenme Aralığı Durumu
   const [isResting, setIsResting] = useState(false)
@@ -979,9 +979,10 @@ export function ReaderApp() {
           applyText(newText, title)
           handleCloseSheet()
         }}
+        onThemeChange={handleThemeChange}
       />
     ),
-    [sheetOpen, text, handleToggleSheet, handleCloseSheet, applyText],
+    [sheetOpen, text, handleToggleSheet, handleCloseSheet, applyText, handleThemeChange],
   )
 
   const fontControlElement = useMemo(

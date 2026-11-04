@@ -29,19 +29,19 @@ export const GlassCornerCurl = memo(function GlassCornerCurl({
       aria-hidden="true"
       className={cn(
         'pointer-events-none fixed bottom-0 right-0 z-20 select-none overflow-hidden leading-none',
-        'w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 landscape-short:w-14 landscape-short:h-14',
+        'w-28 h-28 sm:w-36 sm:h-36 md:w-40 md:h-40 landscape-short:w-24 landscape-short:h-24',
         'animate-in fade-in zoom-in-95 duration-500 ease-out',
-        'drop-shadow-[-2px_-2px_8px_rgba(56,189,248,0.45)] dark:drop-shadow-[-2px_-2px_12px_rgba(56,189,248,0.6)]',
+        'drop-shadow-[-2px_-2px_12px_rgba(56,189,248,0.45)] dark:drop-shadow-[-2px_-2px_16px_rgba(56,189,248,0.6)]',
         className,
       )}
     >
       <Image
         src={glassCornerCurlImg}
         alt="Cam Köşe Kıvrımı"
-        width={96}
-        height={96}
+        width={160}
+        height={160}
         priority
-        className="w-full h-full object-contain pointer-events-none select-none"
+        className="w-full h-full object-contain object-bottom-right pointer-events-none select-none"
       />
     </div>
   )

@@ -1168,6 +1168,11 @@ export function ReaderApp() {
       {/* Ambient Aura / Tematik Işıma Katmanı */}
       <AmbientAura theme={theme} playing={playing} />
 
+      {/* Arka Plan Tematik Sağ Alt Köşe Sayfa Kıvrımları */}
+      <PaperCornerCurl visible={theme === 'kindle'} />
+      <GlassCornerCurl visible={theme === 'ios'} />
+      <NeonCornerCurl visible={theme === 'linear'} />
+
       <TopBar
         ref={headerRef}
         docTitle={docTitle}
@@ -1374,15 +1379,6 @@ export function ReaderApp() {
           />
         </div>
       )}
-
-      {/* Kağıt Temasına Özel Sağ Alt Köşe Sayfa Kıvrımı */}
-      <PaperCornerCurl visible={theme === 'kindle'} />
-
-      {/* Cam Temasına Özel Sağ Alt Köşe Cam Kıvrımı */}
-      <GlassCornerCurl visible={theme === 'ios'} />
-
-      {/* Neon Temasına Özel Sağ Alt Köşe Neon Kıvrımı */}
-      <NeonCornerCurl visible={theme === 'linear'} />
 
       <SpeedTestModal
         open={speedTestOpen}

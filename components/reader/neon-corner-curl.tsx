@@ -28,7 +28,7 @@ export const NeonCornerCurl = memo(function NeonCornerCurl({
       aria-hidden="true"
       className={cn(
         'pointer-events-none fixed bottom-0 right-0 z-0 select-none overflow-hidden leading-none',
-        'w-28 h-28 sm:w-36 sm:h-36 md:w-42 md:h-42 landscape-short:w-20 landscape-short:h-20',
+        'w-34 h-34 sm:w-44 sm:h-44 md:w-50 md:h-50 landscape-short:w-24 landscape-short:h-24',
         'animate-in fade-in zoom-in-95 duration-500 ease-out',
         className,
       )}
@@ -36,8 +36,8 @@ export const NeonCornerCurl = memo(function NeonCornerCurl({
       <Image
         src={neonCornerCurlImg}
         alt="Neon Köşe Kıvrımı"
-        width={168}
-        height={168}
+        width={200}
+        height={200}
         priority
         className="w-full h-full object-contain object-bottom-right pointer-events-none select-none"
       />

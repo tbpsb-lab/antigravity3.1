@@ -28,7 +28,7 @@ export const GlassCornerCurl = memo(function GlassCornerCurl({
     <div
       aria-hidden="true"
       className={cn(
-        'pointer-events-none fixed bottom-0 right-0 z-0 select-none overflow-hidden leading-none',
+        'pointer-events-none fixed bottom-0 right-0 z-10 select-none overflow-hidden leading-none',
         'w-24 h-24 sm:w-28 sm:h-28 md:w-32 md:h-32 landscape-short:w-16 landscape-short:h-16',
         'animate-in fade-in zoom-in-95 duration-500 ease-out',
         'drop-shadow-[-2px_-2px_10px_rgba(56,189,248,0.4)] dark:drop-shadow-[-2px_-2px_14px_rgba(56,189,248,0.55)]',
@@ -41,6 +41,7 @@ export const GlassCornerCurl = memo(function GlassCornerCurl({
         width={128}
         height={128}
         priority
+        unoptimized
         className="w-full h-full object-contain object-bottom-right pointer-events-none select-none"
       />
     </div>

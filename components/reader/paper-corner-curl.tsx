@@ -27,8 +27,8 @@ export const PaperCornerCurl = memo(function PaperCornerCurl({
     <div
       aria-hidden="true"
       className={cn(
-        'pointer-events-none fixed bottom-0 right-0 z-0 select-none overflow-hidden leading-none',
-        'w-31 h-31 sm:w-38 sm:h-38 md:w-46 md:h-46 landscape-short:w-22 landscape-short:h-22',
+        'pointer-events-none fixed bottom-0 right-0 z-10 select-none overflow-hidden leading-none',
+        'w-32 h-32 sm:w-40 sm:h-40 md:w-48 md:h-48 landscape-short:w-24 landscape-short:h-24',
         'animate-in fade-in zoom-in-95 duration-500 ease-out',
         className,
       )}
@@ -36,9 +36,10 @@ export const PaperCornerCurl = memo(function PaperCornerCurl({
       <Image
         src={paperCornerCurlImg}
         alt="Kağıt Köşe Kıvrımı"
-        width={184}
-        height={184}
+        width={192}
+        height={192}
         priority
+        unoptimized
         className="w-full h-full object-contain object-bottom-right pointer-events-none select-none"
       />
     </div>

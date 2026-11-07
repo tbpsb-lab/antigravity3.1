@@ -15,6 +15,7 @@ import { calculateTurkishORP, formatBionicChunk, WPM_STEP, type ChunkItem } from
 import { triggerHaptic } from '@/lib/haptics'
 import { useElementSize } from '@/lib/use-element-size'
 import { TapGuide } from './tap-guide'
+import { Layers } from 'lucide-react'
 
 type RsvpDisplayProps = {
   word: string
@@ -77,6 +78,101 @@ export const RsvpDisplay = memo(function RsvpDisplay({
   const isScrubbingRef = useRef(false)
   const progressBarRef = useRef<HTMLDivElement | null>(null)
   const lastScrubIndexRef = useRef<number>(-1)
+
+  // İlk Ziyaret İçin 1K / 2K / 3K / 4K Kelime Öbeği Tanıtım Penceresi (Onboarding Callout)
+  const [showChunkCallout, setShowChunkCallout] = useState(false)
+  const [chunkCalloutFading, setChunkCalloutFading] = useState(false)
+  const chunkCalloutTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const chunkCalloutFadeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const chunkCalloutDismissedRef = useRef(false)
+  const chunkCalloutRef = useRef<HTMLDivElement>(null)
+
+  const dismissChunkCallout = useCallback(() => {
+    if (chunkCalloutDismissedRef.current) return
+    chunkCalloutDismissedRef.current = true
+    if (chunkCalloutTimerRef.current) clearTimeout(chunkCalloutTimerRef.current)
+    if (chunkCalloutFadeTimerRef.current) clearTimeout(chunkCalloutFadeTimerRef.current)
+    setChunkCalloutFading(true)
+    try {
+      window.dispatchEvent(new Event('chunk-guide-completed'))
+    } catch {}
+    chunkCalloutFadeTimerRef.current = setTimeout(() => {
+      setShowChunkCallout(false)
+    }, 350)
+  }, [])
+
+  useEffect(() => {
+    // TapGuide (Okuma jestleri kılavuzu) bittiğinde 1K kelime öbeği tanıtımını aç
+    const handleTapGuideCompleted = () => {
+      try {
+        const hasSeen = localStorage.getItem('hasSeenTapGuide_v2')
+        if (!hasSeen && !chunkCalloutDismissedRef.current && !playing) {
+          setShowChunkCallout(true)
+          if (chunkCalloutTimerRef.current) clearTimeout(chunkCalloutTimerRef.current)
+          chunkCalloutTimerRef.current = setTimeout(() => {
+            dismissChunkCallout()
+          }, 5500)
+        }
+      } catch {}
+    }
+
+    // Güvenlik yedek zamanlayıcısı: TapGuide kaçırılırsa 6.2 sn sonra devreye girer
+    let fallbackTimer: ReturnType<typeof setTimeout> | null = null
+    try {
+      const hasSeen = localStorage.getItem('hasSeenTapGuide_v2')
+      if (!hasSeen) {
+        fallbackTimer = setTimeout(() => {
+          handleTapGuideCompleted()
+        }, 6200)
+      }
+    } catch {}
+
+    window.addEventListener('tap-guide-completed', handleTapGuideCompleted)
+    return () => {
+      window.removeEventListener('tap-guide-completed', handleTapGuideCompleted)
+      if (fallbackTimer) clearTimeout(fallbackTimer)
+    }
+  }, [playing, dismissChunkCallout])
+
+  // Okuma başladığında veya dışarıdan onboarding kapatıldığında callout'u kapat
+  useEffect(() => {
+    if (playing && showChunkCallout) {
+      dismissChunkCallout()
+    }
+  }, [playing, showChunkCallout, dismissChunkCallout])
+
+  useEffect(() => {
+    const handleExternalDismiss = () => {
+      if (chunkCalloutDismissedRef.current) return
+      chunkCalloutDismissedRef.current = true
+      if (chunkCalloutTimerRef.current) clearTimeout(chunkCalloutTimerRef.current)
+      if (chunkCalloutFadeTimerRef.current) clearTimeout(chunkCalloutFadeTimerRef.current)
+      setChunkCalloutFading(true)
+      chunkCalloutFadeTimerRef.current = setTimeout(() => {
+        setShowChunkCallout(false)
+      }, 350)
+    }
+    window.addEventListener('dismiss-onboarding', handleExternalDismiss)
+    return () => {
+      window.removeEventListener('dismiss-onboarding', handleExternalDismiss)
+      if (chunkCalloutTimerRef.current) clearTimeout(chunkCalloutTimerRef.current)
+      if (chunkCalloutFadeTimerRef.current) clearTimeout(chunkCalloutFadeTimerRef.current)
+    }
+  }, [])
+
+  // Callout açıkken sayfanın herhangi bir yerine tıklandığında kapat
+  useEffect(() => {
+    if (!showChunkCallout) return
+
+    const handlePointerDown = (e: globalThis.PointerEvent) => {
+      if (chunkCalloutRef.current && !chunkCalloutRef.current.contains(e.target as Node)) {
+        dismissChunkCallout()
+      }
+    }
+
+    window.addEventListener('pointerdown', handlePointerDown)
+    return () => window.removeEventListener('pointerdown', handlePointerDown)
+  }, [showChunkCallout, dismissChunkCallout])
 
   // 1 & 2. KURAL: Piksel Eşiği (25px) ve Kademe (25 WPM) ile Canlı Hız Kontrolü
   const touchStateRef = useRef<{
@@ -272,7 +368,8 @@ export const RsvpDisplay = memo(function RsvpDisplay({
         onTouchEnd={handleTouchEnd}
         onTouchCancel={handleTouchEnd}
         className={cn(
-          'rsvp-stage group relative flex flex-col justify-center min-h-[96px] sm:min-h-[110px] md:min-h-[140px] w-full overflow-hidden px-4 py-3.5 text-left outline-none transition-all duration-500 sm:px-8 sm:py-5 md:px-10 md:py-6 [@media(max-height:640px)]:py-2.5 landscape-short:py-1.5 select-none touch-none overscroll-none',
+          'rsvp-stage group relative flex flex-col justify-center min-h-[96px] sm:min-h-[110px] md:min-h-[140px] w-full px-4 py-3.5 text-left outline-none transition-all duration-500 sm:px-8 sm:py-5 md:px-10 md:py-6 [@media(max-height:640px)]:py-2.5 landscape-short:py-1.5 select-none touch-none overscroll-none',
+          showChunkCallout ? 'overflow-visible' : 'overflow-hidden',
           isPulsing && 'pulse-jump',
           playing
             ? 'border-transparent bg-transparent shadow-none'
@@ -417,23 +514,86 @@ export const RsvpDisplay = memo(function RsvpDisplay({
             playing ? 'opacity-0 pointer-events-none' : 'opacity-100',
           )}
         >
-          {onCycleChunkSize ? (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation()
-                onCycleChunkSize()
-              }}
-              className="rounded-full border border-foreground/15 hover:border-foreground/35 bg-foreground/[0.04] hover:bg-foreground/[0.08] px-2 py-0.5 md:px-2.5 md:py-1 text-[10px] md:text-xs font-mono font-medium text-foreground/85 transition-all cursor-pointer shadow-2xs hover:scale-105 active:scale-95 select-none"
-              title="Kelime Öbeğini Değiştir (C) — 1K / 2K / 3K / 4K"
-            >
-              {chunkSize}K
-            </button>
-          ) : chunkSize > 1 ? (
-            <span className="rounded-full border border-foreground/15 bg-foreground/[0.04] px-2 py-0.5 md:px-2.5 md:py-1 text-[10px] md:text-xs text-foreground/85 font-mono font-medium select-none">
-              {chunkSize}K
-            </span>
-          ) : null}
+          <div className="relative inline-flex items-center">
+            {onCycleChunkSize ? (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onCycleChunkSize()
+                  if (showChunkCallout) {
+                    dismissChunkCallout()
+                  }
+                }}
+                className={cn(
+                  'rounded-full border px-2 py-0.5 md:px-2.5 md:py-1 text-[10px] md:text-xs font-mono font-medium transition-all cursor-pointer shadow-2xs hover:scale-105 active:scale-95 select-none',
+                  showChunkCallout
+                    ? 'border-primary/80 bg-primary/15 text-primary ring-2 ring-primary/30 scale-105 shadow-[0_0_12px_rgba(56,189,248,0.35)]'
+                    : 'border-foreground/15 hover:border-foreground/35 bg-foreground/[0.04] hover:bg-foreground/[0.08] text-foreground/85',
+                )}
+                title="Kelime Öbeğini Değiştir (C) — 1K / 2K / 3K / 4K"
+              >
+                {chunkSize}K
+              </button>
+            ) : chunkSize > 1 ? (
+              <span className="rounded-full border border-foreground/15 bg-foreground/[0.04] px-2 py-0.5 md:px-2.5 md:py-1 text-[10px] md:text-xs text-foreground/85 font-mono font-medium select-none">
+                {chunkSize}K
+              </span>
+            ) : null}
+
+            {/* İlk Ziyaret İçin 1K / 2K / 3K / 4K Kelime Öbeği Cam Tanıtım Penceresi */}
+            {showChunkCallout && (
+              <div
+                ref={chunkCalloutRef}
+                role="tooltip"
+                aria-label="Kelime Öbeği Tanıtımı (1K / 2K / 3K / 4K)"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onCycleChunkSize?.()
+                  dismissChunkCallout()
+                }}
+                className={cn(
+                  'panel absolute top-full mt-2.5 z-50 select-none cursor-pointer transition-all duration-300 ease-out',
+                  'right-0 w-[240px] sm:w-[260px]',
+                  'p-2.5 sm:p-3 rounded-2xl shadow-xl',
+                  'bg-[var(--panel)] border border-[var(--panel-border)] backdrop-blur-[var(--panel-blur)]',
+                  'text-foreground text-left',
+                  'animate-in fade-in zoom-in-95 duration-300',
+                  chunkCalloutFading
+                    ? 'opacity-0 scale-95 pointer-events-none'
+                    : 'opacity-100 scale-100 pointer-events-auto',
+                )}
+              >
+                {/* Butonu İşaret Eden Yukarı Doğru Cam Ok (Arrow Pointer) */}
+                <div
+                  className="absolute -top-1.5 right-3 sm:right-3.5 size-3 rotate-45 border-t border-l border-[var(--panel-border)] bg-[var(--panel)] shadow-2xs backdrop-blur-[var(--panel-blur)]"
+                  aria-hidden="true"
+                />
+
+                <div className="relative z-10 flex items-start gap-2.5">
+                  <div className="size-7 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
+                    <Layers className="size-4 text-primary" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5">
+                      <p className="text-xs font-semibold text-foreground leading-tight">
+                        Kelime Öbeği
+                      </p>
+                      <span className="rounded bg-primary/15 px-1 py-0.2 text-[9px] font-mono font-bold text-primary">
+                        1K–4K
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground mt-1 leading-snug">
+                      Tek seferde gösterilen kelime sayısını buradan değiştirebilirsiniz.
+                    </p>
+                    <p className="text-[10px] text-muted-foreground/80 mt-1 font-mono">
+                      Kısayol: <kbd className="px-1 py-0.5 rounded bg-foreground/10 border border-foreground/15 font-mono text-[9px] text-foreground">C</kbd> veya tıkla
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
           <span>{wpm} k/dk</span>
         </div>
 

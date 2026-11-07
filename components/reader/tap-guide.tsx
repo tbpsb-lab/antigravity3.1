@@ -30,7 +30,7 @@ export function TapGuide({ onDismiss }: TapGuideProps) {
     if (fadeTimerRef.current) clearTimeout(fadeTimerRef.current)
     setFading(true)
     try {
-      localStorage.setItem('hasSeenTapGuide', 'true')
+      localStorage.setItem('hasSeenTapGuide_v2', 'true')
       window.dispatchEvent(new Event('dismiss-onboarding'))
     } catch {}
     fadeTimerRef.current = setTimeout(() => {
@@ -41,7 +41,7 @@ export function TapGuide({ onDismiss }: TapGuideProps) {
 
   useEffect(() => {
     try {
-      const hasSeen = localStorage.getItem('hasSeenTapGuide')
+      const hasSeen = localStorage.getItem('hasSeenTapGuide_v2')
       if (!hasSeen) {
         setVisible(true)
 

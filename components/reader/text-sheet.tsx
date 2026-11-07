@@ -70,7 +70,7 @@ export const TextSheet = memo(function TextSheet({
     if (calloutFadeTimerRef.current) clearTimeout(calloutFadeTimerRef.current)
     setCalloutFading(true)
     try {
-      localStorage.setItem('hasSeenTapGuide', 'true')
+      localStorage.setItem('hasSeenTapGuide_v2', 'true')
       window.dispatchEvent(new Event('dismiss-onboarding'))
     } catch {}
     calloutFadeTimerRef.current = setTimeout(() => {
@@ -79,14 +79,14 @@ export const TextSheet = memo(function TextSheet({
   }, [])
 
   useEffect(() => {
-    // Ana okuma penceresinin (TapGuide) tanıtımı bittikten sonra içerik merkezinin tanıtımını aç
-    const handleTapGuideCompleted = () => {
+    // 1K kelime öbeği tanıtımı (chunk-guide-completed) bittikten sonra içerik merkezinin tanıtımını aç
+    const handleTriggerContentCenter = () => {
       try {
-        const hasSeen = localStorage.getItem('hasSeenTapGuide')
+        const hasSeen = localStorage.getItem('hasSeenTapGuide_v2')
         if (!hasSeen && !calloutDismissedRef.current && !open) {
           setShowCallout(true)
           if (calloutTimerRef.current) clearTimeout(calloutTimerRef.current)
-          // Okuma ve içerik merkezi tanıtımında birazcık daha fazla zaman dur (6.5 sn)
+          // Okuma ve içerik merkezi tanıtımında 6.5 sn dur
           calloutTimerRef.current = setTimeout(() => {
             dismissCallout()
           }, 6500)
@@ -94,20 +94,20 @@ export const TextSheet = memo(function TextSheet({
       } catch {}
     }
 
-    // Güvenlik yedek zamanlayıcısı: TapGuide dinleyicisi kaçırılırsa 6.8 sn sonra devreye girer
+    // Güvenlik yedek zamanlayıcısı: Önceki tanıtım adımları kaçırılırsa 12.5 sn sonra devreye girer
     let fallbackTimer: ReturnType<typeof setTimeout> | null = null
     try {
-      const hasSeen = localStorage.getItem('hasSeenTapGuide')
+      const hasSeen = localStorage.getItem('hasSeenTapGuide_v2')
       if (!hasSeen) {
         fallbackTimer = setTimeout(() => {
-          handleTapGuideCompleted()
-        }, 6800)
+          handleTriggerContentCenter()
+        }, 12500)
       }
     } catch {}
 
-    window.addEventListener('tap-guide-completed', handleTapGuideCompleted)
+    window.addEventListener('chunk-guide-completed', handleTriggerContentCenter)
     return () => {
-      window.removeEventListener('tap-guide-completed', handleTapGuideCompleted)
+      window.removeEventListener('chunk-guide-completed', handleTriggerContentCenter)
       if (fallbackTimer) clearTimeout(fallbackTimer)
     }
   }, [open, dismissCallout])

@@ -377,7 +377,7 @@ export const RsvpDisplay = memo(function RsvpDisplay({
         onTouchEnd={handleTouchEnd}
         onTouchCancel={handleTouchEnd}
         className={cn(
-          'rsvp-stage group relative flex flex-col justify-center min-h-[96px] sm:min-h-[110px] md:min-h-[140px] w-full px-4 py-3.5 text-left outline-none transition-all duration-500 sm:px-8 sm:py-5 md:px-10 md:py-6 [@media(max-height:640px)]:py-2.5 landscape-short:py-1.5 select-none touch-none overscroll-none',
+          'rsvp-stage group relative flex flex-col justify-center min-h-[96px] sm:min-h-[110px] md:min-h-[140px] w-full px-4 py-3.5 text-left outline-none transition-[border-color,background-color,box-shadow] duration-300 sm:px-8 sm:py-5 md:px-10 md:py-6 [@media(max-height:640px)]:py-2.5 landscape-short:py-1.5 select-none touch-none overscroll-none',
           showChunkCallout ? 'overflow-visible' : 'overflow-hidden',
           isPulsing && 'pulse-jump',
           playing
@@ -440,7 +440,7 @@ export const RsvpDisplay = memo(function RsvpDisplay({
             <span
               aria-live="off"
               style={wordStyle}
-              className="reader-word relative grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-baseline whitespace-pre py-[0.08em] leading-[1.3] [--word-base:clamp(1.4rem,4.2cqi,2.8rem)] md:[--word-base:clamp(1.9rem,5.4cqi,3.6rem)] landscape-short:[--word-base:clamp(1.1rem,6.4vh,2rem)] select-none tracking-normal transition-[font-size] duration-200 ease-out"
+              className="reader-word relative grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-baseline whitespace-pre py-[0.08em] leading-[1.3] [--word-base:clamp(1.4rem,4.2cqi,2.8rem)] md:[--word-base:clamp(1.9rem,5.4cqi,3.6rem)] landscape-short:[--word-base:clamp(1.1rem,6.4vh,2rem)] select-none tracking-normal"
             >
               {/* Sol parça: Sağa yaslı */}
               <span className="min-w-0 text-right overflow-visible">
@@ -478,7 +478,7 @@ export const RsvpDisplay = memo(function RsvpDisplay({
               aria-live="off"
               style={wordStyle}
               className={cn(
-                'reader-word relative flex w-full items-center justify-center py-[0.08em] text-center select-none max-w-full flex-nowrap gap-x-[0.3em] items-baseline leading-[1.3] [--word-base:clamp(1.4rem,4.2cqi,2.8rem)] md:[--word-base:clamp(1.9rem,5.4cqi,3.6rem)] landscape-short:[--word-base:clamp(1.1rem,6.4vh,2rem)] transition-[font-size] duration-200 ease-out',
+                'reader-word relative flex w-full items-center justify-center py-[0.08em] text-center select-none max-w-full flex-nowrap gap-x-[0.3em] items-baseline leading-[1.3] [--word-base:clamp(1.4rem,4.2cqi,2.8rem)] md:[--word-base:clamp(1.9rem,5.4cqi,3.6rem)] landscape-short:[--word-base:clamp(1.1rem,6.4vh,2rem)]',
                 isFootnote && 'italic text-amber-800 dark:text-amber-300 flex-wrap text-balance',
               )}
             >
@@ -541,7 +541,7 @@ export const RsvpDisplay = memo(function RsvpDisplay({
                     ? 'border-primary/80 bg-primary/15 text-primary ring-2 ring-primary/30 scale-105 shadow-[0_0_12px_rgba(56,189,248,0.35)]'
                     : 'border-foreground/15 hover:border-foreground/35 bg-foreground/[0.04] hover:bg-foreground/[0.08] text-foreground/85',
                 )}
-                title="Kelime Öbeğini Değiştir (C) — 1K / 2K / 3K"
+                title="Kelime Öbeği (1 / 2 / 3) — 1K / 2K / 3K"
               >
                 {chunkSize}K
               </button>
@@ -597,7 +597,7 @@ export const RsvpDisplay = memo(function RsvpDisplay({
                       </span>
                     </div>
                     <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">
-                      Akan kelime adedi (<kbd className="px-1 py-0.2 rounded bg-foreground/10 border border-foreground/20 font-mono text-[9px] font-bold text-foreground">C</kbd>)
+                      Akan kelime adedi (<kbd className="px-1 py-0.2 rounded bg-foreground/10 border border-foreground/20 font-mono text-[9px] font-bold text-foreground">1</kbd>, <kbd className="px-1 py-0.2 rounded bg-foreground/10 border border-foreground/20 font-mono text-[9px] font-bold text-foreground">2</kbd>, <kbd className="px-1 py-0.2 rounded bg-foreground/10 border border-foreground/20 font-mono text-[9px] font-bold text-foreground">3</kbd>)
                     </p>
                   </div>
                 </div>

@@ -37,6 +37,8 @@ export const ContextPeek = memo(function ContextPeek({
   theme,
   onJump,
   onVisibleCountChange,
+  onStepPrev,
+  onStepNext,
 }: ContextPeekProps) {
   const [containerRef, containerSize] = useElementSize<HTMLDivElement>()
   const [isSearchOpen, setIsSearchOpen] = useState(false)

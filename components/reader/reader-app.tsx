@@ -674,13 +674,20 @@ export function ReaderApp() {
     const currentWordIdx = currentChunk?.startIndex ?? 0
     const pageSize = Math.max(1, contextPageSize)
     const pageIdx = Math.floor(currentWordIdx / pageSize)
-    if (pageIdx <= 0) return
+    if (pageIdx <= 0) {
+      if (currentWordIdx > 0) {
+        seek(0)
+        triggerHaptic('tap')
+      }
+      return
+    }
 
     const targetPageIdx = pageIdx - 1
     const targetWordIdx = targetPageIdx * pageSize
     const targetChunkIdx = chunks.findIndex((c) => c.startIndex >= targetWordIdx)
     const finalIdx = targetChunkIdx !== -1 ? targetChunkIdx : 0
     seek(finalIdx)
+    triggerHaptic('tap')
   }, [currentChunk, contextPageSize, chunks, seek])
 
   const handleStepNext = useCallback(() => {
@@ -698,6 +705,7 @@ export function ReaderApp() {
     const targetChunkIdx = chunks.findIndex((c) => c.startIndex >= targetWordIdx)
     const finalIdx = targetChunkIdx !== -1 ? targetChunkIdx : chunks.length - 1
     seek(finalIdx)
+    triggerHaptic('tap')
   }, [currentChunk, contextPageSize, words.length, chunks, seek])
 
   const handleContextJump = useCallback(
@@ -1031,7 +1039,7 @@ export function ReaderApp() {
       }
     }
 
-    // 1, 2, 3 Temaları değiştirme kısayolları (Kılavuz penceresi açıkken de anında çalışır)
+    // 1, 2, 3 Kelime öbeği (Chunk) kısayolları: 1: 1 kelime, 2: 2 kelime, 3: 3 kelime
     if (
       e.code === 'Digit1' ||
       e.code === 'Digit2' ||
@@ -1040,12 +1048,24 @@ export function ReaderApp() {
       e.code === 'Numpad2' ||
       e.code === 'Numpad3'
     ) {
+      e.preventDefault()
       const num = Number(e.key)
-      const targetTheme = THEMES[num - 1]?.id
-      if (targetTheme) {
-        handleThemeChange(targetTheme)
+      if (num >= 1 && num <= 3) {
+        handleChunkSizeChange(num)
         triggerHaptic('tap')
       }
+      return
+    }
+
+    // T / t: Tasarım temasını sırayla değiştir (Cam -> Neon -> Kağıt -> Cam)
+    if (e.code === 'KeyT') {
+      e.preventDefault()
+      const themeIndex = THEMES.findIndex((t) => t.id === theme)
+      const nextTheme = THEMES[(themeIndex + 1) % THEMES.length]?.id ?? 'ios'
+      handleThemeChange(nextTheme)
+      triggerHaptic('tap')
+      const themeName = THEMES.find((t) => t.id === nextTheme)?.name || nextTheme
+      showAudioToast(`Tema: ${themeName}`)
       return
     }
 
@@ -1093,10 +1113,6 @@ export function ReaderApp() {
       case 'ArrowDown':
         e.preventDefault()
         changeWpm(-WPM_STEP)
-        break
-      case 'KeyC':
-        e.preventDefault()
-        cycleChunkSize()
         break
       case 'KeyB': {
         e.preventDefault()

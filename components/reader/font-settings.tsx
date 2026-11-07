@@ -200,7 +200,7 @@ export const FontSettings = memo(function FontSettings({
                   theme === 'ios' ? 'text-primary' : 'text-muted-foreground/50',
                 )}
               >
-                1
+                T
               </span>
               <div className="h-7 flex items-center justify-center">
                 <CamShape />
@@ -227,7 +227,7 @@ export const FontSettings = memo(function FontSettings({
                   theme === 'linear' ? 'text-purple-400' : 'text-muted-foreground/50',
                 )}
               >
-                2
+                T
               </span>
               <div className="h-7 flex items-center justify-center">
                 <NeonShape />
@@ -254,7 +254,7 @@ export const FontSettings = memo(function FontSettings({
                   theme === 'kindle' ? 'text-amber-600 dark:text-amber-400' : 'text-muted-foreground/50',
                 )}
               >
-                3
+                T
               </span>
               <div className="h-7 flex items-center justify-center">
                 <KagitShape />
@@ -336,14 +336,14 @@ export const FontSettings = memo(function FontSettings({
           })}
         </div>
 
-        {/* 4. Kelime Öbeği (Tek satır, sol üstte mini c) */}
+        {/* 4. Kelime Öbeği (Tek satır, sol üstte mini 1-3) */}
         {onChunkSizeChange && (
           <div className="relative pt-2.5 border-t border-border/40">
             <span
               aria-hidden="true"
               className="absolute -top-1.5 left-1 px-1 py-0 rounded text-[9px] font-mono font-bold bg-background border border-border/70 text-muted-foreground/80 leading-none select-none shadow-xs"
             >
-              c
+              1-3
             </span>
             <div role="radiogroup" aria-label="Kelime öbeği boyutu" className="grid grid-cols-3 gap-1 w-full">
               {[1, 2, 3].map((size) => {
@@ -359,9 +359,9 @@ export const FontSettings = memo(function FontSettings({
                       'ctl h-7 text-xs font-mono font-medium rounded-lg',
                       active ? 'ctl-primary' : 'bg-transparent text-muted-foreground hover:text-foreground',
                     )}
-                    title={`${size} kelime öbeği`}
+                    title={`${size} kelime (${size})`}
                   >
-                    {size} {size === 1 ? 'kelime' : 'k'}
+                    {size} kelime
                   </button>
                 )
               })}

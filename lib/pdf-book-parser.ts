@@ -1629,6 +1629,13 @@ function tryMergeWordPair(
   return null
 }
 
+/**
+ * İki kelimenin satır sonunda hece bölünmesiyle birleşip birleşmeyeceğini kontrol eder.
+ */
+export function shouldMergeLineBreakWords(lastWord: string, nextWord: string): boolean {
+  return tryMergeWordPair(lastWord, nextWord) !== null
+}
+
 function isPageNumberLine(text: string): boolean {
   const t = text.trim()
   if (/^\d{1,4}\.?$/.test(t)) return true
@@ -2056,13 +2063,18 @@ function extractFootnotesFromLines(
           } else {
             const prevWords = prevPart.split(/\s+/).filter(Boolean)
             const nextWords = nextText.split(/\s+/).filter(Boolean)
-            if (
-              prevWords.length > 0 &&
-              nextWords.length > 0 &&
-              shouldMergeLineBreakWords(prevWords[prevWords.length - 1], nextWords[0])
-            ) {
-              prevWords[prevWords.length - 1] = cleanIntraLineHyphens(prevWords[prevWords.length - 1] + nextWords[0])
-              nextWords.shift()
+            const lastPrev = prevWords[prevWords.length - 1]
+            const firstNext = nextWords[0]
+            const merged = lastPrev && firstNext ? tryMergeWordPair(lastPrev, firstNext) : null
+            if (merged) {
+              if (merged.includes(' ')) {
+                const splitParts = merged.split(/\s+/)
+                prevWords[prevWords.length - 1] = splitParts[0]
+                nextWords[0] = splitParts.slice(1).join(' ')
+              } else {
+                prevWords[prevWords.length - 1] = merged
+                nextWords.shift()
+              }
               fnParts[fnParts.length - 1] = prevWords.join(' ')
               if (nextWords.length > 0) fnParts.push(nextWords.join(' '))
             } else {

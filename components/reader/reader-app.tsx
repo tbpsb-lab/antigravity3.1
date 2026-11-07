@@ -684,6 +684,49 @@ export function ReaderApp() {
     [chunks, seek],
   )
 
+  // Sayfa kıvrımı ile bir sonraki kitap sayfasına atlama kontrolü:
+  // - Zen modunda tıklanamaz.
+  // - Sadece kitap/PDF modunda (pageInfo mevcut olduğunda) çalışır; düz metin ve linklerde devre dışıdır.
+  // - Son sayfada değilse bir sonraki sayfaya atlar.
+  const currentBookPageNumber = useMemo(() => {
+    if (!pageInfo) return null
+    if (currentChunk?.pageNumber) return currentChunk.pageNumber
+    for (let i = index; i >= 0; i--) {
+      if (chunks[i]?.pageNumber) return chunks[i].pageNumber
+    }
+    return null
+  }, [pageInfo, currentChunk, index, chunks])
+
+  const canJumpPage = useMemo(() => {
+    return Boolean(
+      !zen &&
+      pageInfo &&
+      pageInfo.totalBookPages &&
+      currentBookPageNumber &&
+      currentBookPageNumber < pageInfo.totalBookPages,
+    )
+  }, [zen, pageInfo, currentBookPageNumber])
+
+  const handleNextBookPage = useCallback(() => {
+    if (zen || !pageInfo) return
+    const currentPage = currentBookPageNumber
+    if (!currentPage || !pageInfo.totalBookPages || currentPage >= pageInfo.totalBookPages) return
+
+    const targetPage = currentPage + 1
+    const targetChunkIdx = chunks.findIndex((c) => c.pageNumber === targetPage)
+    const finalIdx =
+      targetChunkIdx !== -1
+        ? targetChunkIdx
+        : chunks.findIndex((c) => (c.pageNumber || 0) >= targetPage)
+
+    if (finalIdx !== -1) {
+      rampStepRef.current = 0
+      seek(finalIdx)
+      triggerPulse()
+      triggerHaptic('tap')
+    }
+  }, [zen, pageInfo, currentBookPageNumber, chunks, seek, triggerPulse])
+
   // Klavye ok tuşları ve mouse wheel için kademeli değişim
   const changeWpm = useCallback(
     (delta: number) => {
@@ -1221,9 +1264,24 @@ export function ReaderApp() {
       <AmbientAura theme={theme} playing={playing} />
 
       {/* Tematik Sağ Alt Köşe Sayfa Kıvrımları (Her zaman arka planda / z-0) */}
-      <PaperCornerCurl visible={theme === 'kindle'} zen={zen} />
-      <GlassCornerCurl visible={theme === 'ios'} zen={zen} />
-      <NeonCornerCurl visible={theme === 'linear'} zen={zen} />
+      <PaperCornerCurl
+        visible={theme === 'kindle'}
+        zen={zen}
+        canJumpPage={canJumpPage}
+        onPageCurlClick={handleNextBookPage}
+      />
+      <GlassCornerCurl
+        visible={theme === 'ios'}
+        zen={zen}
+        canJumpPage={canJumpPage}
+        onPageCurlClick={handleNextBookPage}
+      />
+      <NeonCornerCurl
+        visible={theme === 'linear'}
+        zen={zen}
+        canJumpPage={canJumpPage}
+        onPageCurlClick={handleNextBookPage}
+      />
 
       <TopBar
         ref={headerRef}
@@ -1241,19 +1299,19 @@ export function ReaderApp() {
 
       <main
         className={cn(
-          'absolute inset-0 z-10 flex flex-col items-center justify-center overflow-hidden px-4 transition-[padding] duration-500 ease-[cubic-bezier(0.2,0.8,0.2,1)] sm:px-8 landscape-short:px-3',
+          'absolute inset-0 z-10 pointer-events-none flex flex-col items-center justify-center overflow-hidden px-4 transition-[padding] duration-500 ease-[cubic-bezier(0.2,0.8,0.2,1)] sm:px-8 landscape-short:px-3',
           zen ? 'pb-0' : 'pb-5 landscape-short:pb-1.5',
         )}
         style={{
           paddingTop: zen ? 0 : headerHeight,
         }}
       >
-        <div className="relative flex h-full w-full max-w-4xl lg:max-w-5xl xl:max-w-6xl flex-col items-center justify-between py-1 sm:py-2 landscape-short:py-0.5 transition-[max-width] duration-300 min-h-0">
+        <div className="relative flex h-full w-full max-w-4xl lg:max-w-5xl xl:max-w-6xl flex-col items-center justify-between py-1 sm:py-2 landscape-short:py-0.5 transition-[max-width] duration-300 min-h-0 pointer-events-none">
           {/* Üst Dengeleyici */}
           <div className="flex-1 w-full min-h-0 pointer-events-none select-none" />
 
           {/* Okuma Penceresi */}
-          <div className="w-full shrink-0 flex flex-col items-center">
+          <div className="w-full shrink-0 flex flex-col items-center pointer-events-auto">
             {showSpeedTestBanner && !zen && (
               <div className="mb-2 sm:mb-2.5 flex w-full max-w-xs items-center justify-between gap-2 rounded-full border border-border/50 bg-background/50 px-3 py-1 shadow-2xs backdrop-blur-sm animate-in fade-in slide-in-from-top-1 duration-300">
                 <button
@@ -1304,7 +1362,7 @@ export function ReaderApp() {
           </div>
 
           {/* Alt Zarif Bağlam Şeridi */}
-          <div className="context-peek-box relative z-20 w-full max-w-3xl shrink-0 mt-1 sm:mt-1.5 landscape-short:mt-0.5 min-h-[84px] sm:min-h-[108px] md:min-h-[128px] max-h-[102px] sm:max-h-[132px] md:max-h-[156px] landscape-short:min-h-[72px] landscape-short:max-h-[86px] flex flex-col overflow-visible">
+          <div className="context-peek-box relative z-20 w-full max-w-3xl shrink-0 mt-1 sm:mt-1.5 landscape-short:mt-0.5 min-h-[84px] sm:min-h-[108px] md:min-h-[128px] max-h-[102px] sm:max-h-[132px] md:max-h-[156px] landscape-short:min-h-[72px] landscape-short:max-h-[86px] flex flex-col overflow-visible pointer-events-auto">
             <ContextPeek
               words={words}
               chunks={chunks}

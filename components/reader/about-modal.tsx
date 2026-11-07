@@ -11,7 +11,6 @@ import {
   Maximize,
   MousePointer,
   RotateCcw,
-  Search,
   ShieldCheck,
   Smartphone,
   Sparkles,
@@ -172,7 +171,6 @@ type TabId = (typeof TABS)[number]['id']
 
 export function AboutModal({ open, onClose, theme, onThemeChange }: AboutModalProps) {
   const [activeTab, setActiveTab] = useState<TabId>('rsvp')
-  const [searchQuery, setSearchQuery] = useState('')
   const dialogRef = useFocusTrap<HTMLDivElement>(open)
 
   const activeTabIndex = TABS.findIndex((t) => t.id === activeTab)
@@ -205,28 +203,6 @@ export function AboutModal({ open, onClose, theme, onThemeChange }: AboutModalPr
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [open, onClose, onThemeChange])
-
-  // Arama filtresi
-  const normalizedQuery = searchQuery.trim().toLowerCase()
-  const filteredFeatures = useMemo(() => {
-    if (!normalizedQuery) return GUIDE_FEATURES
-    return GUIDE_FEATURES.filter(
-      (f) =>
-        f.title.toLowerCase().includes(normalizedQuery) ||
-        f.description.toLowerCase().includes(normalizedQuery) ||
-        (f.subtitle && f.subtitle.toLowerCase().includes(normalizedQuery)) ||
-        (f.shortcutKey && f.shortcutKey.toLowerCase().includes(normalizedQuery)),
-    )
-  }, [normalizedQuery])
-
-  const filteredShortcuts = useMemo(() => {
-    if (!normalizedQuery) return GUIDE_SHORTCUTS
-    return GUIDE_SHORTCUTS.filter(
-      (s) =>
-        s.key.toLowerCase().includes(normalizedQuery) ||
-        s.description.toLowerCase().includes(normalizedQuery),
-    )
-  }, [normalizedQuery])
 
   if (!open) return null
 
@@ -308,27 +284,24 @@ export function AboutModal({ open, onClose, theme, onThemeChange }: AboutModalPr
           </div>
         </div>
 
-        {/* Sekme Çubuğu & Canlı Arama Alanı */}
-        <div className="shrink-0 flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+        {/* Sekme Çubuğu */}
+        <div className="shrink-0">
           {/* Sekme Butonları */}
           <div
             role="tablist"
             aria-label="odak bilgi bölümleri"
-            className="flex-1 flex items-center justify-between gap-1 p-1 md:p-1.5 landscape-short:p-0.5 rounded-2xl bg-foreground/5 border border-border/60 select-none"
+            className="w-full flex items-center justify-between gap-1 p-1 md:p-1.5 landscape-short:p-0.5 rounded-2xl bg-foreground/5 border border-border/60 select-none"
           >
             {TABS.map((tab) => {
               const Icon = tab.icon
-              const isActive = activeTab === tab.id && !normalizedQuery
+              const isActive = activeTab === tab.id
               return (
                 <button
                   key={tab.id}
                   type="button"
                   role="tab"
                   aria-selected={isActive}
-                  onClick={() => {
-                    setActiveTab(tab.id)
-                    setSearchQuery('')
-                  }}
+                  onClick={() => setActiveTab(tab.id)}
                   className={cn(
                     'flex items-center justify-center transition-all duration-300 cursor-pointer outline-none rounded-xl h-9 md:h-10 landscape-short:h-7.5',
                     isActive
@@ -357,96 +330,14 @@ export function AboutModal({ open, onClose, theme, onThemeChange }: AboutModalPr
               )
             })}
           </div>
-
-          {/* Canlı Kılavuz Araması */}
-          <div className="relative shrink-0 sm:w-56 md:w-64">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Özellik veya tuş ara (C, B, sf...)"
-              className="w-full h-9 md:h-10 text-xs rounded-2xl pl-8 pr-7 bg-foreground/5 border border-border/60 text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-1 focus:ring-primary/50 transition-all"
-            />
-            {searchQuery && (
-              <button
-                type="button"
-                onClick={() => setSearchQuery('')}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground hover:text-foreground cursor-pointer"
-                aria-label="Aramayı Temizle"
-              >
-                <X className="size-3.5" />
-              </button>
-            )}
-          </div>
         </div>
 
-        {/* Sekmeler Arası Yatay Slider veya Arama Sonuçları */}
+        {/* Sekmeler Arası Yatay Slider */}
         <div className="relative w-full flex-1 min-h-0 overflow-hidden rounded-2xl">
-          {normalizedQuery ? (
-            /* Canlı Arama Sonuçları Görünümü */
-            <div className="w-full h-full max-h-[calc(90dvh-14rem)] landscape-short:max-h-[calc(96dvh-5.5rem)] overflow-y-auto theme-scrollbar px-1 pb-10 text-sm flex flex-col gap-3">
-              <div className="text-xs font-semibold text-muted-foreground px-1">
-                &ldquo;{searchQuery}&rdquo; için arama sonuçları ({filteredFeatures.length} özellik, {filteredShortcuts.length} kısayol):
-              </div>
-
-              {filteredFeatures.length > 0 && (
-                <div className="flex flex-col gap-2.5">
-                  <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                    <Sparkles className="size-3.5 text-sky-500" /> Eşleşen Özellikler
-                  </span>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                    {filteredFeatures.map((feat) => {
-                      const Icon = feat.icon
-                      return (
-                        <GuideCard key={feat.id} theme={theme} className="p-3.5">
-                          <div className="flex items-center justify-between gap-2 mb-1.5">
-                            <h4 className="font-bold text-foreground text-sm flex items-center gap-1.5">
-                              <Icon className={cn('size-4 shrink-0', feat.iconColor)} />
-                              {feat.title}
-                            </h4>
-                            {feat.shortcutKey && <Kbd theme={theme}>{feat.shortcutKey}</Kbd>}
-                          </div>
-                          <p className="text-xs leading-relaxed text-foreground/85 font-normal">
-                            {renderFormattedDescription(feat.description, theme)}
-                          </p>
-                        </GuideCard>
-                      )
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {filteredShortcuts.length > 0 && (
-                <div className="flex flex-col gap-2.5 mt-2">
-                  <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                    <Keyboard className="size-3.5 text-purple-500" /> Eşleşen Kısayollar
-                  </span>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                    {filteredShortcuts.map((sc, idx) => (
-                      <div
-                        key={idx}
-                        className="flex items-center justify-between p-2.5 rounded-xl bg-foreground/[0.04] border border-border/70 hover:bg-foreground/[0.07] transition-colors"
-                      >
-                        <span className="text-foreground/90 font-medium">{sc.description}</span>
-                        <Kbd theme={theme}>{sc.key}</Kbd>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {filteredFeatures.length === 0 && filteredShortcuts.length === 0 && (
-                <div className="py-12 text-center text-muted-foreground text-xs">
-                  Aramanızla eşleşen özellik veya kısayol bulunamadı.
-                </div>
-              )}
-            </div>
-          ) : (
-            <div
-              className="flex w-[400%] h-full transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]"
-              style={{ transform: `translateX(-${activeTabIndex * 25}%)` }}
-            >
+          <div
+            className="flex w-[400%] h-full transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]"
+            style={{ transform: `translateX(-${activeTabIndex * 25}%)` }}
+          >
               {/* 1. SLIDE: RSVP & Bilim */}
               <div
                 role="tabpanel"
@@ -664,7 +555,6 @@ export function AboutModal({ open, onClose, theme, onThemeChange }: AboutModalPr
                 </div>
               </div>
             </div>
-          )}
         </div>
       </div>
     </div>

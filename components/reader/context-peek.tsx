@@ -40,6 +40,7 @@ export const ContextPeek = memo(function ContextPeek({
 }: ContextPeekProps) {
   const [containerRef, containerSize] = useElementSize<HTMLDivElement>()
   const [isSearchOpen, setIsSearchOpen] = useState(false)
+  const searchButtonRef = useRef<HTMLButtonElement>(null)
 
   // Konteyner boyutuna göre ekranda dikey ve yatay eksende ne kadar kelime alabileceğini dinamik hesapla.
   // 3 satırın taşmadan, kelime kırpılmadan %100 ekrana sığmasını ve her sayfanın ardışık olmasını sağlar.
@@ -115,7 +116,7 @@ export const ContextPeek = memo(function ContextPeek({
   return (
     <div
       ref={containerRef}
-      className="flex flex-1 min-h-0 flex-col overflow-hidden transition-opacity duration-300 select-none w-full opacity-100"
+      className="flex flex-1 min-h-0 flex-col overflow-visible transition-opacity duration-300 select-none w-full opacity-100"
     >
       {/* Üst Bilgi Başlığı (Sol: Kelime Sayısı ve Konumu, Orta: Kitap Sayfa Numarası, Sağ: Kalan Süre) */}
       <div className="grid grid-cols-3 items-center mb-1 px-1 shrink-0 landscape-short:mb-0.5">
@@ -129,6 +130,7 @@ export const ContextPeek = memo(function ContextPeek({
         <div className="justify-self-center text-center relative flex items-center justify-center">
           {bookPageLabel ? (
             <button
+              ref={searchButtonRef}
               type="button"
               onClick={() => setIsSearchOpen((prev) => !prev)}
               className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-mono tabular-nums text-muted-foreground/80 hover:text-muted-foreground/80 active:text-muted-foreground/80 focus:text-muted-foreground/80 bg-transparent hover:bg-transparent active:bg-transparent transition-none cursor-pointer outline-none border-none select-none"
@@ -140,6 +142,7 @@ export const ContextPeek = memo(function ContextPeek({
             </button>
           ) : (
             <button
+              ref={searchButtonRef}
               type="button"
               onClick={() => setIsSearchOpen((prev) => !prev)}
               className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-mono tabular-nums text-muted-foreground/80 hover:text-muted-foreground/80 active:text-muted-foreground/80 focus:text-muted-foreground/80 bg-transparent hover:bg-transparent active:bg-transparent transition-none cursor-pointer outline-none border-none select-none"
@@ -161,6 +164,7 @@ export const ContextPeek = memo(function ContextPeek({
             currentWordIndex={index}
             onJump={onJump}
             theme={theme}
+            triggerRef={searchButtonRef}
           />
         </div>
         <div className="justify-self-end text-right">

@@ -553,20 +553,20 @@ export const RsvpDisplay = memo(function RsvpDisplay({
                   dismissChunkCallout()
                 }}
                 className={cn(
-                  'panel absolute top-full mt-2.5 z-50 select-none cursor-pointer transition-all duration-300 ease-out',
+                  'panel absolute bottom-full mb-3 z-50 select-none cursor-pointer transition-all duration-300 ease-out',
                   'right-0 w-[240px] sm:w-[260px]',
                   'p-2.5 sm:p-3 rounded-2xl shadow-xl',
                   'bg-[var(--panel)] border border-[var(--panel-border)] backdrop-blur-[var(--panel-blur)]',
                   'text-foreground text-left',
-                  'animate-in fade-in zoom-in-95 duration-300',
+                  'animate-in fade-in slide-in-from-bottom-2 duration-300',
                   chunkCalloutFading
                     ? 'opacity-0 scale-95 pointer-events-none'
                     : 'opacity-100 scale-100 pointer-events-auto',
                 )}
               >
-                {/* Butonu İşaret Eden Yukarı Doğru Cam Ok (Arrow Pointer) */}
+                {/* 1K Butonunu İşaret Eden Sağ Alt Köşedeki Cam Ok (Arrow Pointer) */}
                 <div
-                  className="absolute -top-1.5 right-3 sm:right-3.5 size-3 rotate-45 border-t border-l border-[var(--panel-border)] bg-[var(--panel)] shadow-2xs backdrop-blur-[var(--panel-blur)]"
+                  className="absolute -bottom-1.5 right-3 sm:right-3.5 size-3 rotate-45 border-b border-r border-[var(--panel-border)] bg-[var(--panel)] shadow-2xs backdrop-blur-[var(--panel-blur)]"
                   aria-hidden="true"
                 />
 

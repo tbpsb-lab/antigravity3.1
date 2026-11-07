@@ -111,7 +111,7 @@ export const RsvpDisplay = memo(function RsvpDisplay({
           if (chunkCalloutTimerRef.current) clearTimeout(chunkCalloutTimerRef.current)
           chunkCalloutTimerRef.current = setTimeout(() => {
             dismissChunkCallout()
-          }, 5500)
+          }, 4000)
         }
       } catch {}
     }
@@ -576,18 +576,18 @@ export const RsvpDisplay = memo(function RsvpDisplay({
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5">
-                      <p className="text-xs font-semibold text-foreground leading-tight">
-                        Kelime Öbeği
+                      <p className="text-xs font-bold text-foreground leading-tight">
+                        Kelime Bloklama
                       </p>
                       <span className="rounded bg-primary/15 px-1 py-0.2 text-[9px] font-mono font-bold text-primary">
                         1K–4K
                       </span>
                     </div>
-                    <p className="text-[11px] text-muted-foreground mt-1 leading-snug">
-                      Tek seferde gösterilen kelime sayısını buradan değiştirebilirsiniz.
+                    <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">
+                      Tek seferde akan kelime sayısı.
                     </p>
-                    <p className="text-[10px] text-muted-foreground/80 mt-1 font-mono">
-                      Kısayol: <kbd className="px-1 py-0.5 rounded bg-foreground/10 border border-foreground/15 font-mono text-[9px] text-foreground">C</kbd> veya tıkla
+                    <p className="text-[10px] text-muted-foreground/90 mt-1 font-mono">
+                      Kısayol: <kbd className="px-1.5 py-0.5 rounded bg-foreground/10 border border-foreground/25 font-mono text-[9px] font-bold text-foreground">C</kbd> veya tıkla
                     </p>
                   </div>
                 </div>

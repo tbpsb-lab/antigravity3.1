@@ -86,10 +86,10 @@ export const TextSheet = memo(function TextSheet({
         if (!hasSeen && !calloutDismissedRef.current && !open) {
           setShowCallout(true)
           if (calloutTimerRef.current) clearTimeout(calloutTimerRef.current)
-          // Okuma ve içerik merkezi tanıtımında 6.5 sn dur
+          // Okuma ve içerik merkezi tanıtımında 4 sn dur
           calloutTimerRef.current = setTimeout(() => {
             dismissCallout()
-          }, 6500)
+          }, 4000)
         }
       } catch {}
     }
@@ -338,11 +338,11 @@ export const TextSheet = memo(function TextSheet({
               <FileText className="size-4 text-primary" />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-xs font-semibold text-foreground leading-tight">
+              <p className="text-xs font-bold text-foreground leading-tight">
                 Okuma & İçerik Merkezi
               </p>
-              <p className="text-[11px] text-muted-foreground mt-1 leading-snug">
-                Metin, PDF veya linklerinizi buradan yükleyebilirsiniz.
+              <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">
+                Kitap, PDF veya metinlerinizi buradan yükleyebilirsiniz.
               </p>
             </div>
           </div>

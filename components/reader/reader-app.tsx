@@ -1289,9 +1289,12 @@ export function ReaderApp() {
           </div>
 
           {/* Alt Zarif Bağlam Şeridi */}
-          <div className="context-peek-box w-full max-w-3xl shrink-0 mt-1 sm:mt-1.5 landscape-short:mt-0.5 min-h-[76px] sm:min-h-[90px] md:min-h-[110px] max-h-[94px] sm:max-h-[112px] md:max-h-[132px] landscape-short:min-h-[72px] landscape-short:max-h-[84px] flex flex-col overflow-hidden">
+          <div className="context-peek-box relative w-full max-w-3xl shrink-0 mt-1 sm:mt-1.5 landscape-short:mt-0.5 min-h-[76px] sm:min-h-[90px] md:min-h-[110px] max-h-[94px] sm:max-h-[112px] md:max-h-[132px] landscape-short:min-h-[72px] landscape-short:max-h-[84px] flex flex-col overflow-visible">
             <ContextPeek
               words={words}
+              chunks={chunks}
+              pageInfo={pageInfo}
+              theme={theme}
               index={currentChunk?.startIndex ?? index}
               chunkSize={chunkSize}
               visible={!zen && words.length > 0}

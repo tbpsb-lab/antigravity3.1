@@ -106,7 +106,7 @@ export const GUIDE_SCIENCE: GuideScienceItem[] = [
 export const GUIDE_FEATURES: GuideFeatureItem[] = [
   {
     id: 'chunking-bionic',
-    title: "Kelime Bloklama ('C') & Bionic ('B')",
+    title: 'Kelime Bloklama & Akıllı Bionic',
     subtitle: '1K, 2K, 3K, 4K Çoklu Kelime & Akıllı Kök Vurgulama',
     badge: '1K • 2K • 3K • 4K',
     shortcutKey: 'C / B',
@@ -114,10 +114,10 @@ export const GUIDE_FEATURES: GuideFeatureItem[] = [
     iconColor: 'text-purple-500',
     category: 'reading',
     description:
-      "Kelimeleri 1'li, 2'li, 3'lü veya 4'lü bloklar halinde ('C' tuşu) akıtma imkanı. Çoklu kelimede Akıllı Bionic ('B' tuşu) kök harfleri vurgulayarak bağlaç ve ekleri gölgede bırakır; periferik görüşünüzü maksimum hızda devreye sokar.",
+      "Kelimeleri 1'li, 2'li, 3'lü veya 4'lü bloklar halinde `C` tuşu ile akıtma imkanı. Çoklu kelimede Akıllı Bionic `B` tuşu ile kök harfleri vurgulayarak bağlaç ve ekleri gölgede bırakır; periferik görüşünüzü maksimum hızda devreye sokar.",
     highlights: [
-      "RSVP ekranındaki kelime etiketine tıklayarak veya 'C' tuşuyla anında geçiş",
-      "Çoklu kelime modunda (2K-4K) 'B' tuşuyla Bionic kök okumayı etkinleştirme",
+      "RSVP ekranındaki kelime etiketine tıklayarak veya `C` tuşuyla anında geçiş",
+      "Çoklu kelime modunda (2K-4K) `B` tuşuyla Bionic kök okumayı etkinleştirme",
     ],
   },
   {
@@ -131,22 +131,22 @@ export const GUIDE_FEATURES: GuideFeatureItem[] = [
     description:
       "Yüklenen kitaplarda kapak, telif ve önsöz gibi okunmayan bölümleri otomatik algılayıp atlayarak doğrudan birinci bölümden başlar. Bozuk OCR tarama hatalarını ve satır sonu hece bölünmelerini akıllı Türkçe yazım denetimiyle kusursuzlaştırır.",
     highlights: [
-      "Kitabın gerçek sayfa numarasını takip eden sayaç ('sf: 11 / 205')",
+      "Kitabın gerçek sayfa numarasını takip eden sayaç (`sf: 11 / 205`)",
       "Yu Hua'nın 'Yaşamak' başyapıtı varsayılan olarak yüklü",
       'Cihaz içi %100 yerel ayrıştırma (hiçbir veri sunucuya gitmez)',
     ],
   },
   {
     id: 'smart-footnotes',
-    title: 'Akıllı Dipnot Tanıma & Seslendirme',
+    title: 'Akıllı Dipnot Sistemi',
     subtitle: 'Metin İçi Dipnot İzolasyonu & Açıklama Penceresi',
-    badge: "D Tuşu",
+    badge: 'D Tuşu',
     shortcutKey: 'D',
     icon: Bookmark,
     iconColor: 'text-amber-500',
     category: 'reading',
     description:
-      "Metin içindeki dipnot referanslarını (örneğin Erxi*, fen1ik*) ve dipnot içeriklerini akıllıca yakalar. 'D' tuşu ile dipnotları okuma akışına dahil edebilir veya atlayabilirsiniz. Dipnot geldiğinde bağlam çubuğunda açıklaması anında belirir.",
+      "Metin içindeki dipnot referanslarını (örneğin Erxi*, fen1ik*) ve dipnot içeriklerini akıllıca yakalar. `D` tuşu ile dipnotları okuma akışına dahil edebilir veya atlayabilirsiniz. Dipnot geldiğinde bağlam çubuğunda açıklaması anında belirir.",
   },
   {
     id: 'zen-mode-curl',
@@ -162,7 +162,7 @@ export const GUIDE_FEATURES: GuideFeatureItem[] = [
   },
   {
     id: 'neuro-audio-engine',
-    title: "Nöroakustik Ses Motoru ('M' Tuşu)",
+    title: 'Nöroakustik Ses Motoru',
     subtitle: 'Saf Algoritmik Pembe Gürültü ve 40 Hz Gama Vuruşları',
     badge: 'M Tuşu',
     shortcutKey: 'M',
@@ -170,11 +170,11 @@ export const GUIDE_FEATURES: GuideFeatureItem[] = [
     iconColor: 'text-indigo-500',
     category: 'audio',
     description:
-      "Web Audio API ile harici dosya yüklemeden saf matematiksel Pembe Gürültü (1/f) ve 40 Hz Gama Vuruşları (Sol 200 Hz, Sağ 240 Hz) sentezler. Çevresel gürültüyü maskeler, derin odaklanma sağlar.",
+      "Web Audio API ile harici dosya yüklemeden saf matematiksel Pembe Gürültü (1/f) ve 40 Hz Gama Vuruşları (Sol 200 Hz, Sağ 240 Hz) sentezler. Çevresel gürültüyü maskeler, derin odaklanma sağlar (`M` tuşu).",
   },
   {
     id: 'eye-tracking-ai',
-    title: "Göz & Dikkat İzleme ('G' Tuşu)",
+    title: 'Yapay Zeka Göz ve Dikkat Takibi',
     subtitle: 'Web Kamerasıyla Otomatik Akış Duraklatma',
     badge: 'G Tuşu',
     shortcutKey: 'G',
@@ -182,7 +182,7 @@ export const GUIDE_FEATURES: GuideFeatureItem[] = [
     iconColor: 'text-emerald-500',
     category: 'core',
     description:
-      "Cihazınızın web kamerasıyla gözlerinizi takip eder. Bakışınız ekrandan veya okuma noktasından ayrıldığında akışı otomatik duraklatır; tekrar odaklandığınızda kaldığı yerden devam eder.",
+      "Cihazınızın web kamerasıyla gözlerinizi takip eder (`G` tuşu). Bakışınız ekrandan veya okuma noktasından ayrıldığında akışı otomatik duraklatır; tekrar odaklandığınızda kaldığı yerden devam eder.",
   },
   {
     id: 'context-peek-rewind',
@@ -194,7 +194,7 @@ export const GUIDE_FEATURES: GuideFeatureItem[] = [
     iconColor: 'text-teal-500',
     category: 'nav',
     description:
-      "Duraklatıldığında okunan cümlenin 3 satırlı bağlamını sunar; geri sarma tuşuna ('←') basıldığında kelime kelime değil, doğrudan cümlenin başına zıplar ve hafif bir nabızla parlar.",
+      "Duraklatıldığında okunan cümlenin 3 satırlı bağlamını sunar; geri sarma tuşuna (`←`) basıldığında kelime kelime değil, doğrudan cümlenin başına zıplar ve hafif bir nabızla parlar.",
   },
   {
     id: 'precision-speed-control',

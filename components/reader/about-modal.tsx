@@ -52,23 +52,48 @@ type AboutModalProps = {
  */
 export function Kbd({
   children,
+  theme,
   className,
 }: {
   children: React.ReactNode
+  theme?: ThemeId
   className?: string
 }) {
   return (
     <kbd
       className={cn(
         'inline-flex items-center justify-center font-mono font-bold select-none text-center',
-        'px-2 py-0.5 rounded-lg text-xs leading-none border transition-colors',
-        'bg-foreground/10 text-foreground border-foreground/25 shadow-2xs hover:bg-foreground/15',
+        'px-2 py-0.5 rounded-lg text-xs leading-none border transition-colors shadow-2xs',
+        // Cam (ios) tema: Açık modda yumuşak açık gri zemin + koyu antrasit yazı; Koyu modda net beyaz
+        (!theme || theme === 'ios') &&
+          'bg-slate-200/90 dark:bg-slate-700/90 text-slate-900 dark:text-slate-100 border-slate-300 dark:border-slate-600',
+        // Kağıt (kindle) tema: Sıcak bej/parşömen zemin + koyu sepia mürekkep rengi yazı
+        theme === 'kindle' &&
+          'bg-[#ecdcc4] dark:bg-[#382b1d] text-[#2c2014] dark:text-[#f4ede2] border-[#cbba92]',
+        // Neon (linear) tema: Canlı mor zemin + ışıldayan parlak lila yazı
+        theme === 'linear' &&
+          'bg-purple-950/70 text-purple-200 border-purple-500/50 shadow-[0_0_12px_rgba(168,85,247,0.3)]',
         className,
       )}
     >
       {children}
     </kbd>
   )
+}
+
+function renderFormattedDescription(text: string, theme: ThemeId) {
+  const parts = text.split(/(`[^`]+`)/)
+  return parts.map((part, idx) => {
+    if (part.startsWith('`') && part.endsWith('`')) {
+      const keyName = part.slice(1, -1)
+      return (
+        <Kbd key={idx} theme={theme} className="mx-0.5 text-[10px] px-1.5 py-0.2 align-baseline">
+          {keyName}
+        </Kbd>
+      )
+    }
+    return part
+  })
 }
 
 function OdakModalLogo({ theme }: { theme: ThemeId }) {
@@ -380,10 +405,10 @@ export function AboutModal({ open, onClose, theme, onThemeChange }: AboutModalPr
                               <Icon className={cn('size-4 shrink-0', feat.iconColor)} />
                               {feat.title}
                             </h4>
-                            {feat.shortcutKey && <Kbd>{feat.shortcutKey}</Kbd>}
+                            {feat.shortcutKey && <Kbd theme={theme}>{feat.shortcutKey}</Kbd>}
                           </div>
                           <p className="text-xs leading-relaxed text-foreground/85 font-normal">
-                            {feat.description}
+                            {renderFormattedDescription(feat.description, theme)}
                           </p>
                         </GuideCard>
                       )
@@ -404,7 +429,7 @@ export function AboutModal({ open, onClose, theme, onThemeChange }: AboutModalPr
                         className="flex items-center justify-between p-2.5 rounded-xl bg-foreground/[0.04] border border-border/70 hover:bg-foreground/[0.07] transition-colors"
                       >
                         <span className="text-foreground/90 font-medium">{sc.description}</span>
-                        <Kbd>{sc.key}</Kbd>
+                        <Kbd theme={theme}>{sc.key}</Kbd>
                       </div>
                     ))}
                   </div>
@@ -474,7 +499,7 @@ export function AboutModal({ open, onClose, theme, onThemeChange }: AboutModalPr
                                 {feat.title}
                               </h4>
                               {feat.shortcutKey && (
-                                <Kbd className="text-[10px] px-1.5 py-0.5">{feat.shortcutKey}</Kbd>
+                                <Kbd theme={theme} className="text-[10px] px-1.5 py-0.5">{feat.shortcutKey}</Kbd>
                               )}
                             </div>
                             {feat.subtitle && (
@@ -483,7 +508,7 @@ export function AboutModal({ open, onClose, theme, onThemeChange }: AboutModalPr
                               </div>
                             )}
                             <p className="text-xs leading-relaxed text-foreground/85 font-normal">
-                              {feat.description}
+                              {renderFormattedDescription(feat.description, theme)}
                             </p>
                           </div>
 
@@ -492,7 +517,7 @@ export function AboutModal({ open, onClose, theme, onThemeChange }: AboutModalPr
                               {feat.highlights.map((hl, hlIdx) => (
                                 <div key={hlIdx} className="flex items-start gap-1.5">
                                   <CheckCircle2 className="size-3 text-emerald-500 shrink-0 mt-0.5" />
-                                  <span>{hl}</span>
+                                  <span>{renderFormattedDescription(hl, theme)}</span>
                                 </div>
                               ))}
                             </div>
@@ -546,7 +571,7 @@ export function AboutModal({ open, onClose, theme, onThemeChange }: AboutModalPr
                               {Icon && <Icon className={cn('size-3.5 shrink-0', sc.iconColor)} />}
                               {sc.description}
                             </span>
-                            <Kbd>{sc.key}</Kbd>
+                            <Kbd theme={theme}>{sc.key}</Kbd>
                           </div>
                         )
                       })}

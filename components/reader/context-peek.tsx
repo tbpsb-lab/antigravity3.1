@@ -1,9 +1,11 @@
 'use client'
 
-import { memo, useEffect, useMemo } from 'react'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { memo, useEffect, useMemo, useState } from 'react'
+import { ChevronLeft, ChevronRight, Search } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useElementSize } from '@/lib/use-element-size'
+import { PageSearchPopover } from './page-search-popover'
+import type { ChunkItem, BookPageInfo, ThemeId } from '@/lib/rsvp'
 
 type ContextPeekProps = {
   words: string[]
@@ -12,6 +14,9 @@ type ContextPeekProps = {
   visible: boolean
   remainingTime?: string
   bookPageLabel?: string
+  chunks?: ChunkItem[]
+  pageInfo?: BookPageInfo | null
+  theme?: ThemeId
   onJump: (index: number) => void
   onVisibleCountChange?: (count: number) => void
   onStepPrev?: () => void
@@ -27,10 +32,14 @@ export const ContextPeek = memo(function ContextPeek({
   visible,
   remainingTime,
   bookPageLabel,
+  chunks = [],
+  pageInfo,
+  theme,
   onJump,
   onVisibleCountChange,
 }: ContextPeekProps) {
   const [containerRef, containerSize] = useElementSize<HTMLDivElement>()
+  const [isSearchOpen, setIsSearchOpen] = useState(false)
 
   // Konteyner boyutuna göre ekranda dikey ve yatay eksende ne kadar kelime alabileceğini dinamik hesapla.
   // 3 satırın taşmadan, kelime kırpılmadan %100 ekrana sığmasını ve her sayfanın ardışık olmasını sağlar.
@@ -117,12 +126,31 @@ export const ContextPeek = memo(function ContextPeek({
             </span>
           )}
         </div>
-        <div className="justify-self-center text-center">
-          {bookPageLabel && (
-            <span className="text-[11px] font-mono tabular-nums text-muted-foreground/85">
-              {bookPageLabel}
-            </span>
-          )}
+        <div className="justify-self-center text-center relative flex items-center justify-center">
+          {bookPageLabel ? (
+            <button
+              type="button"
+              onClick={() => setIsSearchOpen((prev) => !prev)}
+              className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-mono tabular-nums text-muted-foreground/85 hover:text-muted-foreground/95 bg-transparent hover:bg-foreground/[0.04] transition-none cursor-pointer outline-none border-none select-none"
+              title="Sayfaya atla veya kelime ara"
+              aria-label="Sayfaya atla veya kelime ara"
+            >
+              <span>{bookPageLabel}</span>
+              <Search className="size-3 text-muted-foreground/75 shrink-0" />
+            </button>
+          ) : null}
+
+          {/* Mini Arama & Sayfaya Atlama Açılır Penceresi */}
+          <PageSearchPopover
+            open={isSearchOpen}
+            onClose={() => setIsSearchOpen(false)}
+            words={words}
+            chunks={chunks}
+            pageInfo={pageInfo}
+            currentWordIndex={index}
+            onJump={onJump}
+            theme={theme}
+          />
         </div>
         <div className="justify-self-end text-right">
           {remainingTime && (

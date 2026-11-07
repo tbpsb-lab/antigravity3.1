@@ -905,18 +905,18 @@ export function ReaderApp() {
       }
     }
 
-    window.addEventListener('touchstart', handleGlobalTouchStart, { passive: true })
-    window.addEventListener('touchmove', onNativeTouchMove, { passive: false })
-    window.addEventListener('touchend', handleGlobalTouchEnd, { passive: true })
-    window.addEventListener('touchcancel', handleGlobalTouchEnd, { passive: true })
-    window.addEventListener('click', handleGlobalClickCapture, { capture: true })
+    document.addEventListener('touchstart', handleGlobalTouchStart, { passive: true })
+    document.addEventListener('touchmove', onNativeTouchMove, { passive: false })
+    document.addEventListener('touchend', handleGlobalTouchEnd, { passive: true })
+    document.addEventListener('touchcancel', handleGlobalTouchEnd, { passive: true })
+    document.addEventListener('click', handleGlobalClickCapture, { capture: true })
 
     return () => {
-      window.removeEventListener('touchstart', handleGlobalTouchStart)
-      window.removeEventListener('touchmove', onNativeTouchMove)
-      window.removeEventListener('touchend', handleGlobalTouchEnd)
-      window.removeEventListener('touchcancel', handleGlobalTouchEnd)
-      window.removeEventListener('click', handleGlobalClickCapture, { capture: true })
+      document.removeEventListener('touchstart', handleGlobalTouchStart)
+      document.removeEventListener('touchmove', onNativeTouchMove)
+      document.removeEventListener('touchend', handleGlobalTouchEnd)
+      document.removeEventListener('touchcancel', handleGlobalTouchEnd)
+      document.removeEventListener('click', handleGlobalClickCapture, { capture: true })
       if (clearJustSwipedTimerRef.current) clearTimeout(clearJustSwipedTimerRef.current)
     }
   }, [setWpmDirect, hideWpmToastWithFade, textSheetOpen, speedTestOpen, aboutOpen, completionOpen])
@@ -1451,7 +1451,7 @@ export function ReaderApp() {
   return (
     <div
       data-theme={theme}
-      className="app-bg relative h-dvh w-full touch-manipulation overscroll-none overflow-hidden font-sans text-foreground transition-colors duration-500 selection:bg-primary/25"
+      className="app-bg relative h-dvh w-full touch-none overscroll-none overflow-hidden font-sans text-foreground transition-colors duration-500 selection:bg-primary/25"
     >
       {/* Ambient Aura / Tematik Işıma Katmanı */}
       <AmbientAura theme={theme} playing={playing} />

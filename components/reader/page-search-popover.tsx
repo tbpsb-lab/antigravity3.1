@@ -1,7 +1,6 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { createPortal } from 'react-dom'
 import { BookOpen, FileText, Search, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toTurkishLower } from '@/lib/turkish-word-splitter'
@@ -16,7 +15,7 @@ type PageSearchPopoverProps = {
   currentWordIndex: number
   onJump: (wordIndex: number) => void
   theme?: ThemeId
-  triggerRef?: React.RefObject<HTMLElement | null>
+  triggerRef?: React.RefObject<any>
 }
 
 type SearchMatch = {
@@ -201,7 +200,7 @@ export function PageSearchPopover({
 
   if (!open || !mounted) return null
 
-  const popoverContent = (
+  return (
     <div className="fixed inset-0 z-[9999] pointer-events-none select-none">
       {/* Tıklama ile kapatma sağlayan şeffaf alan */}
       <div
@@ -359,6 +358,4 @@ export function PageSearchPopover({
       </div>
     </div>
   )
-
-  return createPortal(popoverContent, document.body)
 }

@@ -86,22 +86,22 @@ export const TextSheet = memo(function TextSheet({
         if (!hasSeen && !calloutDismissedRef.current && !open) {
           setShowCallout(true)
           if (calloutTimerRef.current) clearTimeout(calloutTimerRef.current)
-          // Okuma ve içerik merkezi tanıtımında 4 sn dur
+          // Okuma ve içerik merkezi tanıtımında 2.2 sn dur
           calloutTimerRef.current = setTimeout(() => {
             dismissCallout()
-          }, 4000)
+          }, 2200)
         }
       } catch {}
     }
 
-    // Güvenlik yedek zamanlayıcısı: Önceki tanıtım adımları kaçırılırsa 12.5 sn sonra devreye girer
+    // Güvenlik yedek zamanlayıcısı: Önceki tanıtım adımları kaçırılırsa 7.5 sn sonra devreye girer
     let fallbackTimer: ReturnType<typeof setTimeout> | null = null
     try {
       const hasSeen = localStorage.getItem('hasSeenTapGuide_v2')
       if (!hasSeen) {
         fallbackTimer = setTimeout(() => {
           handleTriggerContentCenter()
-        }, 12500)
+        }, 7500)
       }
     } catch {}
 
@@ -318,8 +318,8 @@ export const TextSheet = memo(function TextSheet({
           className={cn(
             'panel absolute top-full mt-2.5 z-50 select-none cursor-pointer transition-all duration-300 ease-out',
             // Mobil ve Masaüstü Konumlandırma: Butonun tam altına hizalı
-            'right-[-3.5rem] sm:right-0 w-[240px] sm:w-[260px]',
-            'p-2.5 sm:p-3 rounded-2xl shadow-xl',
+            'right-[-3.5rem] sm:right-0 w-[205px] sm:w-[220px]',
+            'p-2 sm:p-2.5 rounded-2xl shadow-xl',
             // Cam Tema İle Birebir Uyumlu Buzlu Cam Fonu
             'bg-[var(--panel)] border border-[var(--panel-border)] backdrop-blur-[var(--panel-blur)]',
             'text-foreground',
@@ -333,16 +333,16 @@ export const TextSheet = memo(function TextSheet({
             aria-hidden="true"
           />
 
-          <div className="relative z-10 flex items-start gap-2.5">
-            <div className="size-7 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
-              <FileText className="size-4 text-primary" />
+          <div className="relative z-10 flex items-start gap-2">
+            <div className="size-6 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
+              <FileText className="size-3.5 text-primary" />
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-xs font-bold text-foreground leading-tight">
-                Okuma & İçerik Merkezi
+                Okuma Merkezi
               </p>
               <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">
-                Kitap, PDF veya metinlerinizi buradan yükleyebilirsiniz.
+                Kitap, PDF veya metin yükleyin.
               </p>
             </div>
           </div>

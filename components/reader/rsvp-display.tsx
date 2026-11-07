@@ -111,19 +111,19 @@ export const RsvpDisplay = memo(function RsvpDisplay({
           if (chunkCalloutTimerRef.current) clearTimeout(chunkCalloutTimerRef.current)
           chunkCalloutTimerRef.current = setTimeout(() => {
             dismissChunkCallout()
-          }, 4000)
+          }, 2200)
         }
       } catch {}
     }
 
-    // Güvenlik yedek zamanlayıcısı: TapGuide kaçırılırsa 6.2 sn sonra devreye girer
+    // Güvenlik yedek zamanlayıcısı: TapGuide kaçırılırsa 5 sn sonra devreye girer
     let fallbackTimer: ReturnType<typeof setTimeout> | null = null
     try {
       const hasSeen = localStorage.getItem('hasSeenTapGuide_v2')
       if (!hasSeen) {
         fallbackTimer = setTimeout(() => {
           handleTapGuideCompleted()
-        }, 6200)
+        }, 5000)
       }
     } catch {}
 
@@ -554,8 +554,8 @@ export const RsvpDisplay = memo(function RsvpDisplay({
                 }}
                 className={cn(
                   'panel absolute bottom-full mb-3 z-50 select-none cursor-pointer transition-all duration-300 ease-out',
-                  'right-0 w-[240px] sm:w-[260px]',
-                  'p-2.5 sm:p-3 rounded-2xl shadow-xl',
+                  'right-0 w-[205px] sm:w-[220px]',
+                  'p-2 sm:p-2.5 rounded-2xl shadow-xl',
                   'bg-[var(--panel)] border border-[var(--panel-border)] backdrop-blur-[var(--panel-blur)]',
                   'text-foreground text-left',
                   'animate-in fade-in slide-in-from-bottom-2 duration-300',
@@ -570,9 +570,9 @@ export const RsvpDisplay = memo(function RsvpDisplay({
                   aria-hidden="true"
                 />
 
-                <div className="relative z-10 flex items-start gap-2.5">
-                  <div className="size-7 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
-                    <Layers className="size-4 text-primary" />
+                <div className="relative z-10 flex items-start gap-2">
+                  <div className="size-6 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
+                    <Layers className="size-3.5 text-primary" />
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5">
@@ -584,10 +584,7 @@ export const RsvpDisplay = memo(function RsvpDisplay({
                       </span>
                     </div>
                     <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">
-                      Tek seferde akan kelime sayısı.
-                    </p>
-                    <p className="text-[10px] text-muted-foreground/90 mt-1 font-mono">
-                      Kısayol: <kbd className="px-1.5 py-0.5 rounded bg-foreground/10 border border-foreground/25 font-mono text-[9px] font-bold text-foreground">C</kbd> veya tıkla
+                      Akan kelime adedi (<kbd className="px-1 py-0.2 rounded bg-foreground/10 border border-foreground/20 font-mono text-[9px] font-bold text-foreground">C</kbd>)
                     </p>
                   </div>
                 </div>

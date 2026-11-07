@@ -13,8 +13,8 @@ import {
   X,
 } from 'lucide-react'
 import { memo, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
-import { SAMPLE_TEXT, tokenize, type ThemeId } from '@/lib/rsvp'
-import { DEFAULT_BOOK_TEXT, DEFAULT_BOOK_TITLE } from '@/lib/default-book'
+import { SAMPLE_TEXT, tokenize, type BookPageInfo, type ThemeId } from '@/lib/rsvp'
+import { DEFAULT_BOOK_PAGE_INFO, DEFAULT_BOOK_TEXT, DEFAULT_BOOK_TITLE } from '@/lib/default-book'
 import { CURATED_LIBRARY } from '@/lib/curated-library'
 import { fetchArticleFromUrl } from '@/lib/article-parser'
 import { fetchYouTubeTranscript } from '@/lib/youtube-parser'
@@ -27,7 +27,7 @@ export type TextSheetProps = {
   initialText: string
   onToggle?: () => void
   onClose: () => void
-  onApply: (text: string, title?: string) => void
+  onApply: (text: string, title?: string, pageInfo?: BookPageInfo | null) => void
   onThemeChange?: (theme: ThemeId) => void
 }
 
@@ -241,12 +241,12 @@ export const TextSheet = memo(function TextSheet({
         const yt = await fetchYouTubeTranscript(cleanUrl, (msg) => setStatusMessage(msg))
         setDraft(yt.text)
         setStatusMessage('')
-        onApply(yt.text, yt.title)
+        onApply(yt.text, yt.title, null)
       } else {
         const article = await fetchArticleFromUrl(cleanUrl, (msg) => setStatusMessage(msg))
         setDraft(article.text)
         setStatusMessage('')
-        onApply(article.text, article.title)
+        onApply(article.text, article.title, null)
       }
     } catch (err: any) {
       setErrorMessage(
@@ -271,7 +271,7 @@ export const TextSheet = memo(function TextSheet({
       const book = await parsePdfDocument(file, file.name, (msg) => setStatusMessage(msg))
       setDraft(book.text)
       setStatusMessage('')
-      onApply(book.text, book.title)
+      onApply(book.text, book.title, book.pageInfo ?? null)
     } catch (err: any) {
       setErrorMessage(err?.message || 'PDF ayrıştırılırken bir hata oluştu.')
       setStatusMessage('')
@@ -509,7 +509,7 @@ export const TextSheet = memo(function TextSheet({
                     type="button"
                     onClick={() => {
                       setDraft(DEFAULT_BOOK_TEXT)
-                      onApply(DEFAULT_BOOK_TEXT, DEFAULT_BOOK_TITLE)
+                      onApply(DEFAULT_BOOK_TEXT, DEFAULT_BOOK_TITLE, DEFAULT_BOOK_PAGE_INFO)
                     }}
                     className="ctl !h-7 sm:!h-7.5 !w-auto rounded-lg px-2 text-[11px] text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap shrink-0"
                     title="Varsayılan Kitabı Yükle (Yaşamak — Yu Hua)"
@@ -520,7 +520,7 @@ export const TextSheet = memo(function TextSheet({
                     type="button"
                     onClick={() => {
                       setDraft(SAMPLE_TEXT)
-                      onApply(SAMPLE_TEXT, 'Örnek Metin')
+                      onApply(SAMPLE_TEXT, 'Örnek Metin', null)
                     }}
                     className="ctl !h-7 sm:!h-7.5 !w-auto rounded-lg px-2 text-[11px] text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap shrink-0"
                     title="Kısa Örnek Metni Yükle"
@@ -554,7 +554,13 @@ export const TextSheet = memo(function TextSheet({
                   </span>
                   <button
                     type="button"
-                    onClick={() => onApply(draft)}
+                    onClick={() =>
+                      onApply(
+                        draft,
+                        draft === DEFAULT_BOOK_TEXT ? DEFAULT_BOOK_TITLE : undefined,
+                        draft === DEFAULT_BOOK_TEXT ? DEFAULT_BOOK_PAGE_INFO : null,
+                      )
+                    }
                     disabled={count === 0 || loading}
                     className="ctl ctl-primary !h-7.5 sm:!h-8 !w-auto rounded-xl px-3 text-xs font-semibold disabled:opacity-40 whitespace-nowrap shrink-0"
                   >
@@ -624,7 +630,7 @@ export const TextSheet = memo(function TextSheet({
                     key={item.id}
                     onClick={() => {
                       setDraft(item.text)
-                      onApply(item.text, item.title)
+                      onApply(item.text, item.title, null)
                     }}
                     className="flex flex-col justify-between rounded-xl sm:rounded-2xl border border-border/80 bg-background/90 hover:bg-primary/5 hover:border-primary/60 p-1.5 sm:p-2.5 shadow-xs transition-all text-left group select-none cursor-pointer"
                   >
@@ -654,7 +660,7 @@ export const TextSheet = memo(function TextSheet({
                         onClick={(e) => {
                           e.stopPropagation()
                           setDraft(item.text)
-                          onApply(item.text, item.title)
+                          onApply(item.text, item.title, null)
                         }}
                         className="ctl ctl-primary flex !h-5.5 sm:!h-6.5 !w-full items-center justify-center gap-1 rounded-md sm:rounded-xl text-[9.5px] sm:text-[11px] font-semibold cursor-pointer transition-all active:scale-95 shadow-xs whitespace-nowrap shrink-0"
                       >

@@ -22,6 +22,7 @@ import {
   BOUND_CONTINUATION_REGEX,
   NEVER_BOUND_SUFFIX_RIGHT,
 } from './turkish-word-splitter'
+import type { BookPageInfo } from './rsvp'
 
 export type ExtractedBook = {
   title: string
@@ -30,6 +31,7 @@ export type ExtractedBook = {
   wordCount: number
   skippedPagesCount: number
   isOcrUsed: boolean
+  pageInfo?: BookPageInfo
 }
 
 export type PdfLine = {
@@ -52,6 +54,8 @@ export type PreparedPage = {
   footnotes?: ExtractedFootnote[]
   isBoilerplate: boolean
   skipReason?: string
+  detectedPrintedPage?: number | null
+  printedPageNumber?: number
 }
 
 const SUPERSCRIPT_MAP: Record<string, string> = {
@@ -1545,6 +1549,63 @@ function isPageNumberLine(text: string): boolean {
 }
 
 /**
+ * Sayfanın alt (veya üst) satırlarında basılı olan kitap sayfa numarasını tespit eder.
+ */
+function detectPrintedPageNumber(
+  lines: PdfLine[],
+  pdfPageNumber: number,
+  totalPdfPages: number,
+): number | null {
+  if (!lines || lines.length === 0) return null
+
+  const candidateIndices: number[] = []
+  // Önce sayfa altındaki son 4 satırı kontrol et (kitaplarda sayfa numarası çoğunlukla alttadır)
+  for (let i = lines.length - 1; i >= Math.max(0, lines.length - 4); i--) {
+    candidateIndices.push(i)
+  }
+  // Ardından sayfa üstündeki ilk 2 satırı kontrol et
+  for (let i = 0; i < Math.min(2, lines.length); i++) {
+    if (!candidateIndices.includes(i)) candidateIndices.push(i)
+  }
+
+  const isPlausible = (n: number) =>
+    Number.isFinite(n) && n >= 1 && n <= totalPdfPages + 100 && Math.abs(n - pdfPageNumber) <= 60
+
+  for (const idx of candidateIndices) {
+    const t = lines[idx].text.trim()
+    if (!t) continue
+
+    const mExact = t.match(/^(\d{1,4})\.?$/)
+    if (mExact) {
+      const n = parseInt(mExact[1], 10)
+      if (isPlausible(n)) return n
+    }
+
+    const mSpaced = t.match(/^(\d{1,2})\s+(\d{1,2})\.?$/)
+    if (mSpaced) {
+      const n = parseInt(mSpaced[1] + mSpaced[2], 10)
+      if (isPlausible(n)) return n
+    }
+
+    const mDecorated = t.match(/^(?:[-–—•·]\s*)?(?:sayfa|sf\.?|page|p\.?)?\s*(\d{1,4})(?:\s*[-–—•·])?$/i)
+    if (mDecorated) {
+      const n = parseInt(mDecorated[1], 10)
+      if (isPlausible(n)) return n
+    }
+
+    if (idx === lines.length - 1) {
+      const mGlued = t.match(/([a-zA-ZçğıöşüÇĞİÖŞÜ]{2,})(\d{1,3})\.?$/)
+      if (mGlued) {
+        const n = parseInt(mGlued[2], 10)
+        if (Math.abs(n - pdfPageNumber) <= 15 && isPlausible(n)) return n
+      }
+    }
+  }
+
+  return null
+}
+
+/**
  * Hem aynı sayfadaki alt alta satırlar arasında hem de sayfa geçişlerindeki
  * bölünmüş kelimeleri tek parça olarak diker (De-hyphenation across lines & pages).
  */
@@ -2424,6 +2485,8 @@ export async function parsePdfDocument(
   }
 
   for (const page of rawPages) {
+    const detectedPrintedPage = detectPrintedPageNumber(page.lines, page.pageNumber, numPages)
+
     // Tekrarlanan üst/alt bilgi satırlarını filtrele
     const filteredLines = page.lines.filter((l, idx) => {
       if (idx === 0 || idx === page.lines.length - 1) {
@@ -2486,7 +2549,41 @@ export async function parsePdfDocument(
       footnotes,
       isBoilerplate: check.isBoilerplate,
       skipReason: check.reason,
+      detectedPrintedPage,
     })
+  }
+
+  // Basılı sayfa numaralarının tutarlılığını (consensus offset) hesapla
+  const pagesWithDetectedNum = preparedPages.filter(
+    (p) => !p.isBoilerplate && p.detectedPrintedPage != null,
+  )
+  let hasPrintedPageNumbers = false
+  let consensusOffset = 0
+
+  if (pagesWithDetectedNum.length >= 2 || (numPages <= 5 && pagesWithDetectedNum.length >= 1)) {
+    const offsets = pagesWithDetectedNum.map((p) => p.detectedPrintedPage! - p.pageNumber)
+    let bestOffset = offsets[0]
+    let bestSupport = 0
+    for (const cand of offsets) {
+      const support = offsets.filter((o) => Math.abs(o - cand) <= 1).length
+      if (support > bestSupport) {
+        bestSupport = support
+        bestOffset = cand
+      }
+    }
+    if (bestSupport >= 2 || (numPages <= 5 && bestSupport >= 1)) {
+      hasPrintedPageNumbers = true
+      consensusOffset = bestOffset
+      for (const page of preparedPages) {
+        if (page.isBoilerplate) continue
+        const expected = page.pageNumber + consensusOffset
+        const raw = page.detectedPrintedPage
+        const resolved = raw != null && Math.abs(raw - expected) <= 2 ? raw : expected
+        if (resolved >= 1) {
+          page.printedPageNumber = resolved
+        }
+      }
+    }
   }
 
   // 3. Satırlar ve sayfalar arası hece/tire birleştirme (De-hyphenation)
@@ -2498,43 +2595,61 @@ export async function parsePdfDocument(
     inlineFootnotesIntoBodyLines(page.bodyLines, page.footnotes)
   }
 
-  // 5. Geçerli sayfaların satırlarını birleştirip temiz bir kitap metni oluştur
+  // 5. Geçerli sayfaların satırlarını birleştirip temiz bir kitap metni ve sayfa haritası oluştur
+  const cleanPageBlock = (rawBlock: string): string => {
+    let t = dehyphenateText(rawBlock.trim())
+    t = cleanLatexAndDiagrams(t)
+    t = normalizeCompoundWordHyphens(t)
+    t = cleanPunctuationAndCamelCase(t)
+    t = t
+      .split(/\r?\n/)
+      .map((l) => l.replace(/[ \t]+/g, ' ').trim())
+      .join('\n')
+    return splitGluedText(t)
+  }
+
   const resultBlocks: string[] = []
+  const pageStartLines: [number, number][] = []
+  let currentLineCount = 0
+  let lastPrintedBookPage = 0
 
   for (const page of preparedPages) {
     if (page.isBoilerplate) continue
 
     const pageLines = page.bodyLines.map((l) => (l.isHeading ? `# ${l.text.replace(/^#+\s*/, '')}` : l.text))
-    if (pageLines.length > 0) {
-      resultBlocks.push(pageLines.join('\n'))
+    if (pageLines.length === 0) continue
+
+    const cleanedBlock = cleanPageBlock(pageLines.join('\n'))
+    if (!cleanedBlock) continue
+
+    if (resultBlocks.length > 0) {
+      currentLineCount += 1 // '\n\n' ile eklenen boş satır
     }
+
+    if (hasPrintedPageNumbers && page.printedPageNumber) {
+      pageStartLines.push([currentLineCount, page.printedPageNumber])
+      lastPrintedBookPage = Math.max(lastPrintedBookPage, page.printedPageNumber)
+    }
+
+    const blockLines = cleanedBlock.split(/\r?\n/)
+    currentLineCount += blockLines.length
+    resultBlocks.push(cleanedBlock)
   }
 
-  // 1. KURAL: Satır sonu kontrolü - tire yoksa satırlar \n ile ayrılır, asla .join("") veya .replace(/\n/g, "") yapılmaz
-  let cleanedText = dehyphenateText(resultBlocks.join('\n\n').trim())
-
-  // LaTeX matematiksel sembol ve bloklarını doğal metne çevir, kutu çizgilerini temizle
-  cleanedText = cleanLatexAndDiagrams(cleanedText)
-
-  // Spaced bileşik kelime tirelerini normalize et ("sosyo - politik" -> "sosyo-politik")
-  cleanedText = normalizeCompoundWordHyphens(cleanedText)
-
-  // 3. KURAL: Noktalama ve camelCase Temizliği
-  cleanedText = cleanPunctuationAndCamelCase(cleanedText)
-
-  // 4. KURAL: Satır sonlarını korurken ardışık yatay boşlukları tek boşluğa indir
-  cleanedText = cleanedText
-    .split(/\r?\n/)
-    .map((l) => l.replace(/[ \t]+/g, ' ').trim())
-    .join('\n')
-
-  // 5. KURAL: Metin işleme hattının (pipeline) en sonunda Türkçe Yapışık Kelime Ayırıcı katmanı
-  cleanedText = splitGluedText(cleanedText)
+  const cleanedText = resultBlocks.join('\n\n').trim()
   const wordCount = cleanedText.split(/\s+/).filter(Boolean).length
 
   if (wordCount < 10) {
     throw new Error('PDF dosyasından okunabilir metin çıkarılamadı.')
   }
+
+  const pageInfo: BookPageInfo | undefined =
+    hasPrintedPageNumbers && pageStartLines.length > 0 && lastPrintedBookPage > 0
+      ? {
+          totalBookPages: lastPrintedBookPage,
+          pageStartLines,
+        }
+      : undefined
 
   // Belgenin en başındaki ana başlığı / kitap adını tespit et
   let detectedDocTitle = ''
@@ -2570,5 +2685,6 @@ export async function parsePdfDocument(
     wordCount,
     skippedPagesCount,
     isOcrUsed,
+    pageInfo,
   }
 }

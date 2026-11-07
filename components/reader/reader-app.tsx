@@ -9,6 +9,7 @@ import {
   SAMPLE_TEXT,
   THEMES,
   WPM_STEP,
+  type BookPageInfo,
   type ThemeId,
   splitAtPivot,
   createChunks,
@@ -24,7 +25,7 @@ import {
   loadLastActiveDoc,
   findChunkIndexForWord,
 } from '@/lib/reading-progress'
-import { DEFAULT_BOOK_TEXT, DEFAULT_BOOK_TITLE } from '@/lib/default-book'
+import { DEFAULT_BOOK_PAGE_INFO, DEFAULT_BOOK_TEXT, DEFAULT_BOOK_TITLE } from '@/lib/default-book'
 import { loadReaderSettings, saveReaderSettings } from '@/lib/reader-settings'
 import { AmbientAura } from './ambient-aura'
 import { TopBar } from './top-bar'
@@ -63,6 +64,7 @@ export function ReaderApp() {
   const [headerRef, headerHeight] = useElementHeight<HTMLElement>()
   const [text, setText] = useState(DEFAULT_BOOK_TEXT)
   const [docTitle, setDocTitle] = useState(DEFAULT_BOOK_TITLE)
+  const [pageInfo, setPageInfo] = useState<BookPageInfo | null>(DEFAULT_BOOK_PAGE_INFO)
   const [index, setIndex] = useState(0)
   const [wpm, setWpm] = useState(300)
   const [playing, setPlaying] = useState(false)
@@ -127,8 +129,8 @@ export function ReaderApp() {
 
   // Akıllı Cümle & Başlık Kırılımlı Chunking
   const chunks = useMemo(
-    () => createChunks(text, chunkSize, { enableFootnotes: readFootnotes }),
-    [text, chunkSize, readFootnotes],
+    () => createChunks(text, chunkSize, { enableFootnotes: readFootnotes, pageInfo }),
+    [text, chunkSize, readFootnotes, pageInfo],
   )
 
   // Kelime dizisini doğrudan aktif öbeklerden (chunks) türeterek dipnot açık/kapalı modlarında %100 indeks senkronizasyonu sağla
@@ -810,12 +812,12 @@ export function ReaderApp() {
   const handleReadFootnotesChange = useCallback(
     (enabled: boolean) => {
       const activeWordIndex = chunks[index]?.startIndex ?? index
-      const nextChunks = createChunks(text, chunkSize, { enableFootnotes: enabled })
+      const nextChunks = createChunks(text, chunkSize, { enableFootnotes: enabled, pageInfo })
       const nextIndex = findChunkIndexForWord(nextChunks, activeWordIndex)
       setReadFootnotes(enabled)
       setIndex(nextIndex)
     },
-    [chunks, index, text, chunkSize],
+    [chunks, index, text, chunkSize, pageInfo],
   )
 
   const handleBionicChange = useCallback(
@@ -995,13 +997,22 @@ export function ReaderApp() {
       } catch {}
       setText(DEFAULT_BOOK_TEXT)
       setDocTitle(DEFAULT_BOOK_TITLE)
+      setPageInfo(DEFAULT_BOOK_PAGE_INFO)
       setIndex(0)
     } else if (lastDoc && lastDoc.text) {
       const saved = loadReadingProgress(lastDoc.title, lastDoc.text)
+      const resolvedPageInfo =
+        lastDoc.text === DEFAULT_BOOK_TEXT
+          ? DEFAULT_BOOK_PAGE_INFO
+          : (lastDoc.pageInfo ?? saved?.pageInfo ?? null)
       setText(lastDoc.text)
       if (lastDoc.title) setDocTitle(lastDoc.title)
+      setPageInfo(resolvedPageInfo)
       if (saved && (saved.wordIndex > 0 || saved.index > 0)) {
-        const initialChunks = createChunks(lastDoc.text, activeChunkSize, { enableFootnotes: activeFootnotes })
+        const initialChunks = createChunks(lastDoc.text, activeChunkSize, {
+          enableFootnotes: activeFootnotes,
+          pageInfo: resolvedPageInfo,
+        })
         const target = findChunkIndexForWord(initialChunks, saved.wordIndex ?? saved.index)
         if (target > 0) {
           setIndex(target)
@@ -1040,20 +1051,29 @@ export function ReaderApp() {
           words.length,
           chunkSize,
           wpm,
+          pageInfo,
         )
       },
       playing ? 2000 : 250,
     )
 
     return () => clearTimeout(timer)
-  }, [index, playing, docTitle, text, chunks.length, words.length, chunkSize, wpm, currentChunk])
+  }, [index, playing, docTitle, text, chunks.length, words.length, chunkSize, wpm, currentChunk, pageInfo])
 
   const applyText = useCallback(
-    (next: string, title?: string) => {
+    (next: string, title?: string, nextPageInfo?: BookPageInfo | null) => {
       const cleanTitle = title?.trim()
       const nextTitle = cleanTitle && cleanTitle !== 'odak' ? cleanTitle : 'Hızlı Okuma Penceresi'
+      const saved = loadReadingProgress(nextTitle, next)
+      const resolvedPageInfo =
+        nextPageInfo !== undefined
+          ? nextPageInfo
+          : next === DEFAULT_BOOK_TEXT
+            ? DEFAULT_BOOK_PAGE_INFO
+            : (saved?.pageInfo ?? null)
       setText(next)
       setDocTitle(nextTitle)
+      setPageInfo(resolvedPageInfo)
       setPlaying(false)
       setSheetOpen(false)
       setCompletionOpen(false)
@@ -1061,8 +1081,10 @@ export function ReaderApp() {
       sessionElapsedSecsRef.current = 0
       sessionStartTimeRef.current = null
 
-      const newChunks = createChunks(next, chunkSize, { enableFootnotes: readFootnotes })
-      const saved = loadReadingProgress(nextTitle, next)
+      const newChunks = createChunks(next, chunkSize, {
+        enableFootnotes: readFootnotes,
+        pageInfo: resolvedPageInfo,
+      })
       if (saved && (saved.wordIndex > 0 || saved.index > 0) && newChunks.length > 0) {
         const target = findChunkIndexForWord(newChunks, saved.wordIndex ?? saved.index)
         setIndex(target)
@@ -1119,8 +1141,8 @@ export function ReaderApp() {
         initialText={text}
         onToggle={handleToggleSheet}
         onClose={handleCloseSheet}
-        onApply={(newText, title) => {
-          applyText(newText, title)
+        onApply={(newText, title, nextPageInfo) => {
+          applyText(newText, title, nextPageInfo)
           handleCloseSheet()
         }}
         onThemeChange={handleThemeChange}
@@ -1270,6 +1292,11 @@ export function ReaderApp() {
               index={currentChunk?.startIndex ?? index}
               chunkSize={chunkSize}
               visible={!zen && words.length > 0}
+              bookPageLabel={
+                !zen && pageInfo && currentChunk?.pageNumber
+                  ? `sf: ${currentChunk.pageNumber}/${pageInfo.totalBookPages}`
+                  : undefined
+              }
               remainingTime={
                 !zen ? `${formatRemaining(chunks.length - index - 1, wpm, chunkSize)} kaldı` : undefined
               }

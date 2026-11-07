@@ -11,6 +11,7 @@ type ContextPeekProps = {
   chunkSize?: number
   visible: boolean
   remainingTime?: string
+  bookPageLabel?: string
   onJump: (index: number) => void
   onVisibleCountChange?: (count: number) => void
   onStepPrev?: () => void
@@ -25,6 +26,7 @@ export const ContextPeek = memo(function ContextPeek({
   chunkSize = 1,
   visible,
   remainingTime,
+  bookPageLabel,
   onJump,
   onVisibleCountChange,
 }: ContextPeekProps) {
@@ -106,16 +108,23 @@ export const ContextPeek = memo(function ContextPeek({
       ref={containerRef}
       className="flex flex-1 min-h-0 flex-col overflow-hidden transition-opacity duration-300 select-none w-full opacity-100"
     >
-      {/* Üst Bilgi Başlığı (Sol: Kelime Sayısı ve Konumu, Sağ: Kalan Süre) */}
-      <div className="flex items-center justify-between mb-1 px-1 shrink-0 landscape-short:mb-0.5">
-        <div>
+      {/* Üst Bilgi Başlığı (Sol: Kelime Sayısı ve Konumu, Orta: Kitap Sayfa Numarası, Sağ: Kalan Süre) */}
+      <div className="grid grid-cols-3 items-center mb-1 px-1 shrink-0 landscape-short:mb-0.5">
+        <div className="justify-self-start">
           {words.length > 0 && (
             <span className="text-[11px] font-mono tabular-nums text-muted-foreground/85">
               {start + 1} - {end} / {words.length}
             </span>
           )}
         </div>
-        <div>
+        <div className="justify-self-center text-center">
+          {bookPageLabel && (
+            <span className="text-[11px] font-mono tabular-nums text-muted-foreground/85">
+              {bookPageLabel}
+            </span>
+          )}
+        </div>
+        <div className="justify-self-end text-right">
           {remainingTime && (
             <span className="text-[11px] font-mono tabular-nums text-muted-foreground/85">
               {remainingTime}

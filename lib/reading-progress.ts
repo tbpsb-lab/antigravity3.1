@@ -9,6 +9,8 @@
  * kalmadan son kaldığı konuma otomatik olarak geri gider.
  */
 
+import type { BookPageInfo } from './rsvp'
+
 export type SavedProgress = {
   key: string
   title: string
@@ -19,6 +21,7 @@ export type SavedProgress = {
   progressPercent: number
   chunkSize: number
   wpm: number
+  pageInfo?: BookPageInfo | null
   updatedAt: number
 }
 
@@ -59,6 +62,7 @@ export function saveReadingProgress(
   totalWords: number,
   chunkSize: number,
   wpm: number,
+  pageInfo?: BookPageInfo | null,
 ): void {
   if (typeof window === 'undefined' || !text || total <= 1) return
 
@@ -76,6 +80,7 @@ export function saveReadingProgress(
       progressPercent: percent,
       chunkSize,
       wpm,
+      pageInfo: pageInfo ?? null,
       updatedAt: Date.now(),
     }
 
@@ -108,6 +113,7 @@ export function saveReadingProgress(
         JSON.stringify({
           title,
           text,
+          pageInfo: pageInfo ?? null,
           updatedAt: Date.now(),
         }),
       )
@@ -138,7 +144,7 @@ export function loadReadingProgress(title: string, text: string): SavedProgress 
   }
 }
 
-export function loadLastActiveDoc(): { title: string; text: string } | null {
+export function loadLastActiveDoc(): { title: string; text: string; pageInfo?: BookPageInfo | null } | null {
   if (typeof window === 'undefined') return null
 
   try {
@@ -149,6 +155,7 @@ export function loadLastActiveDoc(): { title: string; text: string } | null {
     return {
       title: typeof parsed.title === 'string' ? parsed.title : 'odak',
       text: parsed.text,
+      pageInfo: parsed.pageInfo && typeof parsed.pageInfo === 'object' ? parsed.pageInfo : null,
     }
   } catch {
     return null

@@ -2,10 +2,17 @@ import { splitGluedTokens } from './turkish-word-splitter'
 
 export type ThemeId = 'ios' | 'linear' | 'kindle'
 
+export type BookPageInfo = {
+  totalBookPages: number
+  /** Her sayfa için [başlangıçSatırİndeksi, basılıSayfaNumarası] çiftleri (0-tabanlı satır indeksi) */
+  pageStartLines: [number, number][]
+}
+
 export type ChunkItem = {
   text: string
   words: string[]
   startIndex: number
+  pageNumber?: number
   isSentenceEnd: boolean
   isParagraphEnd?: boolean
   isHeading?: boolean
@@ -215,10 +222,10 @@ export function splitAtPivot(word: string): [string, string, string] {
 export function createChunks(
   input: string | string[],
   chunkSize: number = 1,
-  options: { enableFootnotes?: boolean } = {},
+  options: { enableFootnotes?: boolean; pageInfo?: BookPageInfo | null } = {},
 ): ChunkItem[] {
   if (!input) return []
-  const { enableFootnotes = true } = options
+  const { enableFootnotes = true, pageInfo = null } = options
 
   // Eğer metin string olarak verildiyse satır ve başlık duyarlı ayrıştırma uygula
   if (typeof input === 'string') {
@@ -228,8 +235,11 @@ export function createChunks(
     const chunks: ChunkItem[] = []
     let curWords: string[] = []
     let curStart = 0
+    let curPageNumber: number | undefined = undefined
     let globalWordIdx = 0
     let inFootnote = false
+    const pageStarts = pageInfo?.pageStartLines
+    let pagePtr = 0
 
     const flush = (
       isSentenceEnd: boolean,
@@ -241,6 +251,7 @@ export function createChunks(
         text: curWords.join(' '),
         words: [...curWords],
         startIndex: curStart,
+        pageNumber: curPageNumber,
         isSentenceEnd,
         isParagraphEnd,
         isFootnote,
@@ -248,7 +259,15 @@ export function createChunks(
       curWords = []
     }
 
-    for (const rawLine of lines) {
+    for (let lineIdx = 0; lineIdx < lines.length; lineIdx++) {
+      const rawLine = lines[lineIdx]
+      let linePageNum: number | undefined = undefined
+      if (pageStarts && pageStarts.length > 0) {
+        while (pagePtr + 1 < pageStarts.length && pageStarts[pagePtr + 1][0] <= lineIdx) {
+          pagePtr++
+        }
+        linePageNum = pageStarts[pagePtr][1]
+      }
       // Başlık saptama kaldırıldı: Varsa Markdown # işaretleri sessizce ayıklanır, tüm kelimeler standart akışa dahil edilir
       const line = rawLine.replace(/^#{1,6}\s*/, '').trim()
       if (!line) {
@@ -286,6 +305,7 @@ export function createChunks(
         const wIdx = globalWordIdx++
         if (curWords.length === 0) {
           curStart = wIdx
+          curPageNumber = linePageNum
         }
         curWords.push(w)
 

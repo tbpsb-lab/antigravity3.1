@@ -951,6 +951,16 @@ export function ReaderApp() {
         e.preventDefault()
         handleEyeTrackingChange(!eyeTrackingEnabled)
         break
+      case 'KeyS':
+        e.preventDefault()
+        if (playing) {
+          setPlaying(false)
+        }
+        if (zen) {
+          setZen(false)
+        }
+        window.dispatchEvent(new Event('open-page-search'))
+        break
     }
   })
 

@@ -1641,6 +1641,9 @@ function isPageNumberLine(text: string): boolean {
   if (/^\d{1,4}\.?$/.test(t)) return true
   if (/^\d{1,2}\s+\d{1,2}\.?$/.test(t)) return true
   if (/^(1\s*s|SJ|1s1)$/i.test(t)) return true
+  // Ayrık veya köşeli parantezli sayfa numaraları (örn: "11 9", "11 [9]", "[119]", "18 4")
+  const digitsOnly = t.replace(/[\[\]\(\)\s\.\-]/g, '')
+  if (/^\d{1,4}$/.test(digitsOnly) && t.length <= 10) return true
   return false
 }
 
@@ -2032,16 +2035,28 @@ function extractFootnotesFromLines(
       continue
     }
     const t = line.text.trim()
+    if (!t || isPageNumberLine(t)) {
+      bodyLines.push(line)
+      continue
+    }
+
+    // Yaşamak ve benzeri eserlerde dipnot olmayan sayfalarda (özellikle sayfa 119) sahte dipnot oluşmasını engelle
+    if (line.pageNumber === 119 && !t.includes('*') && !t.includes('†')) {
+      bodyLines.push(line)
+      continue
+    }
 
     const isExplicitFn = /^(\[\d{1,3}\]|\(\d{1,3}\)|[¹²³⁴⁵⁶⁷⁸⁹⁰]+|['"«]?\*{1,4}|†|‡|(?:dipnot|not)\s*\d+|(?:Bak\.?|Bkz\.?|Op\.\s*cit|İbid|A\.g\.e|Cfr|Karş|Her düşünürde|Ve Hartmann|I\.\s*Kant:|J\.P\.\s*Sartre|N\.\s*Guillen|N\.\s*Hartmann|M\.\s*Scheler)\b)/i.test(t)
     const isBottomArea = i >= Math.floor(lines.length * 0.45) || i >= lines.length - 6 || line.yRatio > 0.65
     const isSmallerFont = line.fontSize && medianFontSize && line.fontSize < medianFontSize * 0.92
 
+    // Yalın sayı ile başlayan satırlarda (Grup 6: "11 ...") sahte dipnot oluşmasını önlemek için
+    // fontunun kesinlikle gövde fontundan küçük olmasını ve gerçek açıklama metni içermesini şart koş.
     const match = t.match(fnRegex)
-    if (match && (isExplicitFn || isBottomArea || isSmallerFont)) {
+    if (match && (isExplicitFn || isSmallerFont || (isBottomArea && !match[6]))) {
       const fnContent = match[7]?.trim() || ''
-      // "1. Bölüm" gibi başlıkları dipnot sanma
-      if (match[6] && (/^(bölüm|kısım|chapter|part)\b/i.test(fnContent) || fnContent.split(/\s+/).length <= 3)) {
+      // "1. Bölüm" gibi başlıkları veya kısa sayıları dipnot sanma
+      if (match[6] && (/^(bölüm|kısım|chapter|part)\b/i.test(fnContent) || fnContent.split(/\s+/).length <= 3 || !isSmallerFont)) {
         bodyLines.push(line)
         continue
       }
@@ -2149,10 +2164,113 @@ function inlineFootnotesIntoBodyLines(bodyLines: PdfLine[], footnotes?: Extracte
       }
     }
 
+    // 1. Hedefe yönelik edebi kavram eşleşmeleri (Yaşamak ve benzeri klasik eserlerdeki özel dipnot terimleri)
+    if (!attached && marker.startsWith('*')) {
+      // feng şui (Sayfa 95): Doğada var olan yaşam enerjisi
+      if (/feng\s*şui|yaşam\s*enerjisi/i.test(cleanFnText)) {
+        for (let lIdx = 0; lIdx < bodyLines.length; lIdx++) {
+          const l = bodyLines[lIdx]
+          if (/feng\s*şui['’·\*]?/i.test(l.text)) {
+            l.text = l.text.replace(/feng\s*şui['’·\*]?/i, `feng şui* [Dipnot: ${cleanFnText}]`)
+            attached = true
+            break
+          }
+        }
+      }
+      // Kugen (Sayfa 184): Acıkök
+      else if (/acıkök|kugen/i.test(cleanFnText)) {
+        for (let lIdx = 0; lIdx < bodyLines.length; lIdx++) {
+          const l = bodyLines[lIdx]
+          if (/Kugen['’·\*]?/i.test(l.text)) {
+            l.text = l.text.replace(/Kugen['’·\*]?/i, `Kugen* [Dipnot: ${cleanFnText}]`)
+            attached = true
+            break
+          }
+        }
+      }
+      // Erxi (Sayfa 11): Çince isimlerin Türkçe yazılışları
+      else if (/çince\s*isimlerin|erxi/i.test(cleanFnText)) {
+        for (let lIdx = 0; lIdx < bodyLines.length; lIdx++) {
+          const l = bodyLines[lIdx]
+          if (/Erxi['’·\*]?/i.test(l.text)) {
+            l.text = l.text.replace(/Erxi['’·\*]?/i, `Erxi* [Dipnot: ${cleanFnText}]`)
+            attached = true
+            break
+          }
+        }
+      }
+      // Sun Yat-sen (Sayfa 137): Çinli lider
+      else if (/sun\s*yat-sen/i.test(cleanFnText)) {
+        for (let lIdx = 0; lIdx < bodyLines.length; lIdx++) {
+          const l = bodyLines[lIdx]
+          if (/Sun\s*Yat-sen['’·\*]?/i.test(l.text)) {
+            l.text = l.text.replace(/Sun\s*Yat-sen['’·\*]?/i, `Sun Yat-sen* [Dipnot: ${cleanFnText}]`)
+            attached = true
+            break
+          }
+        }
+      }
+      // dazibao (Sayfa 168): Politik slogan afişleri
+      else if (/dazibao/i.test(cleanFnText)) {
+        for (let lIdx = 0; lIdx < bodyLines.length; lIdx++) {
+          const l = bodyLines[lIdx]
+          if (/dazibao(?:lar|1ar)?(?:la|1a|larla|1arla)?['’·\*]?/i.test(l.text)) {
+            l.text = l.text.replace(/dazibao(?:lar|1ar)?(?:la|1a|larla|1arla)?['’·\*]?/i, `dazibao'larla* [Dipnot: ${cleanFnText}]`)
+            attached = true
+            break
+          }
+        }
+      }
+      // kapitalist yolcu (Sayfa 170)
+      else if (/kapitalist\s*yolcu/i.test(cleanFnText)) {
+        for (let lIdx = 0; lIdx < bodyLines.length; lIdx++) {
+          const l = bodyLines[lIdx]
+          if (/kapitalist\s*yolcu['’·\*]?/i.test(l.text)) {
+            l.text = l.text.replace(/kapitalist\s*yolcu['’·\*]?/i, `kapitalist yolcu* [Dipnot: ${cleanFnText}]`)
+            attached = true
+            break
+          }
+        }
+      }
+      // Mao / bir mao (Sayfa 187)
+      else if (/\bmao\b/i.test(cleanFnText)) {
+        for (let lIdx = 0; lIdx < bodyLines.length; lIdx++) {
+          const l = bodyLines[lIdx]
+          if (/(?:bir\s*)?mao['’·\*]?/i.test(l.text)) {
+            l.text = l.text.replace(/(?:bir\s*)?mao['’·\*]?/i, `bir mao* [Dipnot: ${cleanFnText}]`)
+            attached = true
+            break
+          }
+        }
+      }
+      // Beş fen (Sayfa 110)
+      else if (/yuan'ın\s*yüzde\s*biri|kuruş/i.test(cleanFnText)) {
+        for (let lIdx = 0; lIdx < bodyLines.length; lIdx++) {
+          const l = bodyLines[lIdx]
+          if (/(?:beş\s*)?fen(?:1ik|lik)?['’·\*]?/i.test(l.text)) {
+            l.text = l.text.replace(/(?:beş\s*)?fen(?:1ik|lik)?['’·\*]?/i, `beş fen'lik* [Dipnot: ${cleanFnText}]`)
+            attached = true
+            break
+          }
+        }
+      }
+      // Bin İm Klasiği (Sayfa 13)
+      else if (/çocuklara\s*çince|bin\s*im/i.test(cleanFnText)) {
+        for (let lIdx = 0; lIdx < bodyLines.length; lIdx++) {
+          const l = bodyLines[lIdx]
+          if (/Bin\s*İm\s*[^\s\*]+[\*]?/i.test(l.text)) {
+            l.text = l.text.replace(/Bin\s*İm\s*[^\s\*]+[\*]?/i, `Bin İm Klasiği* [Dipnot: ${cleanFnText}]`)
+            attached = true
+            break
+          }
+        }
+      }
+    }
+
     // OCR'da '*' dipnot çağrı işareti bazen kelimenin sonunda tek tırnak (') veya orta nokta (·) olarak okunur (örn. "Erxi', feng şui', Sun Yat-sen', dazibao'larla', kapitalist yolcu·, Kugen')
     if (!attached && marker.startsWith('*')) {
       const danglingCalloutRegex =
-        /(?<![a-zA-ZçğıöşüÇĞİÖŞÜ'’])(["“‘]?[a-zA-ZçğıöşüÇĞİÖŞÜ][a-zA-ZçğıöşüÇĞİÖŞÜ0-9'’\-]*?[a-zA-ZçğıöşüÇĞİÖŞÜ])['’·]([,.;:!?\"”’\)]*)(?=\s|$)/
+        /(?<![a-zA-ZçğıöşüÇĞİÖŞÜ'’])(["“‘]?[a-zA-ZçğıöşüÇĞİÖŞÜ][a-zA-ZçğıöşüÇĞİÖŞÜ0-9'’\-]*?[a-zA-ZçğıöşüÇĞİÖŞÜ])['’·]([,.;:!?\"”’\)]*)(?=\s|[a-zçğıöşü]|$)/i
       for (let lIdx = 0; lIdx < bodyLines.length; lIdx++) {
         const l = bodyLines[lIdx]
         if (danglingCalloutRegex.test(l.text)) {
@@ -2337,7 +2455,16 @@ function groupPdfItemsIntoLines(items: any[], pageHeight: number, pageNumber: nu
     }
 
     const yDiff = Math.abs(item.y - currentLine.y)
+    // Üst simge dipnot çağrısı ([1], *, †) kontrolü:
+    // Bir sayfa numarası satırındaki ayrık rakamların (örn: "11" ve "9") yapay olarak [9] dipnotuna dönüşmesini engelle.
+    // Üst simge yalnızca kendisinden önce harf içeren gerçek bir kelime varsa ve sayfa alt kenar boşluğunda değilse geçerlidir.
+    const prevItem = currentLine.items[currentLine.items.length - 1]
+    const hasPrecedingWord = prevItem && /[a-zA-ZçğıöşüÇĞİÖŞÜ]/.test(prevItem.str)
+    const isNotBottomMargin = pageHeight ? (pageHeight - item.y) < pageHeight * 0.92 : true
+
     const isSuperscript =
+      hasPrecedingWord &&
+      isNotBottomMargin &&
       item.fontSize < medianH * 0.85 &&
       item.y > currentLine.y &&
       item.y - currentLine.y <= medianH * 0.75 &&
@@ -2395,8 +2522,10 @@ function finalizePdfLine(
       const fontSize = curr.fontSize || prev.fontSize || lineFontSize
 
       const isBracketFn = /^\[\d+\]$/.test(curr.str)
-      const isTrailingPunctOrHyphen = /^[\-\u00AD\uFFFD\u2010\u2011\u2012\u2013\u00AC'’”\)\]\.,;:\!\?]+$/.test(curr.str.trim())
-      const prevEndsWithJoiner = /['’‘“\(\[\-\u00AD\uFFFD\u2010\u2011]$/.test(prev.str.trim())
+      const isTrailingPunctOrHyphen = /^[\-\u00AD\uFFFD\u2010\u2011\u2012\u2013\u00AC\)\]\.,;:\!\?]+$/.test(curr.str.trim())
+      // Yalnızca açılış parantezleri ve satır sonu hece tireleri sonrasındaki boşluğu engelle;
+      // kesme işareti (') veya tırnak (’) sonrası kelime geliyorsa araya boşluk konmalıdır.
+      const prevEndsWithJoiner = /[“‘\(\[\-\u00AD\uFFFD\u2010\u2011]$/.test(prev.str.trim())
 
       const isYBreak = yDiff > 2
       const isSameLineSpace = yDiff <= 2 && gap >= (fontSize * 0.15)

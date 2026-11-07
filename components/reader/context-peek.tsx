@@ -42,6 +42,15 @@ export const ContextPeek = memo(function ContextPeek({
   const [isSearchOpen, setIsSearchOpen] = useState(false)
   const searchButtonRef = useRef<HTMLButtonElement>(null)
 
+  // Klavye kısayolu ('S' tuşu) ile mini arama penceresini otomatik aç
+  useEffect(() => {
+    const handleOpenSearch = () => {
+      setIsSearchOpen(true)
+    }
+    window.addEventListener('open-page-search', handleOpenSearch)
+    return () => window.removeEventListener('open-page-search', handleOpenSearch)
+  }, [])
+
   // Konteyner boyutuna göre ekranda dikey ve yatay eksende ne kadar kelime alabileceğini dinamik hesapla.
   // Tam 3 satırın taşmadan, kelime kırpılmadan %100 ekrana sığmasını ve her sayfanın ardışık olmasını sağlar.
   const capacity = useMemo(() => {

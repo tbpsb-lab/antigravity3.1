@@ -10,6 +10,7 @@ import {
   Maximize,
   MousePointer,
   RotateCcw,
+  Search,
   ShieldCheck,
   Smartphone,
   Sparkles,
@@ -240,6 +241,13 @@ export const GUIDE_SHORTCUTS: GuideShortcutItem[] = [
     description: 'Metin İçi Dipnotları Oku / Atla (Açık/Kapalı)',
     category: 'metin',
     icon: Bookmark,
+    iconColor: 'text-amber-500',
+  },
+  {
+    key: 'S Tuşu',
+    description: 'Sayfa ve Kelime Arama (Hızlı Atlama Penceresi)',
+    category: 'navigasyon',
+    icon: Search,
     iconColor: 'text-amber-500',
   },
   {

@@ -980,7 +980,7 @@ export function ReaderApp() {
     const activeChunkSize = settings.chunkSize ?? 1
     const activeFootnotes = settings.readFootnotes ?? true
     const hasMigratedDefaultBook =
-      typeof window !== 'undefined' && localStorage.getItem('odak_default_yasamak_v2') === 'true'
+      typeof window !== 'undefined' && localStorage.getItem('odak_default_yasamak_v3') === 'true'
     const lastDoc = loadLastActiveDoc()
 
     const isOldUnmigratedDoc =
@@ -991,7 +991,7 @@ export function ReaderApp() {
 
     if (isOldUnmigratedDoc) {
       try {
-        localStorage.setItem('odak_default_yasamak_v2', 'true')
+        localStorage.setItem('odak_default_yasamak_v3', 'true')
       } catch {}
       setText(DEFAULT_BOOK_TEXT)
       setDocTitle(DEFAULT_BOOK_TITLE)

@@ -864,31 +864,157 @@ export function cleanIntraLineHyphens(rawLineText: string): string {
 
   // 14. Kelime içine karışmış noktalama, taksim (/), çift noktalı virgül (;;) ve iki nokta (:) OCR bozulmalarını onar
   // (cleanPunctuationAndCamelCase adımından ÖNCE çalıştırılmalıdır ki kelimenin ortasındaki noktadan sonra boşluk eklenmesin!)
+  t = t
+    .replace(/ilımnn zamnn/g, 'Kimi zaman')
+    .replace(/1wktasında/g, 'noktasında')
+    .replace(/katı\.\/\s*aşıyor/g, 'katılaşıyor')
+    .replace(/m1\s*1tlu/g, 'mutlu')
+    .replace(/görüni imiinü/g, 'görünümünü')
+    .replace(/ot parça lan/g, 'ot parçaları')
+    .replace(/su1ına/g, 'sırtına')
+    .replace(/ye1t>\s*diiştü/g, 'yere düştü')
+    .replace(/suy11 niçine/g, 'suyun içine')
+    .replace(/Yuııarlak/g, 'Yuvarlak')
+    .replace(/yaşlı adanı ona dt'di ki/g, 'yaşlı adam ona dedi ki')
+    .replace(/yeterinc e/g, 'yeterince')
+    .replace(/otlanıadı n/g, 'otlamadın')
+    .replace(/s11la nn ıış bölgeye doğrusiirdü/g, 'sulanmış bölgeye doğru sürdü')
+    .replace(/ycnwk yenwğc giiçlcri ols11 n,\s*"\s*dedi\./g, 'yemek yemeğe güçleri olsun," dedi.')
+    .replace(
+      /Ben gcn'dt'\. aRacın gölgesinde oturuyord11nı\. S111 çantamı/g,
+      'Ben gene de ağacın gölgesinde oturuyordum. Sırt çantamı',
+    )
+    .replace(/arkama alnn ştı m, nRaca yaslandım/g, 'arkama almıştım, ağaca yaslandım')
+    .replace(
+      /niyetine k11l landı m\. Öki iziin mi desin in iizerindcki sarkmış/g,
+      'niyetine kullandım. Öküzün midesinin üzerindeki sarkmış',
+    )
+    .replace(
+      /deri kat Jmt olm11[\uFFFDş]t11; sahanı sfirdiil\.\.'Çc midesi\. içinde ça11111rl11/g,
+      'deri kat kat olmuştu; sabanı sürdükçe midesi, içinde çamurlu',
+    )
+    .replace(
+      /s11y11n çalko1andl!-,Tı kom man hir s11 halcın11 gihi göriiniiyord11\./g,
+      'suyun çalkalandığı kocaman bir su balonu gibi görünüyordu.',
+    )
+    .replace(/çökl!ne/g, 'çökene')
+    .replace(/ç·ünkü/g, 'çünkü')
+    .replace(/evdtc'/g, 'evde')
+    .replace(
+      /Fengxia gid erkeıı, Youqing ueler olduğwıu bilmeden sadece/g,
+      'Fengxia giderken, Youqing neler olduğunu bilmeden sadece',
+    )
+    .replace(
+      /izlemi[\uFFFDş]ti\. Ancak Feııgxia uzakla[\uFFFDş]rıktmı soıu·a ba[\uFFFDş]mı kaşıyıp/g,
+      'izlemişti. Ancak Fengxia uzaklaştıktan sonra başını kaşıyıp',
+    )
+    .replace(
+      /eve doğruyü rüyt>bildi\. Bir kaı\.; kez güz urnyl a bt'ııi süzdüğünü/g,
+      'eve doğru yürüyebildi. Birkaç kez göz ucuyla beni süzdüğünü',
+    )
+    .replace(
+      /görmüştüm, fakat hi,;bir zaman gelip neler oldu[\uFFFDğ]rı\.uıu/g,
+      'görmüştüm, fakat hiçbir zaman gelip neler olduğunu',
+    )
+    .replace(
+      /sormadı\. İlk dayağını daha Ji azhen'ın kanııııdaykt>ıı yt•ıni[\uFFFDş]ti/g,
+      "sormadı. İlk dayağını daha Jiazhen'ın karnındayken yemişti",
+    )
+    .replace(/El leı'ini/g, 'Ellerini')
+    .replace(/pantolonumın/g, 'pantolonunun')
+    .replace(
+      /fr•nmıannı açtıktan sonra dönüp bir kez daha Jiazhcn'a/g,
+      "fermuarını açtıktan sonra dönüp bir kez daha Jiazhen'a",
+    )
+    .replace(/mutfağa\uFFFD?'/g, 'mutfağa gittim,')
+
   t = t.replace(/([a-zA-ZçğıöşüÇĞİÖŞÜ])\/,\s*([a-zçğıöşü]+)/g, '$1l$2')
   t = t.replace(/\bdolaştırdık\/an\b/g, 'dolaştırdıkları')
   t = t.replace(/\bsürebiliyor\/ardı\b/g, 'sürebiliyorlardı')
   t = t.replace(/\bdin\/en([a-zçğıöşü]*)\b/g, 'dinlen$1')
   t = t.replace(/\bi,\s*çim([a-zçğıöşü]*)\b/g, 'içim$1')
   t = t.replace(/\b([a-zA-ZçğıöşüÇĞİÖŞÜ]{2,}),\s*(si|sı|sü|su|nin|nın|den|dan)\b/g, '$1$2')
+  t = t
+    .replace(/U;in/g, 'için')
+    .replace(/birkm;/g, 'birkaç')
+    .replace(/Geru;ken/g, 'Gençken')
+    .replace(/hi,;bir/g, 'hiçbir')
+    .replace(/'l'itremiyorum/g, 'Titremiyorum')
+    .replace(/"Ü"ç/g, '"Üç')
+    .replace(/G\(itürün/g, 'Götürün')
+    .replace(/ra\.stladım/g, 'rastladım')
+    .replace(/alçak\.gönüllü/g, 'alçakgönüllü')
+    .replace(/hastalık\.lan/g, 'hastalıkları')
+    .replace(/ayn\.lalı/g, 'ayrılalı')
+    .replace(/yalpalıyor\.:\.tu/g, 'yalpalıyordu')
+    .replace(/çocuk\.lamı/g, 'çocukların')
+    .replace(/du\.vuyordu/g, 'duyuyordu')
+    .replace(/hoşlarımı\.;;tı/g, 'hoşlanmıştı')
+    .replace(/yakl;\s*•\.\.ştıktan/g, 'yaklaştıktan')
+    .replace(/dola\.ışır/g, 'dolaşır')
+    .replace(/ölmü\.şüm/g, 'ölmüşüm')
+    .replace(/kız\.armış/g, 'kızarmış')
+    .replace(/Yorgunluktan\.dır/g, 'Yorgunluktandır')
+    .replace(/duıı:lum/g, 'durdum')
+    .replace(/ha\.la/g, 'hâlâ')
+    .replace(/bacak\.lanın/g, 'bacaklarım')
+    .replace(/vak\.asınız/g, 'vakasınız')
+    .replace(/herifi\.er/g, 'herifler')
+    .replace(/Çocuk\.lanın/g, 'Çocuklarım')
+    .replace(/çık\.arken/g, 'çıkarken')
+    .replace(/ağacını\.n/g, 'ağacının')
+    .replace(/çx:ık/g, 'çok')
+    .replace(/olarak\.görülen/g, 'olarak görülen')
   t = t.replace(/\bFak\.at\b/g, 'Fakat')
   t = t.replace(/\bfak\.at\b/g, 'fakat')
   t = t.replace(/\bİm\.kansız([a-zçğıöşü]*)\b/g, 'İmkansız$1')
   t = t.replace(
-    /\b([a-zA-ZçğıöşüÇĞİÖŞÜ]{2,})\.(tan|ten|dan|den|lar|ler|lık|lik|sı|si|ası|esi)\b/g,
+    /\b([a-zA-ZçğıöşüÇĞİÖŞÜ]{2,})\.(tan|ten|dan|den|lar|ler|lık|lik|sı|si|ası|esi|dır|dir)\b/g,
     '$1$2',
   )
   t = t.replace(/([a-zA-ZçğıöşüÇĞİÖŞÜ]);;([a-zA-ZçğıöşüÇĞİÖŞÜ])/g, '$1ş$2')
   t = t.replace(/arkadaı;;ına/g, 'arkadaşına').replace(/ba;;/g, 'baş').replace(/Ba;;/g, 'Baş')
   t = t.replace(/\bt:opra([a-zçğıöşü]+)\b/g, 'topra$1')
-  t = t.replace(/Fengx:ia/g, 'Fengxia').replace(/Fengxi\.a/g, 'Fengxia').replace(/gx:ia/g, 'gxia')
-  t = t.replace(/Erx:i/g, 'Erxi').replace(/x:i/g, 'xi')
-  t = t.replace(/You4iııg/g, 'Youqing').replace(/ChW1Sheng/g, 'Chunsheng')
+  t = t
+    .replace(/Fengx:ia/g, 'Fengxia')
+    .replace(/Fengxi\.a/g, 'Fengxia')
+    .replace(/gx:ia/g, 'gxia')
+    .replace(/Feııgxia/g, 'Fengxia')
+  t = t
+    .replace(/Erx:i/g, 'Erxi')
+    .replace(/x:i/g, 'xi')
+    .replace(/\bEnci\b/g, 'Erxi')
+    .replace(/Jiazhcn/g, 'Jiazhen')
+    .replace(/Ji azhen/g, 'Jiazhen')
+  t = t.replace(/You4iııg/g, 'Youqing').replace(/ChW1Sheng/g, 'Chunsheng').replace(/Chwısheng/g, 'Chunsheng')
+  t = t
+    .replace(/\bLmger\b/g, 'Longer')
+    .replace(/Y angtze/g, 'Yangtze')
+    .replace(/W ang/g, 'Wang')
+    .replace(/Y ouqing/g, 'Youqing')
   t = t.replace(/hı!nüz/g, 'henüz').replace(/hı!/g, 'he').replace(/m1'ımrn/g, 'mırıldan')
   t = t.replace(/muswı/g, 'musun').replace(/swı/g, 'sun')
+  t = t
+    .replace(/b\uFFFDladı/g, 'başladı')
+    .replace(/Gözy\uFFFDlan/g, 'Gözyaşları')
+    .replace(/b\uFFFDladık/g, 'başladık')
+    .replace(/bağcıkl\uFFFDn/g, 'bağcıkları')
+    .replace(/b\uFFFDında/g, 'başında')
+    .replace(/b\uFFFDını/g, 'başını')
+    .replace(/b\uFFFDım/g, 'başını')
+    .replace(/ul\uFFFDmıştı/g, 'ulaşmıştı')
+    .replace(/b\uFFFDlayınca/g, 'başlayınca')
+    .replace(/b\uFFFD göz/g, 'baş göz')
+    .replace(/d\uFFFDünmüştüm/g, 'düşünmüştüm')
+    .replace(/\uFFFDKapitalist/g, '"Kapitalist')
+  t = t.replace(/([a-zçğıöşü])R([a-zçğıöşü]|\b)/g, '$1e$2')
+  t = t.replace(/\blw([a-zçğıöşü]+)/g, 'ha$1')
+  t = t.replace(/\b(d|s|otl|uz)11([a-zçğıöşü]*)\b/g, '$1u$2')
 
   // 15. Şapkalı harf ve '1' -> "'l" OCR bozulmalarını onar ("hfila" -> "hâlâ", "dükkfuı" -> "dükkân", "fen1ik" -> "fen'lik")
   t = t.replace(/\bhfila\b/g, 'hâlâ')
   t = t.replace(/\bHfila\b/g, 'Hâlâ')
+  t = t.replace(/\brüzgfuı\b/g, 'rüzgârı')
   t = t.replace(/dükkfuı([a-zçğıöşü]*)/g, 'dükkân$1')
   t = t.replace(/\bU1usal\b/g, 'Ulusal')
   t = t.replace(/\bzan1an([a-zçğıöşü]*)\b/g, 'zaman$1')
@@ -896,36 +1022,193 @@ export function cleanIntraLineHyphens(rawLineText: string): string {
   t = t.replace(/\bbeş\s*fen1ik/g, "beş fen'lik")
   t = t.replace(/\bfen1ik/g, "fen'lik")
   t = t.replace(
-    /\b(Jiazhen|Başkan|Kugen|Wangxi|Wangsı|Fengxia|Youqing|Chunsheng|Erxi|Fugui|Long'er)1(a|e|da|de|dan|den|in|ın|un|ün)\b/g,
+    /\b(Jiazhen|Başkan|Kugen|Wangxi|Wangsı|Fengxia|Youqing|Chunsheng|Erxi|Fugui|Long'er|Longer)1(a|e|da|de|dan|den|in|ın|un|ün)\b/g,
     "$1'l$2",
+  )
+  t = t.replace(
+    /\b(Jiazhen|Başkan|Kugen|Wangxi|Wangsı|Fengxia|Youqing|Chunsheng|Erxi|Fugui|Long'er|Longer)'m\b/g,
+    "$1'ın",
   )
   t = t.replace(/\bXu1er([a-zçğıöşü]*)\b/g, "Xu'ler$1")
   t = t.replace(/\bdazibao1ar([a-zçğıöşü]*)\b/g, "dazibao'lar$1")
+  t = t
+    .replace(/edebilirin1/g, 'edebilirim')
+    .replace(/yuvamdaydın1/g, 'yuvamdaydım')
+    .replace(/\(1 978-79\)/g, '(1978-79)')
 
   // 16. Türkçe OCR "rı"/"rn"/"rm" -> "n"/"m" ligatür bozulmalarını onar
-  t = t.replace(/Kamı bumunda/g, 'Karnı burnunda').replace(/kamı bumunda/g, 'karnı burnunda')
+  t = t.replace(/Bin İm Kfosiği/g, 'Bin İm Klasiği').replace(/Kfosiği/g, 'Klasiği')
+  t = t
+    .replace(/Kamı bumunda/g, 'Karnı burnunda')
+    .replace(/kamı bumunda/g, 'karnı burnunda')
+    .replace(/Kamı bum unda/g, 'Karnı burnunda')
+    .replace(/kamı bum unda/g, 'karnı burnunda')
   t = t.replace(/\bbumun(da|dan|a|u)\b/g, 'burnun$1')
   t = t.replace(/\bkamım([a-zçğıöşü]*)\b/g, 'karnım$1')
   t = t.replace(/\bKamım([a-zçğıöşü]*)\b/g, 'Karnım$1')
   t = t.replace(/\bkamı\s+tok\b/g, 'karnı tok')
+  t = t.replace(/\bkaını\b/g, 'karnı')
+  t = t.replace(/Bir kann ve oğlun var/g, 'Bir karın ve oğlun var')
+  t = t.replace(/kab arlma/g, 'kabartma').replace(/kabarlma/g, 'kabartma')
+  t = t.replace(/Afaı kınş kırıştı/g, 'Alnı kırış kırıştı')
+  t = t.replace(/\bkınş([a-zçğıöşü]*)\b/g, 'kırış$1')
   t = t.replace(/\bsırzğ([a-zçğıöşü]+)\b/g, 'sırığ$1')
+  t = t.replace(/\bsınk(lar[a-zçğıöşü]*|tan|la)\b/g, 'sırık$1')
   t = t.replace(/\bökeyle\b/g, 'öfkeyle')
   t = t.replace(/\bÖkeyle\b/g, 'Öfkeyle')
   t = t.replace(/\bsoma\b/g, 'sonra')
   t = t.replace(/\bSoma\b/g, 'Sonra')
+  t = t.replace(/\bsonm\b/g, 'sonra')
+  t = t.replace(/\byapmkl([a-zçğıöşü]+)\b/g, 'yaprakl$1')
+  t = t.replace(/\byapmk\b/g, 'yaprak')
+  t = t.replace(/\btekror\b/g, 'tekrar')
   t = t.replace(/\bdoğnı([a-zçğıöşü]*)\b/g, 'doğru$1')
   t = t.replace(/\bDoğnı([a-zçğıöşü]*)\b/g, 'Doğru$1')
+  t = t.replace(/\bdoğıu\b/g, 'doğru')
   t = t.replace(/\bdışan(da|dan|ya|dakiler)?\b/g, (_, s) => `dışarı${s || ''}`)
   t = t.replace(/\bDışan(da|dan|ya|dakiler)?\b/g, (_, s) => `Dışarı${s || ''}`)
   t = t.replace(/\byukan(da|dan|ya)?\b/g, (_, s) => `yukarı${s || ''}`)
   t = t.replace(/\bYukan(da|dan|ya)?\b/g, (_, s) => `Yukarı${s || ''}`)
   t = t.replace(/\bTann('?[a-zçğıöşü]*)\b/g, 'Tanrı$1')
+  t = t
+    .replace(/görüşüıiiz/g, 'görüşürüz')
+    .replace(/göıiince/g, 'görünce')
+    .replace(/göıünce/g, 'görünce')
+    .replace(/Göıiinürdeki/g, 'Görünürdeki')
+    .replace(/göıiinüyordu/g, 'görünüyordu')
+    .replace(/göriinmüyordu/g, 'görünmüyordu')
+    .replace(/yüıüyerek/g, 'yürüyerek')
+    .replace(/yüıiiyerek/g, 'yürüyerek')
+    .replace(/yüıiidü/g, 'yürüdü')
+    .replace(/yüıiimüş/g, 'yürümüş')
+    .replace(/yüıiiyordu/g, 'yürüyordu')
+    .replace(/yüıiimeme/g, 'yürümeme')
+    .replace(/götüıüldüyse/g, 'götürüldüyse')
+    .replace(/çüriidü/g, 'çürüdü')
+    .replace(/düıiist/g, 'dürüst')
+    .replace(/ıiizgar/g, 'rüzgar')
+    .replace(/sürii/g, 'sürü')
+    .replace(/söğiit/g, 'söğüt')
+    .replace(/diiştü/g, 'düştü')
+  t = t
+    .replace(/korkwıun/g, 'korkunun')
+    .replace(/olwı/g, 'olun')
+    .replace(/kolwıdan/g, 'kolundan')
+    .replace(/uzwı/g, 'uzun')
+    .replace(/olduğwıu/g, 'olduğunu')
+    .replace(/boywı/g, 'boyun')
+    .replace(/Bwm/g, 'Bunu')
+    .replace(/\b([a-zA-ZçğıöşüÇĞİÖŞÜ]+)dwn\b/g, '$1dum')
+    .replace(/\b([a-zA-ZçğıöşüÇĞİÖŞÜ]+)twn\b/g, '$1tum')
+    .replace(/kwn/g, 'kum')
+    .replace(/ywnurta/g, 'yumurta')
+    .replace(/oğlwmın/g, 'oğlumun')
+    .replace(/wrlaşıyordu/g, 'zorlaşıyordu')
+    .replace(/wrlaştı/g, 'zorlaştı')
+    .replace(/Yoldnış/g, 'Yoldaş')
+    .replace(/Bnışkan/g, 'Başkan')
+    .replace(/baışını/g, 'başını')
+    .replace(/baışladılar/g, 'başladılar')
+    .replace(/baışladım/g, 'başladım')
+    .replace(/zorrmdaydık/g, 'zorundaydık')
+    .replace(/onrm/g, 'onun')
+    .replace(/Onrm/g, 'Onun')
+    .replace(/doktorrm/g, 'doktorun')
+    .replace(/doktornnu/g, 'doktorunu')
+    .replace(/zornnda/g, 'zorunda')
+    .replace(/Uznn/g, 'Uzun')
+    .replace(/uznn/g, 'uzun')
+    .replace(/olstın/g, 'olsun')
+    .replace(/Bana rm soruyorsun/g, 'Bana mı soruyorsun')
+    .replace(/tırrnalayacakrnış/g, 'tırmalayacakmış')
+    .replace(/yastayrnış/g, 'yastaymış')
+    .replace(/Kemerirnle/g, 'Kemerimle')
+    .replace(/rnırıldandını/g, 'mırıldandım')
+    .replace(/yığıldını/g, 'yığıldım')
+    .replace(/kırnıldaman/g, 'kımıldamadan')
+    .replace(/kımıldanmdan/g, 'kımıldamadan')
+    .replace(/seslenrneliydim/g, 'seslenmeliydim')
+    .replace(/Kayınpederirn/g, 'Kayınpederim')
+    .replace(/savaşmarnıştı/g, 'savaşmamıştı')
+    .replace(/anlaştlrnış/g, 'anlaşılmış')
+    .replace(/srrada/g, 'sırada')
+    .replace(/kıprrdatmadan/g, 'kıpırdatmadan')
+    .replace(/drrdın/g, 'dırdırı')
+    .replace(/sakları!/g, 'saklan!')
+    .replace(/hıçkınkları/g, 'hıçkırıkları')
+    .replace(/vunmn/g, 'vursun')
+    .replace(/alıınyordu/g, 'alınıyordu')
+    .replace(/yapacağınu/g, 'yapacağımı')
+    .replace(/yumnığunu/g, 'yumruğunu')
+    .replace(/tavn/g, 'tavrı')
+    .replace(/smlsıklam/g, 'sırılsıklam')
+    .replace(/zorlaştmyorum/g, 'zorlaştırıyorum')
+    .replace(/ısınyordu/g, 'ısırıyordu')
+    .replace(/yanşıyordu/g, 'yarışıyordu')
+    .replace(/kanştınnasına/g, 'karıştırmasına')
+    .replace(/göndennişler/g, 'göndermişler')
+    .replace(/vızıldamasmdan/g, 'vızıldamasından')
+    .replace(/kapkalm/g, 'kapkalın')
+    .replace(/bağnşan/g, 'bağrışan')
+    .replace(/Y alvannm/g, 'Yalvarırım')
+    .replace(/alvannm/g, 'yalvarırım')
+    .replace(/Y ruşamak/g, 'Yaşamak')
+    .replace(/Ağlaclığı/g, 'Ağladığı')
+    .replace(/bu d ınumun/g, 'bu durumun')
+    .replace(/dınumun/g, 'durumun')
+    .replace(/bağınrlardı/g, 'bağırırlardı')
+    .replace(/alınz/g, 'alırız')
+    .replace(/çağnydı/g, 'çağrıydı')
+    .replace(/çağınyordu/g, 'çağırıyordu')
+    .replace(/sesle nişi/g, 'seslenişi')
+    .replace(/seıvis/g, 'servis')
+    .replace(/sapsan/g, 'sapsarı')
+    .replace(/san üniformalıydı/g, 'sarı üniformalıydı')
+    .replace(/sanlmak/g, 'sarılmak')
+    .replace(/somındaki/g, 'sonundaki')
+    .replace(/gidinre/g, 'gidince')
+    .replace(/zırhyorsun/g, 'zırlıyorsun')
+    .replace(/birhkte/g, 'birlikte')
+    .replace(/gübnekten/g, 'gülmekten')
+    .replace(/kaselerir nizi/g, 'kaselerimizi')
+    .replace(/huz url u/g, 'huzurlu')
+    .replace(/sınır sız/g, 'sınırsız')
+    .replace(/olduğun daysa/g, 'olduğundaysa')
+    .replace(/kitirtir/g, 'ki tir tir')
+    .replace(/kızıı ruzı/g, 'kızımızı')
+    .replace(/Beninıle/g, 'Benimle')
+    .replace(/Başınn salladım/g, 'Başımı salladım')
+    .replace(/kaçaıı/g, 'kaçan')
+    .replace(/dalıruşken/g, 'dalmışken')
+    .replace(/adamrruş/g, 'adammış')
+    .replace(/kaldırnuş/g, 'kaldırmış')
+    .replace(/varnuş/g, 'varmış')
+    .replace(/anlanuştı/g, 'anlamıştı')
+    .replace(/yutmanuştı/g, 'yutmamıştı')
+    .replace(/olınaz/g, 'olmaz')
+    .replace(/soruyonıın/g, 'soruyorum')
+    .replace(/istiyonım/g, 'istiyorum')
+    .replace(/durduramazdıın/g, 'durduramazdım')
+    .replace(/her gele/g, 'hergele')
+    .replace(/yan çıplak/g, 'yarı çıplak')
+    .replace(/heyecan landınyor/g, 'heyecanlandırıyor')
+    .replace(/Gözlerindeki yaş lan/g, 'Gözlerindeki yaşları')
+    .replace(/yüz leşirler/g, 'yüzleşirler')
+    .replace(/Kat landıkları/g, 'Katlandıkları')
+    .replace(/konuşmnktan/g, 'konuşmaktan')
+    .replace(/in anılır/g, 'inanılır')
+    .replace(/yaşanılan mekan larda/g, 'yaşanılan mekanlarda')
+    .replace(/buhran ların/g, 'buhranların')
+    .replace(/ter imi/g, 'terimi')
+    .replace(/top lumu/g, 'toplumu')
+    .replace(/Acı kök/g, 'Acıkök')
+    .replace(/feng şui 'sine/g, "feng şui'sine")
   t = t.replace(
-    /(?<![a-zA-ZçğıöşüÇĞİÖŞÜ0-9])([a-zA-ZçğıöşüÇĞİÖŞÜ][a-zçğıöşü]{1,})lann(da|dan|ı|a|ın|mız|nız|daki|dakiler)?(?![a-zA-ZçğıöşüÇĞİÖŞÜ0-9])/g,
+    /(?<![a-zA-ZçğıöşüÇĞİÖŞÜ0-9])([a-zA-ZçğıöşüÇĞİÖŞÜ][a-zçğıöşü]{1,})lann(da|dan|ı|a|ın|mız|nız|daki|dakiler|kinden|kini|ki)?(?![a-zA-ZçğıöşüÇĞİÖŞÜ0-9])/g,
     (_, stem, tail) => `${stem}ların${tail || ''}`,
   )
   t = t.replace(
-    /(?<![a-zA-ZçğıöşüÇĞİÖŞÜ0-9])([a-zA-ZçğıöşüÇĞİÖŞÜ][a-zçğıöşü]{1,})lan(nda|ndan|nı|na|nın|nm|mız|nız)(?![a-zA-ZçğıöşüÇĞİÖŞÜ0-9])/g,
+    /(?<![a-zA-ZçğıöşüÇĞİÖŞÜ0-9])([a-zA-ZçğıöşüÇĞİÖŞÜ][a-zçğıöşü]{1,})lan(nda|ndan|nı|na|nın|nm|mız|nız|ydı|ydiler)(?![a-zA-ZçğıöşüÇĞİÖŞÜ0-9])/g,
     (_, stem, tail) => `${stem}ları${tail === 'nm' ? 'nın' : tail}`,
   )
   t = t.replace(
@@ -937,9 +1220,11 @@ export function cleanIntraLineHyphens(rawLineText: string): string {
     (_, stem, tail) => `${stem}kları${tail || ''}`,
   )
   t = t.replace(
-    /\b(bacak|ot|dal|kabuk|şarkı|yol|dudak|toprak|tarla|ışın|omuz|yaprak|ata|toz|para|yankı|ağaç|ayak|kol|kulak|parmak|saç|kaş|göz|diş|baş|taş|kuş|kız|çocuk|kadın|adam|insan|hayvan|köylü|komşu|arkadaş|evlat|oğul|kardeş|kapı|duvar|cam|ışık|yıldız|bulut|dalga|damla|çizgi|yazı|sayı|an|on|bun|şun|başka)lan\b/gi,
-    (_, p1) => (p1.toLowerCase() === 'an' ? 'onları' : `${p1}ları`),
+    /\b(bacak|ot|dal|kabuk|şarkı|yol|dudak|toprak|tarla|ışın|omuz|yaprak|ata|toz|para|yankı|ağaç|ayak|kol|kulak|parmak|saç|kaş|göz|gözyaş|diş|baş|taş|kuş|çocuk|kadın|adam|insan|hayvan|köylü|komşu|arkadaş|evlat|oğul|kardeş|kapı|duvar|cam|ışık|yıldız|bulut|dalga|damla|çizgi|on|bun|şun|başka)lan\b/gi,
+    (_, p1) => `${p1}ları`,
   )
+  t = t.replace(/\banlan\b/g, 'onları')
+  t = t.replace(/\bkızlan\b/g, 'kızları')
   t = t.replace(/\b([a-zA-ZçğıöşüÇĞİÖŞÜ]{2,})np\b/g, (full, stem) =>
     full.toLowerCase().includes('kayınpeder') ? full : `${stem}rıp`,
   )
@@ -947,14 +1232,15 @@ export function cleanIntraLineHyphens(rawLineText: string): string {
     full.toLowerCase().includes('dünya') ? full : `${stem}rıya`,
   )
   t = t.replace(/\bkenan(nda|ndan|na|nı|nın)?\b/g, (_, s) => `kenarı${s || ''}`)
-  t = t.replace(/\bihtiyann\b/g, 'ihtiyarın')
+  t = t.replace(/\bihtiyann\b/g, 'ihtiyarın').replace(/\bİhtiyann\b/g, 'İhtiyarın')
+  t = t.replace(/\bahınn\b/g, 'ahırın')
   t = t.replace(/\bazannı\b/g, 'azarını')
   t = t.replace(/\bkannca([a-zçğıöşü]*)\b/g, 'karınca$1')
   t = t.replace(/\bbağınş([a-zçğıöşü]*)\b/g, 'bağırış$1')
   t = t.replace(/\bısınk([a-zçğıöşü]*)\b/g, 'ısırık$1')
   t = t.replace(/\bsıynl([a-zçğıöşü]*)\b/g, 'sıyrıl$1')
   t = t.replace(/\bkınl([a-zçğıöşü]*)\b/g, 'kırıl$1')
-  t = t.replace(/\bsanl(dı|mış|ıp|arak)\b/g, 'sarıl$1')
+  t = t.replace(/\bsanl(dı|mış|ıp|arak|mak)\b/g, 'sarıl$1')
   t = t.replace(/\bvenniş([a-zçğıöşü]*)\b/g, 'vermiş$1')
   t = t.replace(/\bvannış([a-zçğıöşü]*)\b/g, 'varmış$1')
   t = t.replace(/\bginne([a-zçğıöşü]*)\b/g, 'girme$1')
@@ -1032,6 +1318,20 @@ export function cleanIntraLineHyphens(rawLineText: string): string {
 
   // 23. Noktalama ve camelCase Temizliği (3. Adım)
   t = cleanPunctuationAndCamelCase(t)
+  t = t
+    .replace(/suy11 niçine/g, 'suyun içine')
+    .replace(/suyun niçine/g, 'suyun içine')
+    .replace(
+      /s(?:11|u)y(?:11|u)n çalko1andl!-,Tı kom man hir s(?:11|u) halcın(?:11|u) gihi göriiniiyord(?:11|u)\./g,
+      'suyun çalkalandığı kocaman bir su balonu gibi görünüyordu.',
+    )
+    .replace(/eve doğruyü rüyt>bildi/g, 'eve doğru yürüyebildi')
+    .replace(/uyumlu olması," kötü bir feng şui"ye/g, 'uyumlu olması, "kötü bir feng şui"ye')
+    .replace(/Devrim'ikapitalist/g, "Devrim'i kapitalist")
+    .replace(/ilk olarak\. Çin/g, 'ilk olarak Çin')
+    .replace(/kınumazdı/g, 'kurumazdı')
+    .replace(/kunıması/g, 'kuruması')
+    .replace(/tarladaydıın/g, 'tarladaydım')
 
   // 24. Normalizasyon: çoklu boşlukları tek boşluğa indir (4. Adım)
   return t.replace(/\s+/g, ' ').trim()
@@ -1236,6 +1536,14 @@ function tryMergeWordPair(
   return null
 }
 
+function isPageNumberLine(text: string): boolean {
+  const t = text.trim()
+  if (/^\d{1,4}\.?$/.test(t)) return true
+  if (/^\d{1,2}\s+\d{1,2}\.?$/.test(t)) return true
+  if (/^(1\s*s|SJ|1s1)$/i.test(t)) return true
+  return false
+}
+
 /**
  * Hem aynı sayfadaki alt alta satırlar arasında hem de sayfa geçişlerindeki
  * bölünmüş kelimeleri tek parça olarak diker (De-hyphenation across lines & pages).
@@ -1246,14 +1554,14 @@ export function mergeSplitWordsAcrossLinesAndPages(preparedPages: PreparedPage[]
     if (page.isBoilerplate) continue
     while (
       page.bodyLines.length > 0 &&
-      (!page.bodyLines[0].text.trim() || /^\d{1,4}\.?$/.test(page.bodyLines[0].text.trim()))
+      (!page.bodyLines[0].text.trim() || isPageNumberLine(page.bodyLines[0].text))
     ) {
       page.bodyLines.shift()
     }
     while (
       page.bodyLines.length > 0 &&
       (!page.bodyLines[page.bodyLines.length - 1].text.trim() ||
-        /^\d{1,4}\.?$/.test(page.bodyLines[page.bodyLines.length - 1].text.trim()))
+        isPageNumberLine(page.bodyLines[page.bodyLines.length - 1].text))
     ) {
       page.bodyLines.pop()
     }
@@ -1582,17 +1890,35 @@ function extractFootnotesFromLines(
       }
 
       const marker = match[1] || match[2] || match[3] || match[4] || match[5] || match[6] || '*'
-      let fullFnText = fnContent
-      // Dipnot başlangıcı: sayfa sonuna kadar olan devam satırlarını da dipnot olarak atla
+      const fnParts: string[] = [fnContent]
+      // Dipnot başlangıcı: sayfa sonuna kadar olan devam satırlarını da dipnot olarak birleştir
       while (i + 1 < lines.length) {
         const nextLine = lines[i + 1]
         const nextText = nextLine.text.trim()
-        if (/^\d{1,4}\.?$/.test(nextText)) {
+        if (isPageNumberLine(nextText)) {
           i++
-        } else if (fnRegex.test(nextText)) {
+        } else if (fnRegex.test(nextText) && !marker.startsWith('*')) {
           break
-        } else if (nextLine.yRatio > 0.75) {
-          fullFnText += ' ' + nextText
+        } else if (marker.startsWith('*') || nextLine.yRatio > 0.65 || i >= Math.floor(lines.length * 0.45)) {
+          const prevPart = fnParts[fnParts.length - 1] || ''
+          if (/[-­‐‑]$/.test(prevPart)) {
+            fnParts[fnParts.length - 1] = prevPart.replace(/[-­‐‑]+$/, '') + nextText
+          } else {
+            const prevWords = prevPart.split(/\s+/).filter(Boolean)
+            const nextWords = nextText.split(/\s+/).filter(Boolean)
+            if (
+              prevWords.length > 0 &&
+              nextWords.length > 0 &&
+              shouldMergeLineBreakWords(prevWords[prevWords.length - 1], nextWords[0])
+            ) {
+              prevWords[prevWords.length - 1] = cleanIntraLineHyphens(prevWords[prevWords.length - 1] + nextWords[0])
+              nextWords.shift()
+              fnParts[fnParts.length - 1] = prevWords.join(' ')
+              if (nextWords.length > 0) fnParts.push(nextWords.join(' '))
+            } else {
+              fnParts.push(nextText)
+            }
+          }
           i++
         } else {
           break
@@ -1601,7 +1927,10 @@ function extractFootnotesFromLines(
 
       footnotes.push({
         marker,
-        text: cleanIntraLineHyphens(fullFnText.replace(/\s+/g, ' ').trim()).replace(/\(e\.\s*n\.\)/gi, '(ç. n.)'),
+        text: cleanIntraLineHyphens(fnParts.join(' ').replace(/\s+/g, ' ').trim()).replace(
+          /\([eç]\.\s*n\.[\)l1I]/gi,
+          '(ç. n.)',
+        ),
       })
     } else {
       bodyLines.push(line)
@@ -1609,7 +1938,7 @@ function extractFootnotesFromLines(
   }
 
   // Sayfa sonundaki tekil sayfa numaralarını eler
-  while (bodyLines.length > 0 && /^\d{1,4}\.?$/.test(bodyLines[bodyLines.length - 1].text.trim())) {
+  while (bodyLines.length > 0 && isPageNumberLine(bodyLines[bodyLines.length - 1].text)) {
     bodyLines.pop()
   }
 
@@ -1652,6 +1981,20 @@ function inlineFootnotesIntoBodyLines(bodyLines: PdfLine[], footnotes?: Extracte
         if (wordIdx !== -1) {
           words.splice(wordIdx + 1, 0, `[Dipnot: ${cleanFnText}]`)
           l.text = words.join(' ')
+          attached = true
+          break
+        }
+      }
+    }
+
+    // OCR'da '*' dipnot çağrı işareti bazen kelimenin sonunda tek tırnak (') veya orta nokta (·) olarak okunur (örn. "Erxi', feng şui', Sun Yat-sen', dazibao'larla', kapitalist yolcu·, Kugen')
+    if (!attached && marker.startsWith('*')) {
+      const danglingCalloutRegex =
+        /(?<![a-zA-ZçğıöşüÇĞİÖŞÜ'’])(["“‘]?[a-zA-ZçğıöşüÇĞİÖŞÜ][a-zA-ZçğıöşüÇĞİÖŞÜ0-9'’\-]*?[a-zA-ZçğıöşüÇĞİÖŞÜ])['’·]([,.;:!?\"”’\)]*)(?=\s|$)/
+      for (let lIdx = 0; lIdx < bodyLines.length; lIdx++) {
+        const l = bodyLines[lIdx]
+        if (danglingCalloutRegex.test(l.text)) {
+          l.text = l.text.replace(danglingCalloutRegex, `$1*$2 [Dipnot: ${cleanFnText}]`)
           attached = true
           break
         }
@@ -2086,9 +2429,8 @@ export async function parsePdfDocument(
       if (idx === 0 || idx === page.lines.length - 1) {
         const norm = normalizeEdgeLineForRepeatCheck(l.text)
         if (repeatedHeaders.has(norm)) return false
-        // Tekil sayfa numaralarını eler (örn: "14", "23.")
-        if (/^\d{1,4}\.?$/.test(l.text.trim())) return false
       }
+      if ((idx <= 1 || idx >= page.lines.length - 6) && isPageNumberLine(l.text)) return false
       return true
     })
 

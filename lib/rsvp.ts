@@ -83,7 +83,8 @@ export function cleanPunctuationAndCamelCase(text: string): string {
   // Kelimeler arasındaki bitişik em-dash (—), en-dash (–) ve elipsleri (…) ayır
   t = t.replace(/([\p{L}\p{N}])([—–…]+|\.{3,})([\p{L}\p{N}])/gu, '$1$2 $3')
 
-  // 1. Noktalama işaretlerinden sonra boşluk unutulmuşsa ayır (3.14 veya 12,5 gibi sayıları bozmadan):
+  // 1. Noktalama işaretlerinden ve kapanış tırnaklarından sonra boşluk unutulmuşsa ayır (3.14 veya 12,5 gibi sayıları bozmadan):
+  t = t.replace(/([.,!?;:…]["”’»]+|["”’»]+[.,!?;:…])([\p{L}])/gu, '$1 $2')
   t = t.replace(/([.,!?;:…])([\p{L}])/gu, '$1 $2')
 
   // 2. Küçük harften hemen sonra büyük harf geliyorsa ayır:
@@ -425,6 +426,9 @@ export const TURKISH_ABBREVIATIONS = new Set([
   'fr.',
   'mad.',
   'böl.',
+  'ç.',
+  'e.',
+  'n.',
 ])
 
 export function isAbbreviation(word: string): boolean {

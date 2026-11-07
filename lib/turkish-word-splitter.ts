@@ -164,6 +164,14 @@ const EXPLICIT_GLUED_MAP: Record<string, [string, string]> = {
   kovasu: ['kova', 'su'],
   onyaş: ['on', 'yaş'],
   milliyetçininne: ['milliyetçinin', 'ne'],
+  buradadur: ['burada', 'dur'],
+  butür: ['bu', 'tür'],
+  birtür: ['bir', 'tür'],
+  şeyyemez: ['şey', 'yemez'],
+  öylecedikildim: ['öylece', 'dikildim'],
+  ayakkabıdikebildiğim: ['ayakkabı', 'dikebildiğim'],
+  doğrusiirdü: ['doğru', 'sürdü'],
+  doğrusürdü: ['doğru', 'sürdü'],
 }
 
 const GERUND_REGEX =
@@ -199,10 +207,16 @@ export function getSofteningVariants(stem: string): string[] {
 export function checkStemInDict(stem: string, allowSoftening: boolean = true): boolean {
   if (stem.length < 2) return false
   if (turkishDictSet.has(stem)) return true
+  const noCirc = stem.replace(/â/g, 'a').replace(/î/g, 'i').replace(/û/g, 'u')
+  if (noCirc !== stem && turkishDictSet.has(noCirc)) return true
   if (allowSoftening && stem.length >= 3) {
     const variants = getSofteningVariants(stem)
     for (let i = 1; i < variants.length; i++) {
       if (turkishDictSet.has(variants[i])) {
+        return true
+      }
+      const vNoCirc = variants[i].replace(/â/g, 'a').replace(/î/g, 'i').replace(/û/g, 'u')
+      if (vNoCirc !== variants[i] && turkishDictSet.has(vNoCirc)) {
         return true
       }
     }

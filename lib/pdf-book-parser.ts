@@ -786,6 +786,19 @@ export function cleanIntraLineHyphens(rawLineText: string): string {
   t = t.replace(/içi\s+ısırısın/g, 'içi ısınsın')
   t = t.replace(/\bbudınum\b/g, 'bu durum').replace(/\bbudınumun\b/g, 'bu durumun')
   t = t.replace(/\bbanklar\b/g, 'barıklar').replace(/\banklar\b/g, 'arıklar')
+  t = t.replace(/\badamlarata\b/g, 'adamlara ta')
+  t = t.replace(/\bAtalanmıza\b/g, 'Atalarımıza').replace(/\batalanmıza\b/g, 'atalarımıza')
+  t = t.replace(/\bbaba\s+cığını\b/g, 'babacığını').replace(/\bbaba\s+cığım\b/g, 'babacığım')
+  t = t.replace(/\bküftüydü\b/g, 'küflüydü').replace(/\bküftü\b/g, 'küflü')
+  t = t.replace(/\bHiç\s+bir\b/g, 'Hiçbir').replace(/\bhiç\s+bir\b/g, 'hiçbir')
+  t = t.replace(/\bgörüyorduksu\b/g, 'görüyorduk su')
+  t = t.replace(/\bağlamaldı\b/g, 'ağlamaklı')
+  t = t.replace(/\bpirinçimiz\b/g, 'pirincimiz').replace(/\bpirinçi\b/g, 'pirinci')
+  t = t.replace(/\bistirahatından\b/g, 'istirahatinden').replace(/\bistirahatı\b/g, 'istirahati')
+  t = t.replace(/\bmorarınış\b/g, 'morarmış')
+  t = t.replace(/\bÖV([a-zçğıöşü]+)\b/g, 'Öv$1')
+  t = t.replace(/\bsükünet([a-zçğıöşü]*)\b/g, 'sükunet$1').replace(/\bSükünet([a-zçğıöşü]*)\b/g, 'Sükunet$1')
+  t = t.replace(/\bayaklarımamışken\b/g, 'ayaklanmamışken')
 
   // 1. Harfleri ayrı yazılmış kelimeleri birleştir
   t = collapseSpacedLetters(t)
@@ -1224,7 +1237,7 @@ export function cleanIntraLineHyphens(rawLineText: string): string {
     (_, stem, tail) => `${stem}ların${tail || ''}`,
   )
   t = t.replace(
-    /(?<![a-zA-ZçğıöşüÇĞİÖŞÜ0-9])([a-zA-ZçğıöşüÇĞİÖŞÜ][a-zçğıöşü]{1,})lan(nda|ndan|nı|na|nın|nm|mız|nız|ydı|ydiler)(?![a-zA-ZçğıöşüÇĞİÖŞÜ0-9])/g,
+    /(?<![a-zA-ZçğıöşüÇĞİÖŞÜ0-9])([a-zA-ZçğıöşüÇĞİÖŞÜ][a-zçğıöşü]{1,})lan(nda|ndan|nı|na|nın|nm|mız|mıza|mızda|mızdan|nız|ydı|ydiler)(?![a-zA-ZçğıöşüÇĞİÖŞÜ0-9])/g,
     (_, stem, tail) => `${stem}ları${tail === 'nm' ? 'nın' : tail}`,
   )
   t = t.replace(

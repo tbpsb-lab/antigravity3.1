@@ -41,7 +41,7 @@ export const KNOWN_PROPER_NOUNS = new Set([
 export const KNOWN_EXPLICIT_COMPOUNDS = new Set([
   'balkabağı', 'balkabak', 'afacan', 'karaağaç', 'tahtırevan', 'pisboğaz',
   'karmakarışık', 'başkomutan', 'doğumhane', 'cephane', 'yalınayak',
-  'alıkoy', 'kapkalın', 'sükunet', 'sükünet', 'unutulmaz',
+  'alıkoy', 'kapkalın', 'sükunet', 'unutulmaz',
 ])
 
 export const NEVER_MERGE_PAIR_LEFT = new Set([
@@ -140,6 +140,7 @@ export const SINGLE_SUFFIXES: string[] = [
   'lık', 'lik', 'luk', 'lük', 'lığ', 'liğ', 'luğ', 'lüğ',
   'sız', 'siz', 'suz', 'süz',
   'mak', 'mek', 'mamı', 'memi', 'manı', 'meni', 'maya', 'meye',
+  'cık', 'cik', 'cuk', 'cük', 'cığ', 'ciğ', 'cuğ', 'cüğ', 'çık', 'çik', 'çuk', 'çük', 'cağız', 'ceğiz',
   'mış', 'miş', 'muş', 'müş',
   'yor', 'ıyor', 'iyor', 'uyor', 'üyor',
   'aca', 'ece', 'acak', 'ecek',
@@ -217,6 +218,7 @@ const EXPLICIT_GLUED_MAP: Record<string, [string, string]> = {
   noktayageldiğinde: ['noktaya', 'geldiğinde'],
   kazandığımtüm: ['kazandığım', 'tüm'],
   adamlarata: ['adamlara', 'ta'],
+  görüyorduksu: ['görüyorduk', 'su'],
   içiısınsın: ['içi', 'ısınsın'],
   dediki: ['dedi', 'ki'],
   budınum: ['bu', 'durum'],

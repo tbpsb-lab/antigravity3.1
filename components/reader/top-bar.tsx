@@ -1,8 +1,8 @@
 'use client'
 
-import { FileText, Maximize, Minimize } from 'lucide-react'
+import { BookOpen, FileText, Maximize, Minimize } from 'lucide-react'
 import Image from 'next/image'
-import { memo, type ReactNode, type Ref } from 'react'
+import { memo, useCallback, useEffect, useRef, useState, type ReactNode, type Ref } from 'react'
 import { cn } from '@/lib/utils'
 import { type ThemeId } from '@/lib/rsvp'
 import logoCam from '@/assets/logos/logo-cam.png'
@@ -232,6 +232,99 @@ export const TopBar = memo(function TopBar({
   neuroAudioEnabled = false,
   onToggleNeuroAudio,
 }: TopBarProps) {
+  // İlk Ziyaret İçin Logo & Site Kılavuzu Cam Tanıtım Penceresi (Onboarding Callout)
+  const [showGuideCallout, setShowGuideCallout] = useState(false)
+  const [guideCalloutFading, setGuideCalloutFading] = useState(false)
+  const guideCalloutTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const guideCalloutFadeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const guideCalloutDismissedRef = useRef(false)
+  const guideCalloutRef = useRef<HTMLDivElement>(null)
+
+  const dismissGuideCallout = useCallback(() => {
+    if (guideCalloutDismissedRef.current) return
+    guideCalloutDismissedRef.current = true
+    if (guideCalloutTimerRef.current) clearTimeout(guideCalloutTimerRef.current)
+    if (guideCalloutFadeTimerRef.current) clearTimeout(guideCalloutFadeTimerRef.current)
+    setGuideCalloutFading(true)
+    try {
+      localStorage.setItem('hasSeenTapGuide_v2', 'true')
+      window.dispatchEvent(new Event('dismiss-onboarding'))
+    } catch {}
+    guideCalloutFadeTimerRef.current = setTimeout(() => {
+      setShowGuideCallout(false)
+    }, 350)
+  }, [])
+
+  useEffect(() => {
+    // Okuma Merkezi (text-center-guide-completed) bittikten sonra Site Kılavuzu tanıtımını aç
+    const handleTriggerGuide = () => {
+      try {
+        const hasSeen = localStorage.getItem('hasSeenTapGuide_v2')
+        if (!hasSeen && !guideCalloutDismissedRef.current && !hidden) {
+          setShowGuideCallout(true)
+          if (guideCalloutTimerRef.current) clearTimeout(guideCalloutTimerRef.current)
+          guideCalloutTimerRef.current = setTimeout(() => {
+            dismissGuideCallout()
+          }, 2200)
+        }
+      } catch {}
+    }
+
+    // Güvenlik yedek zamanlayıcısı: Önceki tanıtım adımları kaçırılırsa 9.8 sn sonra devreye girer
+    let fallbackTimer: ReturnType<typeof setTimeout> | null = null
+    try {
+      const hasSeen = localStorage.getItem('hasSeenTapGuide_v2')
+      if (!hasSeen) {
+        fallbackTimer = setTimeout(() => {
+          handleTriggerGuide()
+        }, 9800)
+      }
+    } catch {}
+
+    window.addEventListener('text-center-guide-completed', handleTriggerGuide)
+    return () => {
+      window.removeEventListener('text-center-guide-completed', handleTriggerGuide)
+      if (fallbackTimer) clearTimeout(fallbackTimer)
+    }
+  }, [hidden, dismissGuideCallout])
+
+  // Dışarıdan tetiklenen onboarding kapatma olayını (merkez pencereye tıklama vb.) dinle
+  useEffect(() => {
+    const handleExternalDismiss = () => {
+      if (guideCalloutDismissedRef.current) return
+      guideCalloutDismissedRef.current = true
+      try {
+        localStorage.setItem('hasSeenTapGuide_v2', 'true')
+      } catch {}
+      if (guideCalloutTimerRef.current) clearTimeout(guideCalloutTimerRef.current)
+      if (guideCalloutFadeTimerRef.current) clearTimeout(guideCalloutFadeTimerRef.current)
+      setGuideCalloutFading(true)
+      guideCalloutFadeTimerRef.current = setTimeout(() => {
+        setShowGuideCallout(false)
+      }, 350)
+    }
+    window.addEventListener('dismiss-onboarding', handleExternalDismiss)
+    return () => {
+      window.removeEventListener('dismiss-onboarding', handleExternalDismiss)
+      if (guideCalloutTimerRef.current) clearTimeout(guideCalloutTimerRef.current)
+      if (guideCalloutFadeTimerRef.current) clearTimeout(guideCalloutFadeTimerRef.current)
+    }
+  }, [])
+
+  // Callout açıkken sayfanın herhangi bir yerine tıklandığında kapat
+  useEffect(() => {
+    if (!showGuideCallout) return
+
+    const handlePointerDown = (e: PointerEvent) => {
+      if (guideCalloutRef.current && !guideCalloutRef.current.contains(e.target as Node)) {
+        dismissGuideCallout()
+      }
+    }
+
+    window.addEventListener('pointerdown', handlePointerDown)
+    return () => window.removeEventListener('pointerdown', handlePointerDown)
+  }, [showGuideCallout, dismissGuideCallout])
+
   return (
     <header
       ref={ref}
@@ -244,11 +337,14 @@ export const TopBar = memo(function TopBar({
     >
       <div className="mx-auto flex max-w-5xl md:max-w-6xl items-center justify-between gap-3">
         {/* Sol Alan: Tematik Rozet Logo ve Başlık */}
-        <div className="flex min-w-0 items-center gap-2.5 md:gap-3.5 overflow-visible">
+        <div className="relative flex min-w-0 items-center gap-2.5 md:gap-3.5 overflow-visible">
           <button
             type="button"
             onClick={(e) => {
               ;(e.currentTarget as HTMLButtonElement)?.blur()
+              if (showGuideCallout) {
+                dismissGuideCallout()
+              }
               onOpenAbout?.()
             }}
             className="flex min-w-0 items-center gap-2.5 md:gap-3.5 text-left group cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-2xl p-1 -m-1 transition-all active:scale-95 overflow-visible"
@@ -265,6 +361,51 @@ export const TopBar = memo(function TopBar({
               </p>
             </div>
           </button>
+
+          {/* İlk Ziyaret İçin Logo & Site Kılavuzu Cam Tanıtım Penceresi */}
+          {showGuideCallout && (
+            <div
+              ref={guideCalloutRef}
+              role="tooltip"
+              aria-label="Site Kılavuzu Tanıtımı"
+              onClick={(e) => {
+                e.stopPropagation()
+                dismissGuideCallout()
+                onOpenAbout?.()
+              }}
+              className={cn(
+                'panel absolute top-full mt-2.5 z-50 select-none cursor-pointer transition-all duration-300 ease-out',
+                'left-0 w-[205px] sm:w-[220px]',
+                'p-2 sm:p-2.5 rounded-2xl shadow-xl',
+                'bg-[var(--panel)] border border-[var(--panel-border)] backdrop-blur-[var(--panel-blur)]',
+                'text-foreground text-left',
+                'animate-in fade-in zoom-in-95 duration-300',
+                guideCalloutFading
+                  ? 'opacity-0 scale-95 pointer-events-none'
+                  : 'opacity-100 scale-100 pointer-events-auto',
+              )}
+            >
+              {/* Logoyu İşaret Eden Yukarı Doğru Cam Ok (Arrow Pointer) */}
+              <div
+                className="absolute -top-1.5 left-6 sm:left-8 size-3 rotate-45 border-t border-l border-[var(--panel-border)] bg-[var(--panel)] shadow-2xs backdrop-blur-[var(--panel-blur)]"
+                aria-hidden="true"
+              />
+
+              <div className="relative z-10 flex items-start gap-2">
+                <div className="size-6 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
+                  <BookOpen className="size-3.5 text-primary" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-bold text-foreground leading-tight">
+                    Site Kılavuzu
+                  </p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">
+                    Tüm kısayollar ve özellikler.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Sağ Alan: 1. Metin Yükle, 2. Aa Görünüm & Ayarlar, 3. Tam Ekran */}

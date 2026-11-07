@@ -1220,6 +1220,11 @@ export function ReaderApp() {
       {/* Ambient Aura / Tematik Işıma Katmanı */}
       <AmbientAura theme={theme} playing={playing} />
 
+      {/* Tematik Sağ Alt Köşe Sayfa Kıvrımları (Her zaman arka planda / z-0) */}
+      <PaperCornerCurl visible={theme === 'kindle'} zen={zen} />
+      <GlassCornerCurl visible={theme === 'ios'} zen={zen} />
+      <NeonCornerCurl visible={theme === 'linear'} zen={zen} />
+
       <TopBar
         ref={headerRef}
         docTitle={docTitle}
@@ -1236,7 +1241,7 @@ export function ReaderApp() {
 
       <main
         className={cn(
-          'absolute inset-0 flex flex-col items-center justify-center overflow-hidden px-4 transition-[padding] duration-500 ease-[cubic-bezier(0.2,0.8,0.2,1)] sm:px-8 landscape-short:px-3',
+          'absolute inset-0 z-10 flex flex-col items-center justify-center overflow-hidden px-4 transition-[padding] duration-500 ease-[cubic-bezier(0.2,0.8,0.2,1)] sm:px-8 landscape-short:px-3',
           zen ? 'pb-0' : 'pb-5 landscape-short:pb-1.5',
         )}
         style={{
@@ -1299,7 +1304,7 @@ export function ReaderApp() {
           </div>
 
           {/* Alt Zarif Bağlam Şeridi */}
-          <div className="context-peek-box relative w-full max-w-3xl shrink-0 mt-1 sm:mt-1.5 landscape-short:mt-0.5 min-h-[84px] sm:min-h-[108px] md:min-h-[128px] max-h-[102px] sm:max-h-[132px] md:max-h-[156px] landscape-short:min-h-[72px] landscape-short:max-h-[86px] flex flex-col overflow-visible">
+          <div className="context-peek-box relative z-20 w-full max-w-3xl shrink-0 mt-1 sm:mt-1.5 landscape-short:mt-0.5 min-h-[84px] sm:min-h-[108px] md:min-h-[128px] max-h-[102px] sm:max-h-[132px] md:max-h-[156px] landscape-short:min-h-[72px] landscape-short:max-h-[86px] flex flex-col overflow-visible">
             <ContextPeek
               words={words}
               chunks={chunks}
@@ -1435,10 +1440,6 @@ export function ReaderApp() {
         </div>
       )}
 
-      {/* Tematik Sağ Alt Köşe Sayfa Kıvrımları (z-10: Pencerelerin ve kontrollerin arkasında, Zen modunda %20 görünür / %80 transparan) */}
-      <PaperCornerCurl visible={theme === 'kindle'} zen={zen} />
-      <GlassCornerCurl visible={theme === 'ios'} zen={zen} />
-      <NeonCornerCurl visible={theme === 'linear'} zen={zen} />
 
       <SpeedTestModal
         open={speedTestOpen}

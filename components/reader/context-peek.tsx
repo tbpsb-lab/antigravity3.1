@@ -186,7 +186,7 @@ export const ContextPeek = memo(function ContextPeek({
           onClick={handlePrev}
           disabled={!canGoPrev}
           className={cn(
-            'ctl size-7 sm:size-8 md:size-10 shrink-0 rounded-full border border-border/40 bg-foreground/5 hover:bg-foreground/15 text-muted-foreground hover:text-foreground backdrop-blur-xs transition-all flex items-center justify-center cursor-pointer shadow-2xs',
+            'ctl relative z-10 size-7 sm:size-8 md:size-10 shrink-0 rounded-full border border-border/40 bg-foreground/5 hover:bg-foreground/15 text-muted-foreground hover:text-foreground backdrop-blur-xs transition-all flex items-center justify-center cursor-pointer shadow-2xs',
             !canGoPrev && 'opacity-20 pointer-events-none',
           )}
           aria-label="Önceki bağlam sayfası"
@@ -226,7 +226,7 @@ export const ContextPeek = memo(function ContextPeek({
           onClick={handleNext}
           disabled={!canGoNext}
           className={cn(
-            'ctl size-7 sm:size-8 md:size-10 shrink-0 rounded-full border border-border/40 bg-foreground/5 hover:bg-foreground/15 text-muted-foreground hover:text-foreground backdrop-blur-xs transition-all flex items-center justify-center cursor-pointer shadow-2xs',
+            'ctl relative z-10 size-7 sm:size-8 md:size-10 shrink-0 rounded-full border border-border/40 bg-foreground/5 hover:bg-foreground/15 text-muted-foreground hover:text-foreground backdrop-blur-xs transition-all flex items-center justify-center cursor-pointer shadow-2xs',
             !canGoNext && 'opacity-20 pointer-events-none',
           )}
           aria-label="Sonraki bağlam sayfası"

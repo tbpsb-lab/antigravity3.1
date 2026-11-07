@@ -30,7 +30,7 @@ export const PaperCornerCurl = memo(function PaperCornerCurl({
     <div
       aria-hidden="true"
       className={cn(
-        'pointer-events-none fixed bottom-0 right-0 z-10 select-none overflow-hidden leading-none',
+        'pointer-events-none fixed bottom-0 right-0 z-0 select-none overflow-hidden leading-none',
         'w-32 h-32 sm:w-40 sm:h-40 md:w-48 md:h-48 landscape-short:w-24 landscape-short:h-24',
         'animate-in fade-in zoom-in-95 duration-500 ease-out',
         className,

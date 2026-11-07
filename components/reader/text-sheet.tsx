@@ -70,8 +70,7 @@ export const TextSheet = memo(function TextSheet({
     if (calloutFadeTimerRef.current) clearTimeout(calloutFadeTimerRef.current)
     setCalloutFading(true)
     try {
-      localStorage.setItem('hasSeenTapGuide_v2', 'true')
-      window.dispatchEvent(new Event('dismiss-onboarding'))
+      window.dispatchEvent(new Event('text-center-guide-completed'))
     } catch {}
     calloutFadeTimerRef.current = setTimeout(() => {
       setShowCallout(false)

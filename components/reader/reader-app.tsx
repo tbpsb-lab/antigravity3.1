@@ -24,6 +24,7 @@ import {
   loadLastActiveDoc,
   findChunkIndexForWord,
 } from '@/lib/reading-progress'
+import { DEFAULT_BOOK_TEXT, DEFAULT_BOOK_TITLE } from '@/lib/default-book'
 import { loadReaderSettings, saveReaderSettings } from '@/lib/reader-settings'
 import { AmbientAura } from './ambient-aura'
 import { TopBar } from './top-bar'
@@ -60,8 +61,8 @@ export function ReaderApp() {
   const [, setResumeBadge] = useState<string | null>(null)
 
   const [headerRef, headerHeight] = useElementHeight<HTMLElement>()
-  const [text, setText] = useState(SAMPLE_TEXT)
-  const [docTitle, setDocTitle] = useState('Hızlı Okuma Penceresi')
+  const [text, setText] = useState(DEFAULT_BOOK_TEXT)
+  const [docTitle, setDocTitle] = useState(DEFAULT_BOOK_TITLE)
   const [index, setIndex] = useState(0)
   const [wpm, setWpm] = useState(300)
   const [playing, setPlaying] = useState(false)
@@ -978,8 +979,24 @@ export function ReaderApp() {
 
     const activeChunkSize = settings.chunkSize ?? 1
     const activeFootnotes = settings.readFootnotes ?? true
+    const hasMigratedDefaultBook =
+      typeof window !== 'undefined' && localStorage.getItem('odak_default_yasamak_v2') === 'true'
     const lastDoc = loadLastActiveDoc()
-    if (lastDoc && lastDoc.text) {
+
+    const isOldUnmigratedDoc =
+      !hasMigratedDefaultBook &&
+      (!lastDoc ||
+        lastDoc.text === SAMPLE_TEXT ||
+        /7478|yashamaq|yaşamak/i.test(lastDoc.title || ''))
+
+    if (isOldUnmigratedDoc) {
+      try {
+        localStorage.setItem('odak_default_yasamak_v2', 'true')
+      } catch {}
+      setText(DEFAULT_BOOK_TEXT)
+      setDocTitle(DEFAULT_BOOK_TITLE)
+      setIndex(0)
+    } else if (lastDoc && lastDoc.text) {
       const saved = loadReadingProgress(lastDoc.title, lastDoc.text)
       setText(lastDoc.text)
       if (lastDoc.title) setDocTitle(lastDoc.title)

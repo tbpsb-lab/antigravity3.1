@@ -12,7 +12,16 @@
  * 7. Taranmış (resimli) PDF sayfaları için Tesseract OCR motoruna otomatik geçiş yapar.
  */
 
-import { splitGluedText } from './turkish-word-splitter'
+import {
+  splitGluedText,
+  isValidTurkishWord,
+  toTurkishLower,
+  turkishDictSet,
+  TURKISH_SUFFIXES,
+  ALL_VOWELS,
+  BOUND_CONTINUATION_REGEX,
+  NEVER_BOUND_SUFFIX_RIGHT,
+} from './turkish-word-splitter'
 
 export type ExtractedBook = {
   title: string
@@ -247,7 +256,6 @@ const BROKEN_SUFFIX_SET = new Set([
   'sinin',
   'sı',
   'si',
-  'su',
   'sü',
   'lir',
   'lirim',
@@ -282,7 +290,6 @@ const BROKEN_SUFFIX_SET = new Set([
   'uğu',
   'üğü',
   'ığım',
-  'işim',
   'uğum',
   'üğüm',
   'ığın',
@@ -420,8 +427,6 @@ const BROKEN_SUFFIX_SET = new Set([
   'mişken',
   'mışken',
   'ız',
-  'iz',
-  'uz',
   'üz',
   'diğinde',
   'dığında',
@@ -504,7 +509,7 @@ export const VALID_STANDALONE_TURKISH_WORDS = new Set<string>([
 // Non-word continuation fragments that CANNOT be standalone Turkish words
 export const NON_STANDALONE_WORD_B_PATTERNS: RegExp[] = [
   /^(sabasındaki|zelce|ranan|bekken|zünü|nunu|rinin|lediği|bette|füsleri|ginlik|larken)/i,
-  /^(ndan|nden|nda|nde|na|ne|nı|ni|nın|nin|nun|nün|nu|nü)$/i,
+  /^(ndan|nden|nda|nde|na|nı|ni|nın|nin|nun|nün|nu|nü)$/i,
   /^(sından|sinden|sında|sinde|sına|sine|sını|sini|sının|sinin|sunun|sünün|sunu|sünü)$/i,
   /^(larıyla|leriyle|larında|lerinde|larından|lerinden|larına|lerine|larını|lerini|larının|lerinin)$/i,
   /^(lık|lik|luk|lük|lığa|liğe|luğa|lüğe|lığı|liği|luğu|lüğü|lığın|liğin|luğun|lüğün)$/i,
@@ -857,28 +862,154 @@ export function cleanIntraLineHyphens(rawLineText: string): string {
   t = t.replace(/\bseçme\s+yip\b/g, 'seçmeyip')
   t = t.replace(/\bkasabası\s+ndaki\b/g, 'kasabasındaki')
 
-  // 14. Türkçe OCR "rı" -> "n" ligatür bozulmalarını onar
+  // 14. Kelime içine karışmış noktalama, taksim (/), çift noktalı virgül (;;) ve iki nokta (:) OCR bozulmalarını onar
+  // (cleanPunctuationAndCamelCase adımından ÖNCE çalıştırılmalıdır ki kelimenin ortasındaki noktadan sonra boşluk eklenmesin!)
+  t = t.replace(/([a-zA-ZçğıöşüÇĞİÖŞÜ])\/,\s*([a-zçğıöşü]+)/g, '$1l$2')
+  t = t.replace(/\bdolaştırdık\/an\b/g, 'dolaştırdıkları')
+  t = t.replace(/\bsürebiliyor\/ardı\b/g, 'sürebiliyorlardı')
+  t = t.replace(/\bdin\/en([a-zçğıöşü]*)\b/g, 'dinlen$1')
+  t = t.replace(/\bi,\s*çim([a-zçğıöşü]*)\b/g, 'içim$1')
+  t = t.replace(/\b([a-zA-ZçğıöşüÇĞİÖŞÜ]{2,}),\s*(si|sı|sü|su|nin|nın|den|dan)\b/g, '$1$2')
+  t = t.replace(/\bFak\.at\b/g, 'Fakat')
+  t = t.replace(/\bfak\.at\b/g, 'fakat')
+  t = t.replace(/\bİm\.kansız([a-zçğıöşü]*)\b/g, 'İmkansız$1')
   t = t.replace(
-    /(?<![a-zA-ZçğıöşüÇĞİÖŞÜ0-9])([a-zA-ZçğıöşüÇĞİÖŞÜ][a-zçğıöşü]{2,})lan(nda|ndan|nı|na|nın|nm|mız|nız)(?![a-zA-ZçğıöşüÇĞİÖŞÜ0-9])/g,
+    /\b([a-zA-ZçğıöşüÇĞİÖŞÜ]{2,})\.(tan|ten|dan|den|lar|ler|lık|lik|sı|si|ası|esi)\b/g,
+    '$1$2',
+  )
+  t = t.replace(/([a-zA-ZçğıöşüÇĞİÖŞÜ]);;([a-zA-ZçğıöşüÇĞİÖŞÜ])/g, '$1ş$2')
+  t = t.replace(/arkadaı;;ına/g, 'arkadaşına').replace(/ba;;/g, 'baş').replace(/Ba;;/g, 'Baş')
+  t = t.replace(/\bt:opra([a-zçğıöşü]+)\b/g, 'topra$1')
+  t = t.replace(/Fengx:ia/g, 'Fengxia').replace(/Fengxi\.a/g, 'Fengxia').replace(/gx:ia/g, 'gxia')
+  t = t.replace(/Erx:i/g, 'Erxi').replace(/x:i/g, 'xi')
+  t = t.replace(/You4iııg/g, 'Youqing').replace(/ChW1Sheng/g, 'Chunsheng')
+  t = t.replace(/hı!nüz/g, 'henüz').replace(/hı!/g, 'he').replace(/m1'ımrn/g, 'mırıldan')
+  t = t.replace(/muswı/g, 'musun').replace(/swı/g, 'sun')
+
+  // 15. Şapkalı harf ve '1' -> "'l" OCR bozulmalarını onar ("hfila" -> "hâlâ", "dükkfuı" -> "dükkân", "fen1ik" -> "fen'lik")
+  t = t.replace(/\bhfila\b/g, 'hâlâ')
+  t = t.replace(/\bHfila\b/g, 'Hâlâ')
+  t = t.replace(/dükkfuı([a-zçğıöşü]*)/g, 'dükkân$1')
+  t = t.replace(/\bU1usal\b/g, 'Ulusal')
+  t = t.replace(/\bzan1an([a-zçğıöşü]*)\b/g, 'zaman$1')
+  t = t.replace(/\bmahlı1k([a-zçğıöşü]*)\b/g, 'mahluk$1')
+  t = t.replace(/\bbeş\s*fen1ik/g, "beş fen'lik")
+  t = t.replace(/\bfen1ik/g, "fen'lik")
+  t = t.replace(
+    /\b(Jiazhen|Başkan|Kugen|Wangxi|Wangsı|Fengxia|Youqing|Chunsheng|Erxi|Fugui|Long'er)1(a|e|da|de|dan|den|in|ın|un|ün)\b/g,
+    "$1'l$2",
+  )
+  t = t.replace(/\bXu1er([a-zçğıöşü]*)\b/g, "Xu'ler$1")
+  t = t.replace(/\bdazibao1ar([a-zçğıöşü]*)\b/g, "dazibao'lar$1")
+
+  // 16. Türkçe OCR "rı"/"rn"/"rm" -> "n"/"m" ligatür bozulmalarını onar
+  t = t.replace(/Kamı bumunda/g, 'Karnı burnunda').replace(/kamı bumunda/g, 'karnı burnunda')
+  t = t.replace(/\bbumun(da|dan|a|u)\b/g, 'burnun$1')
+  t = t.replace(/\bkamım([a-zçğıöşü]*)\b/g, 'karnım$1')
+  t = t.replace(/\bKamım([a-zçğıöşü]*)\b/g, 'Karnım$1')
+  t = t.replace(/\bkamı\s+tok\b/g, 'karnı tok')
+  t = t.replace(/\bsırzğ([a-zçğıöşü]+)\b/g, 'sırığ$1')
+  t = t.replace(/\bökeyle\b/g, 'öfkeyle')
+  t = t.replace(/\bÖkeyle\b/g, 'Öfkeyle')
+  t = t.replace(/\bsoma\b/g, 'sonra')
+  t = t.replace(/\bSoma\b/g, 'Sonra')
+  t = t.replace(/\bdoğnı([a-zçğıöşü]*)\b/g, 'doğru$1')
+  t = t.replace(/\bDoğnı([a-zçğıöşü]*)\b/g, 'Doğru$1')
+  t = t.replace(/\bdışan(da|dan|ya|dakiler)?\b/g, (_, s) => `dışarı${s || ''}`)
+  t = t.replace(/\bDışan(da|dan|ya|dakiler)?\b/g, (_, s) => `Dışarı${s || ''}`)
+  t = t.replace(/\byukan(da|dan|ya)?\b/g, (_, s) => `yukarı${s || ''}`)
+  t = t.replace(/\bYukan(da|dan|ya)?\b/g, (_, s) => `Yukarı${s || ''}`)
+  t = t.replace(/\bTann('?[a-zçğıöşü]*)\b/g, 'Tanrı$1')
+  t = t.replace(
+    /(?<![a-zA-ZçğıöşüÇĞİÖŞÜ0-9])([a-zA-ZçğıöşüÇĞİÖŞÜ][a-zçğıöşü]{1,})lann(da|dan|ı|a|ın|mız|nız|daki|dakiler)?(?![a-zA-ZçğıöşüÇĞİÖŞÜ0-9])/g,
+    (_, stem, tail) => `${stem}ların${tail || ''}`,
+  )
+  t = t.replace(
+    /(?<![a-zA-ZçğıöşüÇĞİÖŞÜ0-9])([a-zA-ZçğıöşüÇĞİÖŞÜ][a-zçğıöşü]{1,})lan(nda|ndan|nı|na|nın|nm|mız|nız)(?![a-zA-ZçğıöşüÇĞİÖŞÜ0-9])/g,
     (_, stem, tail) => `${stem}ları${tail === 'nm' ? 'nın' : tail}`,
   )
   t = t.replace(
-    /(?<![a-zA-ZçğıöşüÇĞİÖŞÜ0-9])([a-zA-ZçğıöşüÇĞİÖŞÜ][a-zçğıöşü]{2,})lann(?![a-zA-ZçğıöşüÇĞİÖŞÜ0-9])/g,
-    '$1ların',
+    /(?<![a-zA-ZçğıöşüÇĞİÖŞÜ0-9])([a-zA-ZçğıöşüÇĞİÖŞÜ][a-zçğıöşü]{1,})lanm(da|dan|ı|a|ın)?(?![a-zA-ZçğıöşüÇĞİÖŞÜ0-9])/g,
+    (_, stem, tail) => `${stem}larım${tail || ''}`,
   )
   t = t.replace(
-    /(?<![a-zA-ZçğıöşüÇĞİÖŞÜ0-9])(başka|on|bun|şun)lan(?![a-zA-ZçğıöşüÇĞİÖŞÜ0-9])/gi,
-    (_, p1) => `${p1}ları`,
+    /(?<![a-zA-ZçğıöşüÇĞİÖŞÜ0-9])([a-zA-ZçğıöşüÇĞİÖŞÜ][a-zçğıöşü]{1,})klan(yla|ndan|nda|na|nı|nın)?(?![a-zA-ZçğıöşüÇĞİÖŞÜ0-9])/g,
+    (_, stem, tail) => `${stem}kları${tail || ''}`,
   )
+  t = t.replace(
+    /\b(bacak|ot|dal|kabuk|şarkı|yol|dudak|toprak|tarla|ışın|omuz|yaprak|ata|toz|para|yankı|ağaç|ayak|kol|kulak|parmak|saç|kaş|göz|diş|baş|taş|kuş|kız|çocuk|kadın|adam|insan|hayvan|köylü|komşu|arkadaş|evlat|oğul|kardeş|kapı|duvar|cam|ışık|yıldız|bulut|dalga|damla|çizgi|yazı|sayı|an|on|bun|şun|başka)lan\b/gi,
+    (_, p1) => (p1.toLowerCase() === 'an' ? 'onları' : `${p1}ları`),
+  )
+  t = t.replace(/\b([a-zA-ZçğıöşüÇĞİÖŞÜ]{2,})np\b/g, (full, stem) =>
+    full.toLowerCase().includes('kayınpeder') ? full : `${stem}rıp`,
+  )
+  t = t.replace(/\b([a-zA-ZçğıöşüÇĞİÖŞÜ]{2,})nya\b/g, (full, stem) =>
+    full.toLowerCase().includes('dünya') ? full : `${stem}rıya`,
+  )
+  t = t.replace(/\bkenan(nda|ndan|na|nı|nın)?\b/g, (_, s) => `kenarı${s || ''}`)
+  t = t.replace(/\bihtiyann\b/g, 'ihtiyarın')
+  t = t.replace(/\bazannı\b/g, 'azarını')
+  t = t.replace(/\bkannca([a-zçğıöşü]*)\b/g, 'karınca$1')
+  t = t.replace(/\bbağınş([a-zçğıöşü]*)\b/g, 'bağırış$1')
+  t = t.replace(/\bısınk([a-zçğıöşü]*)\b/g, 'ısırık$1')
+  t = t.replace(/\bsıynl([a-zçğıöşü]*)\b/g, 'sıyrıl$1')
+  t = t.replace(/\bkınl([a-zçğıöşü]*)\b/g, 'kırıl$1')
+  t = t.replace(/\bsanl(dı|mış|ıp|arak)\b/g, 'sarıl$1')
+  t = t.replace(/\bvenniş([a-zçğıöşü]*)\b/g, 'vermiş$1')
+  t = t.replace(/\bvannış([a-zçğıöşü]*)\b/g, 'varmış$1')
+  t = t.replace(/\bginne([a-zçğıöşü]*)\b/g, 'girme$1')
+  t = t.replace(/\bdeğiştinniş([a-zçğıöşü]*)\b/g, 'değiştirmiş$1')
+  t = t.replace(/\bsannış([a-zçğıöşü]*)\b/g, 'sarmış$1')
+  t = t.replace(/\bpannak([a-zçğıöşü]*)\b/g, 'parmak$1')
+  t = t.replace(/\bkıpkınnızı\b/g, 'kıpkırmızı')
+  t = t.replace(/([a-zçğıöşü]{2,})nınm\b/g, '$1nırım')
+  t = t.replace(/([a-zçğıöşü]{2,})tınnm\b/g, '$1tırırım')
+  t = t.replace(/([a-zçğıöşü]{2,})dnn\b/g, '$1dım')
 
-  // 15. "ayın" + çoğul isim bozulmasını onar ("ayın insanların" -> "aynı insanların")
+  // 17. Tek harfli ve kelime içi kerning kopmalarını sözlük doğrulamasıyla birleştir ("B undan" -> "Bundan", "Tırnağı yla" -> "Tırnağıyla", "hatırlaya maz" -> "hatırlayamaz")
+  t = t.replace(/\b([BCÇDFGĞHJKLMNPRSŞTVYZWhy])\s+([a-zçğıöşü]{2,})\b/g, (full, c1, rest) =>
+    isValidTurkishWord(c1 + rest) ? c1 + rest : full,
+  )
+  t = t.replace(/\bÜ\s+zeri([a-zçğıöşü]+)\b/g, 'Üzeri$1')
+  t = t.replace(/\bkuvv\s+etli\b/g, 'kuvvetli')
+
+  // Satır içi kopmuş kelimeleri sözlük doğrulamasıyla birleştir
+  const lineTokens = t.split(/\s+/).filter(Boolean)
+  if (lineTokens.length >= 2) {
+    const mergedTokens: string[] = [lineTokens[0]]
+    for (let idx = 1; idx < lineTokens.length; idx++) {
+      const curr = lineTokens[idx]
+      const prev = mergedTokens[mergedTokens.length - 1]
+      const currCore = curr.replace(/[^\wçğıöşüÇĞİÖŞÜ]+$/, '')
+      if (/[a-zA-ZçğıöşüÇĞİÖŞÜ]$/.test(prev) && /^[a-zçğıöşü]{2,}$/.test(currCore)) {
+        const prevCore = toTurkishLower(prev.replace(/^[^\wçğıöşüÇĞİÖŞÜ]+/, ''))
+        const nextCore = toTurkishLower(currCore)
+        const comb = prevCore + nextCore
+        if (
+          !NEVER_BOUND_SUFFIX_RIGHT.has(nextCore) &&
+          ((!isValidTurkishWord(prevCore) || !isValidTurkishWord(nextCore)) && isValidTurkishWord(comb))
+        ) {
+          mergedTokens[mergedTokens.length - 1] = prev + curr
+          continue
+        }
+        if (prevCore === 'hoş' && nextCore.startsWith('lan')) {
+          mergedTokens[mergedTokens.length - 1] = prev + curr
+          continue
+        }
+      }
+      mergedTokens.push(curr)
+    }
+    t = mergedTokens.join(' ')
+  }
+
+  // 18. "ayın" + çoğul isim bozulmasını onar ("ayın insanların" -> "aynı insanların")
   t = t.replace(/\bayın\s+(?=[a-zçğıöşü]+(?:lar|ler|dan|den|nın|nin|ya|ye|a|e)\b)/g, 'aynı ')
 
-  // 16. Fenomenoloji terimi "aktlar" OCR onarımı ("aktıann" -> "aktların")
+  // 19. Fenomenoloji terimi "aktlar" OCR onarımı ("aktıann" -> "aktların")
   t = t.replace(/\baktıa(r|ra|rı|rın|rla|rda|rdan|nn)\b/g, 'aktla$1')
   t = t.replace(/\baktlann\b/g, 'aktların')
 
-  // 17. OCR harf baskı ve dizgi hatalarını onar
+  // 20. OCR harf baskı ve dizgi hatalarını onar
   t = t.replace(/rrneğe\b/g, 'rmeğe')
   t = t.replace(/rnek\b/g, 'mek')
   t = t.replace(/araştırınağa\b/g, 'araştırmağa')
@@ -887,21 +1018,65 @@ export function cleanIntraLineHyphens(rawLineText: string): string {
   t = t.replace(/§/g, 'ş')
   t = t.replace(/(^|\s)!([aeıioöuü][a-zçğıöşü]*)/g, '$1l$2')
 
-  // 18. Tırnak bozulmalarını düzelt
+  // 21. Tırnak ve üç nokta bozulmalarını düzelt
+  t = t.replace(/\.\s+\.\s+\./g, '...')
+  t = t.replace(/''/g, '"')
   t = t.replace(/<<|ıı|\(\(/g, '«')
   t = t.replace(/>>|\)\)/g, '»')
   t = t.replace(/([a-zA-ZçğıöşüÇĞİÖŞÜ0-9]):'(?=\s|$)/g, '$1."')
   t = t.replace(/([a-zA-ZçğıöşüÇĞİÖŞÜ0-9]);'(?=\s|$)/g, '$1,"')
 
-  // 19. Bitişik tırnak ve diyalog başlangıçlarını ayır ("sayılır:'"Evet" -> 'sayılır." "Evet')
+  // 22. Bitişik tırnak ve diyalog başlangıçlarını ayır ("sayılır:'"Evet" -> 'sayılır." "Evet')
   t = t.replace(/([.:!?…])(["”’»]+)([A-ZÇĞİÖŞÜ"“‘])/g, '$1$2 $3')
   t = t.replace(/([:;])'([A-ZÇĞİÖŞÜ])/g, '$1" $2')
 
-  // 20. Noktalama ve camelCase Temizliği (3. Adım)
+  // 23. Noktalama ve camelCase Temizliği (3. Adım)
   t = cleanPunctuationAndCamelCase(t)
 
-  // 21. Normalizasyon: çoklu boşlukları tek boşluğa indir (4. Adım)
+  // 24. Normalizasyon: çoklu boşlukları tek boşluğa indir (4. Adım)
   return t.replace(/\s+/g, ' ').trim()
+}
+
+const NEVER_MERGE_PAIR_LEFT = new Set([
+  'bir', 'bu', 'şu', 'o', 've', 'de', 'da', 'ki', 'ne', 'en', 'çok', 'az', 'her', 'hiç',
+  'var', 'yok', 'ben', 'sen', 'biz', 'siz', 'ama', 'fakat', 'ancak', 'için', 'gibi', 'kadar',
+  'sonra', 'önce', 'daha', 'yine', 'bile', 'mi', 'mı', 'mu', 'mü', 'ya', 'hem', 'ise', 'ile',
+  'fark', 'terk', 'el', 'on', 'yirmi', 'otuz', 'kırk', 'elli', 'altmış', 'yetmiş', 'seksen', 'doksan', 'yüz', 'bin',
+  'geri', 'ileri', 'değil', 'fazla', 'oyuncak', 'hiçbir', 'birkaç', 'onu', 'onun', 'ona', 'eder', 'hadi', 'sadaka', 'tek', 'iki', 'içeri',
+])
+
+const KNOWN_SHORT_PREFIX_MERGES = [
+  'dede', 'yakın', 'kitap', 'kitab', 'yatak', 'yatağ', 'dayan', 'hiçbir', 'endişe', 'endiye',
+  'dillerde', 'yumu', 'onlar', 'neresi', 'veriyor', 'yapardı',
+]
+
+function getWordStems(w: string): Set<string> {
+  const stems = new Set<string>([w])
+  for (const s1 of TURKISH_SUFFIXES) {
+    if (w.endsWith(s1) && w.length - s1.length >= 3) {
+      const st1 = w.slice(0, w.length - s1.length)
+      stems.add(st1)
+      if (ALL_VOWELS.has(s1[0])) {
+        if (st1.endsWith('ğ')) stems.add(st1.slice(0, -1) + 'k')
+        else if (st1.endsWith('b')) stems.add(st1.slice(0, -1) + 'p')
+        else if (st1.endsWith('c')) stems.add(st1.slice(0, -1) + 'ç')
+        else if (st1.endsWith('d')) stems.add(st1.slice(0, -1) + 't')
+      }
+      for (const s2 of TURKISH_SUFFIXES) {
+        if (st1.endsWith(s2) && st1.length - s2.length >= 3) {
+          const st2 = st1.slice(0, st1.length - s2.length)
+          stems.add(st2)
+          if (ALL_VOWELS.has(s2[0])) {
+            if (st2.endsWith('ğ')) stems.add(st2.slice(0, -1) + 'k')
+            else if (st2.endsWith('b')) stems.add(st2.slice(0, -1) + 'p')
+            else if (st2.endsWith('c')) stems.add(st2.slice(0, -1) + 'ç')
+            else if (st2.endsWith('d')) stems.add(st2.slice(0, -1) + 't')
+          }
+        }
+      }
+    }
+  }
+  return stems
 }
 
 /**
@@ -935,7 +1110,7 @@ function tryMergeWordPair(
 
     if (/^[a-zçğıöşü']/.test(cleanNext)) {
       const leadingPrefix = lastWord.slice(0, lastWord.length - (prefix.length + hyphenChar.length))
-      return leadingPrefix + prefix + cleanNext
+      return cleanIntraLineHyphens(leadingPrefix + prefix + cleanNext)
     }
 
     const prefixLetters = prefix.replace(/[^a-zA-ZçğıöşüÇĞİÖŞÜ]/g, '')
@@ -956,7 +1131,7 @@ function tryMergeWordPair(
   // 2. Türkçe Ğ kuralı (Türkçe'de hiçbir kelime ğ veya Ğ ile başlamaz; OCR tireyi yutsa bile daima önceki kelimenin devamıdır)
   if (/^[ğĞ]/.test(cleanNextCore)) {
     const cleanPrefix = lastWord.replace(/[\-\u00AD\uFFFD\u2010\u2011\u2012\u2212\u00AC~]+$/, '')
-    return cleanPrefix + cleanNext
+    return cleanIntraLineHyphens(cleanPrefix + cleanNext)
   }
 
   // 3. Kesme işareti ile bölünen özel isim veya ek ("Türkiye’" + "nin", "Nora'" + "ya")
@@ -968,23 +1143,94 @@ function tryMergeWordPair(
     return apostropheMatch[1] + cleanNext
   }
 
-  // 4. Tire düşmüş ama ikinci parça tek başına kelime olamayacak bir ekse (BROKEN_SUFFIX_SET veya NON_STANDALONE_WORD_B_PATTERNS)
-  if (
-    /[a-zçğıöşü]$/.test(lastWord) &&
-    (BROKEN_SUFFIX_SET.has(cleanNextCore.toLowerCase()) ||
-      NON_STANDALONE_WORD_B_PATTERNS.some((rx) => rx.test(cleanNextCore)))
-  ) {
-    return lastWord + cleanNext
+  // 4. PDF.js tarafından yutulmuş koşullu tire (\u00AD) ve satır sonu hece bölmesi analizi
+  const caLeadMatch = lastWord.match(/^[^\wçğıöşüÇĞİÖŞÜ]*/)
+  const caLead = caLeadMatch ? caLeadMatch[0] : ''
+  const ca = lastWord.slice(caLead.length)
+  if (!ca || !/^[a-zçğıöşü]/.test(cleanNextCore)) {
+    return null
   }
 
-  // 5. Tire düşmüş hece/kök bölmesi (ka + sabasındaki, Ba + yan, gü + zelce, dav + ranan, be + bekken, sö + zünü, bur + nunu, bi + rinin, söy + lediği, El + bette, parmağıy + la, rağ + men, ça + larken, ger + ginlik)
-  const lowerA = lastWord.toLowerCase().replace(/[^a-zçğıöşü]/g, '')
+  const rawComb = cleanIntraLineHyphens(ca + cleanNextCore)
+  const la = toTurkishLower(cleanIntraLineHyphens(ca))
+  const lb = toTurkishLower(cleanIntraLineHyphens(cleanNextCore).split(/['’]/)[0])
+  const combined = toTurkishLower(rawComb.split(/['’]/)[0])
+
+  if (!/^[a-zçğıöşü]+$/.test(la) || !/^[a-zçğıöşü]+$/.test(lb)) {
+    return null
+  }
+  if (la === lb) return null
   if (
-    /^[a-zçğıöşü]/.test(cleanNextCore) &&
-    !VALID_STANDALONE_TURKISH_WORDS.has(lowerA) &&
-    (KNOWN_SPLIT_PREFIXES.has(lowerA) || lowerA.length <= 2)
+    ['fark', 'terk', 'arz', 'kul', 'ret', 'hak', 'af', 'his', 'zannet', 'ayırt'].includes(la) &&
+    /^(et|ed|ol)/.test(lb)
   ) {
-    return lastWord + cleanNext
+    return null
+  }
+  if (
+    [
+      'on', 'yirmi', 'otuz', 'kırk', 'elli', 'altmış', 'yetmiş', 'seksen', 'doksan', 'yüz',
+      'iki', 'üç', 'dört', 'beş', 'altı', 'yedi', 'sekiz', 'dokuz',
+    ].includes(la) &&
+    ['bir', 'iki', 'üç', 'dört', 'beş', 'altı', 'yedi', 'sekiz', 'dokuz', 'on', 'yüz', 'bin'].includes(lb)
+  ) {
+    return null
+  }
+  if (['mi', 'mı', 'mu', 'mü', 'miydi', 'mıydı', 'muydu', 'müydü', 'misin', 'mısın', 'musun', 'müsün'].includes(lb)) {
+    return null
+  }
+  if (la === 'geri' && lb.startsWith('zeka')) {
+    return null
+  }
+
+  // Tezlik / Yeterlilik / Olumsuz yeterlilik birleşik fiilleri
+  if (
+    /^ver(mek|di|dim|din|dik|miş|mişim|mişti|miştim|iyor|iyordu|ecek)?$/.test(lb) &&
+    /[ıiuü]$/.test(la) &&
+    la.length >= 4 &&
+    !/(sını|sini|sunu|sünü|larını|lerini|mı|mi|mu|mü|nı|ni|nu|nü)$/.test(la)
+  ) {
+    return cleanIntraLineHyphens(lastWord + cleanNext)
+  }
+  if (/^bil(mek|ir|sin|di|dim|iyor|iyordu|ecek|se)?$/.test(lb) && /[ae]$/.test(la)) {
+    if (isValidTurkishWord(combined)) {
+      return cleanIntraLineHyphens(lastWord + cleanNext)
+    }
+  }
+  if (/^m(az|ez|azsa|ezse|azsam|ezsem|adı|edi|adım|edim|ıyor|iyor|ıyordu|iyordu)$/.test(lb) && /[ae]$/.test(la)) {
+    if (isValidTurkishWord(combined)) {
+      return cleanIntraLineHyphens(lastWord + cleanNext)
+    }
+  }
+
+  if (
+    !NEVER_BOUND_SUFFIX_RIGHT.has(lb) &&
+    (BOUND_CONTINUATION_REGEX.test(lb) || BROKEN_SUFFIX_SET.has(lb) || NON_STANDALONE_WORD_B_PATTERNS.some((rx) => rx.test(lb))) &&
+    isValidTurkishWord(combined)
+  ) {
+    return cleanIntraLineHyphens(lastWord + cleanNext)
+  }
+
+  const validA = isValidTurkishWord(la)
+  const validB = isValidTurkishWord(lb)
+  const validComb = isValidTurkishWord(combined)
+
+  if ((!validA || !validB) && validComb) {
+    return cleanIntraLineHyphens(lastWord + cleanNext)
+  }
+
+  if (
+    KNOWN_SHORT_PREFIX_MERGES.some((p) => combined.startsWith(p) && la.length < p.length) &&
+    validComb
+  ) {
+    return cleanIntraLineHyphens(lastWord + cleanNext)
+  }
+
+  if (!NEVER_MERGE_PAIR_LEFT.has(la) && !NEVER_MERGE_PAIR_LEFT.has(lb) && !NEVER_BOUND_SUFFIX_RIGHT.has(lb)) {
+    for (const st of getWordStems(combined)) {
+      if (st.length > la.length && turkishDictSet.has(st)) {
+        return cleanIntraLineHyphens(lastWord + cleanNext)
+      }
+    }
   }
 
   return null
@@ -1023,43 +1269,46 @@ export function mergeSplitWordsAcrossLinesAndPages(preparedPages: PreparedPage[]
     }
   }
 
-  for (let i = 0; i < sequence.length - 1; i++) {
-    const lineA = sequence[i]
-    const lineB = sequence[i + 1]
+  // Çok satırlı (örn. yu-\nmu-\nşak) hece bölmelerini de yakalamak için sondan başa 2 geçiş
+  for (let pass = 0; pass < 2; pass++) {
+    for (let i = sequence.length - 1; i > 0; i--) {
+      const lineA = sequence[i - 1]
+      const lineB = sequence[i]
 
-    if (lineA.isHeading || lineB.isHeading) continue
+      if (lineA.isHeading || lineB.isHeading) continue
 
-    const wordsA = lineA.text.trim().split(/\s+/).filter(Boolean)
-    const wordsB = lineB.text.trim().split(/\s+/).filter(Boolean)
-    if (!wordsA.length || !wordsB.length) continue
+      const wordsA = lineA.text.trim().split(/\s+/).filter(Boolean)
+      const wordsB = lineB.text.trim().split(/\s+/).filter(Boolean)
+      if (!wordsA.length || !wordsB.length) continue
 
-    // Eğer son kelime tek başına bir tire ise ("verebile" + "-"): tireyi önceki kelimeye bitiştir
-    if (
-      wordsA.length >= 2 &&
-      /^[\-\u00AD\uFFFD\u2010\u2011\u2012\u2212\u00AC~]+$/.test(wordsA[wordsA.length - 1])
-    ) {
-      wordsA.pop()
-      wordsA[wordsA.length - 1] += '-'
-    }
-
-    const lastWordA = wordsA[wordsA.length - 1]
-    const firstWordB = wordsB[0]
-
-    const lineABeforeLast = wordsA.slice(0, -1).join(' ')
-    const hasOpenParentheticalDash = /(?:^|\s)[\-\–\—][a-zA-ZçğıöşüÇĞİÖŞÜ]/.test(lineABeforeLast)
-
-    const merged = tryMergeWordPair(lastWordA, firstWordB, { hasOpenParentheticalDash })
-    if (merged) {
-      if (merged.includes(' ')) {
-        const splitParts = merged.split(/\s+/)
-        wordsA[wordsA.length - 1] = splitParts[0]
-        wordsB[0] = splitParts.slice(1).join(' ')
-      } else {
-        wordsA[wordsA.length - 1] = merged
-        wordsB.shift()
+      // Eğer son kelime tek başına bir tire ise ("verebile" + "-"): tireyi önceki kelimeye bitiştir
+      if (
+        wordsA.length >= 2 &&
+        /^[\-\u00AD\uFFFD\u2010\u2011\u2012\u2212\u00AC~]+$/.test(wordsA[wordsA.length - 1])
+      ) {
+        wordsA.pop()
+        wordsA[wordsA.length - 1] += '-'
       }
-      lineA.text = cleanIntraLineHyphens(wordsA.join(' '))
-      lineB.text = cleanIntraLineHyphens(wordsB.join(' '))
+
+      const lastWordA = wordsA[wordsA.length - 1]
+      const firstWordB = wordsB[0]
+
+      const lineABeforeLast = wordsA.slice(0, -1).join(' ')
+      const hasOpenParentheticalDash = /(?:^|\s)[\-\–\—][a-zA-ZçğıöşüÇĞİÖŞÜ]/.test(lineABeforeLast)
+
+      const merged = tryMergeWordPair(lastWordA, firstWordB, { hasOpenParentheticalDash })
+      if (merged) {
+        if (merged.includes(' ')) {
+          const splitParts = merged.split(/\s+/)
+          wordsA[wordsA.length - 1] = splitParts[0]
+          wordsB[0] = splitParts.slice(1).join(' ')
+        } else {
+          wordsA[wordsA.length - 1] = merged
+          wordsB.shift()
+        }
+        lineA.text = cleanIntraLineHyphens(wordsA.join(' '))
+        lineB.text = cleanIntraLineHyphens(wordsB.join(' '))
+      }
     }
   }
 
@@ -1352,7 +1601,7 @@ function extractFootnotesFromLines(
 
       footnotes.push({
         marker,
-        text: cleanIntraLineHyphens(fullFnText.replace(/\s+/g, ' ').trim()),
+        text: cleanIntraLineHyphens(fullFnText.replace(/\s+/g, ' ').trim()).replace(/\(e\.\s*n\.\)/gi, '(ç. n.)'),
       })
     } else {
       bodyLines.push(line)
@@ -1442,19 +1691,74 @@ export function isOcrGarbage(text: string): boolean {
 }
 
 /**
- * Kullanıcı tercihi: PDF sayfaları yorumsuz, tam ve eksiksiz alınır.
- * Sayfa kırpma, atlama ve eleme özellikleri kaldırılmıştır; tüm metin olduğu gibi korunur.
- * Yalnızca metin içermeyen tamamen boş sayfalar filtrelenir.
+ * Kitabın önsöz, künye, telif, iç kapak, yazar/çevirmen biyografisi ve arka kapak tanıtım
+ * sayfalarını otomatik tespit ederek atlar; böylece okuma doğrudan kitabın asıl metninden başlar.
  */
 export function classifyPageBoilerplate(
   page: { pageNumber: number; lines: PdfLine[] },
   totalPages: number,
-  context: { mainContentStarted?: boolean; inPreface?: boolean } = {},
+  context: {
+    mainContentStarted?: boolean
+    inPreface?: boolean
+    lastFrontMatterPage?: number
+    seenBackBlankPage?: boolean
+  } = {},
 ): { isBoilerplate: boolean; reason: string; inPreface?: boolean } {
-  const words = page.lines.map((l) => l.text.trim()).join(' ').split(/\s+/).filter(Boolean)
+  const fullText = page.lines.map((l) => l.text.trim()).join(' ').trim()
+  const words = fullText.split(/\s+/).filter(Boolean)
   if (words.length === 0) {
     return { isBoilerplate: true, reason: 'Boş Sayfa', inPreface: false }
   }
+
+  const lower = toTurkishLower(fullText)
+  const pno = page.pageNumber
+
+  // Ön sayfalar: Künye / İç Kapak sayfasına kadar olan tüm ön sayfalar (kapak, biyografi, künye, iç kapak)
+  if (context.lastFrontMatterPage && pno <= context.lastFrontMatterPage) {
+    return { isBoilerplate: true, reason: 'Ön Sayfa / Künye / İç Kapak', inPreface: false }
+  }
+
+  if (pno <= Math.min(12, Math.ceil(totalPages * 0.15))) {
+    // 1. Künye / Telif / Yayınevi sayfası
+    if (
+      /(isbn|sertifika\s*no|tüm\s*hakları\s*saklıdır|kitabın\s*özgün\s*adı|kapak\s*tasarımı|sayfa\s*düzeni|matbaacılık|baskı\s*:|yayınları|yayınevi)/i.test(
+        lower,
+      )
+    ) {
+      return { isBoilerplate: true, reason: 'Künye / Telif Sayfası', inPreface: false }
+    }
+
+    // 2. İç kapak / Başlık sayfası (çok az kelimeli ilk sayfalar)
+    if (words.length <= 15 && pno <= 8) {
+      return { isBoilerplate: true, reason: 'İç Kapak / Başlık Sayfası', inPreface: false }
+    }
+
+    // 3. Yazar / Çevirmen biyografisi (ilk 6 sayfada kısa özgeçmiş metinleri)
+    if (
+      pno <= 6 &&
+      words.length < 240 &&
+      /(doğdu|yılında|mezun\s+oldu|çevirmen|edebiyat|ödülü|eserleri|yayınlandı|yayımlandı)/i.test(lower)
+    ) {
+      return { isBoilerplate: true, reason: 'Yazar / Çevirmen Biyografisi', inPreface: false }
+    }
+
+    // 4. Önsöz / Sunuş / İçindekiler sayfası
+    const firstLineLower = toTurkishLower(page.lines[0]?.text?.trim() || '')
+    if (/^(önsöz|sunuş|içindekiler|takdim|çevirmenin\s+notu|yazarın\s+önsözü)\b/i.test(firstLineLower)) {
+      return { isBoilerplate: true, reason: 'Önsöz / İçindekiler', inPreface: true }
+    }
+  }
+
+  // Son sayfalar: Arka kapak, reklam ve tanıtım sayfaları
+  if (totalPages >= 15 && pno > totalPages - 5) {
+    if (
+      context.seenBackBlankPage ||
+      /(başyapıt|kitap|isbn|yayınları|yayınevi|www\.|arka\s*kapak)/i.test(lower)
+    ) {
+      return { isBoilerplate: true, reason: 'Arka Kapak / Tanıtım', inPreface: false }
+    }
+  }
+
   return { isBoilerplate: false, reason: 'Ana Metin', inPreface: false }
 }
 
@@ -1752,6 +2056,29 @@ export async function parsePdfDocument(
   const preparedPages: PreparedPage[] = []
   let mainContentStarted = false
   let inPreface = false
+  let seenBackBlankPage = false
+
+  // İlk 10 sayfa içindeki son Künye / Telif / İç Kapak sayfasını tespit et
+  let lastFrontMatterPage = 0
+  for (const p of rawPages.slice(0, Math.min(10, rawPages.length))) {
+    const pText = p.lines
+      .filter((l) => !/^\d{1,4}\.?$/.test(l.text.trim()))
+      .map((l) => l.text.trim())
+      .join(' ')
+      .trim()
+    const pWords = pText.split(/\s+/).filter(Boolean)
+    if (pWords.length === 0) continue
+    const pLower = toTurkishLower(pText)
+    if (
+      /(isbn|sertifika\s*no|tüm\s*hakları\s*saklıdır|kitabın\s*özgün\s*adı|kapak\s*tasarımı|sayfa\s*düzeni|matbaacılık|baskı\s*:)/i.test(
+        pLower,
+      )
+    ) {
+      lastFrontMatterPage = Math.max(lastFrontMatterPage, p.pageNumber)
+    } else if (pWords.length <= 15 && p.pageNumber <= 8 && lastFrontMatterPage > 0) {
+      lastFrontMatterPage = Math.max(lastFrontMatterPage, p.pageNumber)
+    }
+  }
 
   for (const page of rawPages) {
     // Tekrarlanan üst/alt bilgi satırlarını filtrele
@@ -1792,11 +2119,15 @@ export async function parsePdfDocument(
       }
     }
 
+    if (numPages >= 15 && page.pageNumber > numPages - 5 && consolidatedBodyLines.length === 0) {
+      seenBackBlankPage = true
+    }
+
     // Künye ve gereksiz sayfa kontrolü
     const check = classifyPageBoilerplate(
       { pageNumber: page.pageNumber, lines: consolidatedBodyLines },
       numPages,
-      { mainContentStarted, inPreface },
+      { mainContentStarted, inPreface, lastFrontMatterPage, seenBackBlankPage },
     )
     inPreface = check.inPreface ?? false
 

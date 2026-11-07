@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import { memo, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { SAMPLE_TEXT, tokenize, type ThemeId } from '@/lib/rsvp'
+import { DEFAULT_BOOK_TEXT, DEFAULT_BOOK_TITLE } from '@/lib/default-book'
 import { CURATED_LIBRARY } from '@/lib/curated-library'
 import { fetchArticleFromUrl } from '@/lib/article-parser'
 import { fetchYouTubeTranscript } from '@/lib/youtube-parser'
@@ -506,8 +507,23 @@ export const TextSheet = memo(function TextSheet({
                 <div className="flex items-center gap-1 shrink-0">
                   <button
                     type="button"
-                    onClick={() => setDraft(SAMPLE_TEXT)}
+                    onClick={() => {
+                      setDraft(DEFAULT_BOOK_TEXT)
+                      onApply(DEFAULT_BOOK_TEXT, DEFAULT_BOOK_TITLE)
+                    }}
                     className="ctl !h-7 sm:!h-7.5 !w-auto rounded-lg px-2 text-[11px] text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap shrink-0"
+                    title="Varsayılan Kitabı Yükle (Yaşamak — Yu Hua)"
+                  >
+                    Yaşamak
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDraft(SAMPLE_TEXT)
+                      onApply(SAMPLE_TEXT, 'Örnek Metin')
+                    }}
+                    className="ctl !h-7 sm:!h-7.5 !w-auto rounded-lg px-2 text-[11px] text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap shrink-0"
+                    title="Kısa Örnek Metni Yükle"
                   >
                     Örnek
                   </button>

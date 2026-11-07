@@ -131,14 +131,25 @@ export const ContextPeek = memo(function ContextPeek({
             <button
               type="button"
               onClick={() => setIsSearchOpen((prev) => !prev)}
-              className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-mono tabular-nums text-muted-foreground/85 hover:text-muted-foreground/95 bg-transparent hover:bg-foreground/[0.04] transition-none cursor-pointer outline-none border-none select-none"
+              className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-mono tabular-nums text-muted-foreground/80 hover:text-muted-foreground/80 active:text-muted-foreground/80 focus:text-muted-foreground/80 bg-transparent hover:bg-transparent active:bg-transparent transition-none cursor-pointer outline-none border-none select-none"
               title="Sayfaya atla veya kelime ara"
               aria-label="Sayfaya atla veya kelime ara"
             >
               <span>{bookPageLabel}</span>
-              <Search className="size-3 text-muted-foreground/75 shrink-0" />
+              <Search className="size-3 text-muted-foreground/80 shrink-0" />
             </button>
-          ) : null}
+          ) : (
+            <button
+              type="button"
+              onClick={() => setIsSearchOpen((prev) => !prev)}
+              className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-mono tabular-nums text-muted-foreground/80 hover:text-muted-foreground/80 active:text-muted-foreground/80 focus:text-muted-foreground/80 bg-transparent hover:bg-transparent active:bg-transparent transition-none cursor-pointer outline-none border-none select-none"
+              title="Kelime ara veya sayfaya atla"
+              aria-label="Kelime ara veya sayfaya atla"
+            >
+              <Search className="size-3 text-muted-foreground/80 shrink-0" />
+              <span>Ara / Git</span>
+            </button>
+          )}
 
           {/* Mini Arama & Sayfaya Atlama Açılır Penceresi */}
           <PageSearchPopover

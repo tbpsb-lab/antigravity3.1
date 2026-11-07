@@ -64,15 +64,15 @@ export function Kbd({
       className={cn(
         'inline-flex items-center justify-center font-mono font-bold select-none text-center',
         'px-2 py-0.5 rounded-lg text-xs leading-none border transition-colors shadow-2xs',
-        // Cam (ios) tema: Açık modda yumuşak açık gri zemin + koyu antrasit yazı; Koyu modda net beyaz
+        // Cam (ios) tema: Her zaman net açık gri zemin, koyu antrasit yazı
         (!theme || theme === 'ios') &&
-          'bg-slate-200/90 dark:bg-slate-700/90 text-slate-900 dark:text-slate-100 border-slate-300 dark:border-slate-600',
-        // Kağıt (kindle) tema: Sıcak bej/parşömen zemin + koyu sepia mürekkep rengi yazı
+          'bg-slate-200 text-slate-900 border-slate-300 shadow-xs',
+        // Kağıt (kindle) tema: Sıcak bej zemin, derin sepia kahverengi yazı
         theme === 'kindle' &&
-          'bg-[#ecdcc4] dark:bg-[#382b1d] text-[#2c2014] dark:text-[#f4ede2] border-[#cbba92]',
+          'bg-[#ecdcc4] text-[#2c2014] border-[#cbba92] shadow-xs',
         // Neon (linear) tema: Canlı mor zemin + ışıldayan parlak lila yazı
         theme === 'linear' &&
-          'bg-purple-950/70 text-purple-200 border-purple-500/50 shadow-[0_0_12px_rgba(168,85,247,0.3)]',
+          'bg-purple-950/80 text-purple-200 border-purple-500/50 shadow-[0_0_12px_rgba(168,85,247,0.3)]',
         className,
       )}
     >
@@ -149,10 +149,10 @@ function GuideCard({
       className={cn(
         'p-4 sm:p-5 rounded-2xl border shadow-sm transition-all',
         theme === 'ios' &&
-          'bg-white/85 dark:bg-slate-900/85 border-sky-200/80 dark:border-sky-500/25 text-slate-900 dark:text-slate-100 backdrop-blur-md',
+          'bg-white/95 border-sky-200/80 text-slate-900 shadow-sm backdrop-blur-md',
         theme === 'linear' && 'bg-[#0e0c16] border-purple-500/40 text-slate-100',
         theme === 'kindle' &&
-          'bg-[#fbf5e5] dark:bg-[#2b2319] border-[#cbba92] text-[#2c2014] dark:text-[#f2ebe0]',
+          'bg-[#fbf5e5] border-[#cbba92] text-[#2c2014]',
         className,
       )}
     >

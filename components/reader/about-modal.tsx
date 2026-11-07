@@ -430,7 +430,7 @@ export function AboutModal({ open, onClose, theme, onThemeChange }: AboutModalPr
                   >
                     <FileText className="size-5 text-muted-foreground shrink-0" />
                     <p className="text-xs text-foreground/90 leading-relaxed font-normal">
-                      <strong>Otomatik Güncellenen Özellik Havuzu:</strong> Sisteme yeni eklenen tüm özellikler (1K-4K bloklama, Bionic, PDF sayfa göstergesi, Zen kıvrım şeffaflığı vb.) doğrudan bu kayıt havuzundan anında sunulur.
+                      <strong>Otomatik Güncellenen Özellik Havuzu:</strong> Sisteme yeni eklenen tüm özellikler (1K-3K bloklama, Bionic, PDF sayfa göstergesi, Zen kıvrım şeffaflığı vb.) doğrudan bu kayıt havuzundan anında sunulur.
                     </p>
                   </div>
                 </div>

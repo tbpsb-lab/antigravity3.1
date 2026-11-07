@@ -108,17 +108,17 @@ export const GUIDE_FEATURES: GuideFeatureItem[] = [
   {
     id: 'chunking-bionic',
     title: 'Kelime Bloklama & Akıllı Bionic',
-    subtitle: '1K, 2K, 3K, 4K Çoklu Kelime & Akıllı Kök Vurgulama',
-    badge: '1K • 2K • 3K • 4K',
+    subtitle: '1K, 2K, 3K Çoklu Kelime & Akıllı Kök Vurgulama',
+    badge: '1K • 2K • 3K',
     shortcutKey: 'C / B',
     icon: Layers,
     iconColor: 'text-purple-500',
     category: 'reading',
     description:
-      "Kelimeleri 1'li, 2'li, 3'lü veya 4'lü bloklar halinde `C` tuşu ile akıtma imkanı. Çoklu kelimede Akıllı Bionic `B` tuşu ile kök harfleri vurgulayarak bağlaç ve ekleri gölgede bırakır; periferik görüşünüzü maksimum hızda devreye sokar.",
+      "Kelimeleri 1'li, 2'li veya 3'lü bloklar halinde `C` tuşu ile akıtma imkanı. Çoklu kelimede Akıllı Bionic `B` tuşu ile kök harfleri vurgulayarak bağlaç ve ekleri gölgede bırakır; font büyüklüğünü otomatik optimize ederek görüş alanını rahatlatır.",
     highlights: [
       "RSVP ekranındaki kelime etiketine tıklayarak veya `C` tuşuyla anında geçiş",
-      "Çoklu kelime modunda (2K-4K) `B` tuşuyla Bionic kök okumayı etkinleştirme",
+      "Çoklu kelime modunda (2K-3K) `B` tuşuyla Bionic kök okumayı etkinleştirme",
     ],
   },
   {
@@ -224,14 +224,14 @@ export const GUIDE_SHORTCUTS: GuideShortcutItem[] = [
   },
   {
     key: 'C Tuşu',
-    description: 'Kelime Bloklama (1K, 2K, 3K, 4K geçişi)',
+    description: 'Kelime Bloklama (1K, 2K, 3K geçişi)',
     category: 'metin',
     icon: Layers,
     iconColor: 'text-purple-500',
   },
   {
     key: 'B Tuşu',
-    description: 'Akıllı Bionic Öbekleme (2K–4K modunda kök vurgusu)',
+    description: 'Akıllı Bionic Öbekleme (2K–3K modunda kök vurgusu)',
     category: 'metin',
     icon: Sparkles,
     iconColor: 'text-sky-500',

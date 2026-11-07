@@ -344,8 +344,8 @@ export const FontSettings = memo(function FontSettings({
             >
               c
             </span>
-            <div role="radiogroup" aria-label="Kelime öbeği boyutu" className="grid grid-cols-4 gap-1 w-full">
-              {[1, 2, 3, 4].map((size) => {
+            <div role="radiogroup" aria-label="Kelime öbeği boyutu" className="grid grid-cols-3 gap-1 w-full">
+              {[1, 2, 3].map((size) => {
                 const active = chunkSize === size
                 return (
                   <button
@@ -368,7 +368,7 @@ export const FontSettings = memo(function FontSettings({
           </div>
         )}
 
-        {/* 5. Akıllı Bionic Öbekleme (2K-4K modlarında devreye giren kök vurgusu, sol üstte mini b) */}
+        {/* 5. Akıllı Bionic Öbekleme (2K-3K modlarında devreye giren kök vurgusu, sol üstte mini b) */}
         {onBionicChange && (
           <div className="relative pt-2.5 border-t border-border/40 flex items-center justify-between gap-2">
             <span
@@ -386,10 +386,10 @@ export const FontSettings = memo(function FontSettings({
               <p className="text-xs font-medium text-foreground truncate">Akıllı Bionic Öbekleme</p>
               <p className="text-[10px] text-muted-foreground truncate">
                 {chunkSize === 1
-                  ? '2K–4K modlarında kökleri vurgular'
+                  ? '2K–3K modlarında kökleri vurgular'
                   : bionicEnabled
                     ? `${chunkSize}K modunda bilişsel çıpa açık`
-                    : '2K–4K öbeklerde kök vurgusu'}
+                    : '2K–3K öbeklerde kök vurgusu'}
               </p>
             </div>
             <button

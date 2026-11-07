@@ -586,16 +586,17 @@ export function ReaderApp() {
   // Chunk boyutu değiştiğinde mevcut kalınan kelimeden zıplama olmadan aynı konumu koru
   const handleChunkSizeChange = useCallback(
     (newSize: number) => {
-      if (newSize === chunkSize) return
+      const clampedSize = Math.max(1, Math.min(3, newSize))
+      if (clampedSize === chunkSize) return
 
       const activeWordIndex = chunks[index]?.startIndex ?? index
-      const nextChunks = createChunks(text, newSize, { enableFootnotes: readFootnotes, pageInfo })
+      const nextChunks = createChunks(text, clampedSize, { enableFootnotes: readFootnotes, pageInfo })
       const nextIndex = findChunkIndexForWord(nextChunks, activeWordIndex)
 
-      setChunkSize(newSize)
+      setChunkSize(clampedSize)
       setIndex(nextIndex)
 
-      setChunkBadge(`${newSize} Kelime Öbeği`)
+      setChunkBadge(`${clampedSize} Kelime Öbeği`)
       if (chunkBadgeTimerRef.current) clearTimeout(chunkBadgeTimerRef.current)
       chunkBadgeTimerRef.current = setTimeout(() => setChunkBadge(null), 1200)
     },
@@ -603,7 +604,7 @@ export function ReaderApp() {
   )
 
   const cycleChunkSize = useCallback(() => {
-    const nextSize = chunkSize >= 4 ? 1 : chunkSize + 1
+    const nextSize = chunkSize >= 3 ? 1 : chunkSize + 1
     handleChunkSizeChange(nextSize)
     triggerHaptic('tap')
   }, [chunkSize, handleChunkSizeChange])
@@ -1037,14 +1038,14 @@ export function ReaderApp() {
     if (settings.theme) setTheme(settings.theme)
     if (settings.fontFace) setFontFace(settings.fontFace)
     if (typeof settings.fontScale === 'number') setFontScale(settings.fontScale)
-    if (typeof settings.chunkSize === 'number') setChunkSize(settings.chunkSize)
+    if (typeof settings.chunkSize === 'number') setChunkSize(Math.max(1, Math.min(3, settings.chunkSize)))
     if (typeof settings.wpm === 'number') setWpm(settings.wpm)
     if (typeof settings.readFootnotes === 'boolean') setReadFootnotes(settings.readFootnotes)
     if (typeof settings.bionicEnabled === 'boolean') setBionicEnabled(settings.bionicEnabled)
     // Ses modu varsayılan olarak daima kapalı başlar (Autoplay ve kullanıcı isteği gereği)
     setNeuroAudioEnabled(false)
 
-    const activeChunkSize = settings.chunkSize ?? 1
+    const activeChunkSize = Math.max(1, Math.min(3, settings.chunkSize ?? 1))
     const activeFootnotes = settings.readFootnotes ?? true
     const hasMigratedDefaultBook =
       typeof window !== 'undefined' && localStorage.getItem('odak_default_yasamak_v6') === 'true'

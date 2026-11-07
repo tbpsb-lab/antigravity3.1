@@ -267,6 +267,15 @@ export const RsvpDisplay = memo(function RsvpDisplay({
   const maxSideChars = Math.max(Array.from(leftPart).length, Array.from(rightPart).length, 1)
 
   // Yatay taşmayı %100 önleyen dinamik Fit-to-Width oranı (Mobil + Masaüstü md: font tabanlarıyla tam uyumlu)
+  // Kelime sayısına göre otomatik font boyutlandırma:
+  // - 1 kelime: %100 (1.0)
+  // - 2 kelime: %80 (0.80) -> %20 düşer
+  // - 3 kelime: %60 (0.60) -> %40 düşer (her kelimede %20)
+  // - 1 kelimeye tekrar dönünce %100'e otomatik çıkar.
+  // Bu sayede yatay eksende sıkışmalar önlenir ve görüş alanı rahatlar.
+  const chunkFontMultiplier = chunkSize === 2 ? 0.8 : chunkSize >= 3 ? 0.6 : 1.0
+  const effectiveFontScale = fontScale * chunkFontMultiplier
+
   let autoFitScale = 1
   const containerWidth = containerSize.width || 0
 
@@ -280,7 +289,7 @@ export const RsvpDisplay = memo(function RsvpDisplay({
       ? Math.min(57.6, Math.max(30.7, containerWidth * 0.0544))
       : Math.min(44.8, Math.max(22.4, containerWidth * 0.0416))
 
-    const currentPx = estimatedBasePx * fontScale
+    const currentPx = estimatedBasePx * effectiveFontScale
 
     if (isSingleWordMode) {
       // Tek kelime modu: Merkeze göre kanat hesabı (geniş karakterler için 0.66ch güvenli çarpan)
@@ -298,7 +307,7 @@ export const RsvpDisplay = memo(function RsvpDisplay({
     }
   }
 
-  const finalScale = fontScale * autoFitScale
+  const finalScale = effectiveFontScale * autoFitScale
 
   const wordStyle = {
     fontSize: `calc(var(--word-base) * ${finalScale})`,
@@ -431,7 +440,7 @@ export const RsvpDisplay = memo(function RsvpDisplay({
             <span
               aria-live="off"
               style={wordStyle}
-              className="reader-word relative grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-baseline whitespace-pre py-[0.08em] leading-[1.3] [--word-base:clamp(1.4rem,4.2cqi,2.8rem)] md:[--word-base:clamp(1.9rem,5.4cqi,3.6rem)] landscape-short:[--word-base:clamp(1.1rem,6.4vh,2rem)] select-none tracking-normal"
+              className="reader-word relative grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-baseline whitespace-pre py-[0.08em] leading-[1.3] [--word-base:clamp(1.4rem,4.2cqi,2.8rem)] md:[--word-base:clamp(1.9rem,5.4cqi,3.6rem)] landscape-short:[--word-base:clamp(1.1rem,6.4vh,2rem)] select-none tracking-normal transition-[font-size] duration-200 ease-out"
             >
               {/* Sol parça: Sağa yaslı */}
               <span className="min-w-0 text-right overflow-visible">
@@ -469,7 +478,7 @@ export const RsvpDisplay = memo(function RsvpDisplay({
               aria-live="off"
               style={wordStyle}
               className={cn(
-                'reader-word relative flex w-full items-center justify-center py-[0.08em] text-center select-none max-w-full flex-nowrap gap-x-[0.3em] items-baseline leading-[1.3] [--word-base:clamp(1.4rem,4.2cqi,2.8rem)] md:[--word-base:clamp(1.9rem,5.4cqi,3.6rem)] landscape-short:[--word-base:clamp(1.1rem,6.4vh,2rem)]',
+                'reader-word relative flex w-full items-center justify-center py-[0.08em] text-center select-none max-w-full flex-nowrap gap-x-[0.3em] items-baseline leading-[1.3] [--word-base:clamp(1.4rem,4.2cqi,2.8rem)] md:[--word-base:clamp(1.9rem,5.4cqi,3.6rem)] landscape-short:[--word-base:clamp(1.1rem,6.4vh,2rem)] transition-[font-size] duration-200 ease-out',
                 isFootnote && 'italic text-amber-800 dark:text-amber-300 flex-wrap text-balance',
               )}
             >
@@ -531,7 +540,7 @@ export const RsvpDisplay = memo(function RsvpDisplay({
                     ? 'border-primary/80 bg-primary/15 text-primary ring-2 ring-primary/30 scale-105 shadow-[0_0_12px_rgba(56,189,248,0.35)]'
                     : 'border-foreground/15 hover:border-foreground/35 bg-foreground/[0.04] hover:bg-foreground/[0.08] text-foreground/85',
                 )}
-                title="Kelime Öbeğini Değiştir (C) — 1K / 2K / 3K / 4K"
+                title="Kelime Öbeğini Değiştir (C) — 1K / 2K / 3K"
               >
                 {chunkSize}K
               </button>
@@ -541,12 +550,12 @@ export const RsvpDisplay = memo(function RsvpDisplay({
               </span>
             ) : null}
 
-            {/* İlk Ziyaret İçin 1K / 2K / 3K / 4K Kelime Öbeği Cam Tanıtım Penceresi */}
+            {/* İlk Ziyaret İçin 1K / 2K / 3K Kelime Öbeği Cam Tanıtım Penceresi */}
             {showChunkCallout && (
               <div
                 ref={chunkCalloutRef}
                 role="tooltip"
-                aria-label="Kelime Öbeği Tanıtımı (1K / 2K / 3K / 4K)"
+                aria-label="Kelime Öbeği Tanıtımı (1K / 2K / 3K)"
                 onClick={(e) => {
                   e.stopPropagation()
                   onCycleChunkSize?.()
@@ -580,7 +589,7 @@ export const RsvpDisplay = memo(function RsvpDisplay({
                         Kelime Bloklama
                       </p>
                       <span className="rounded bg-primary/15 px-1 py-0.2 text-[9px] font-mono font-bold text-primary">
-                        1K–4K
+                        1K–3K
                       </span>
                     </div>
                     <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">

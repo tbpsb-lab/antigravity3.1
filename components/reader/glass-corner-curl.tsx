@@ -54,6 +54,7 @@ export const GlassCornerCurl = memo(function GlassCornerCurl({
 
   return (
     <div
+      data-wheel="page-nav"
       className={cn(
         'fixed bottom-0 right-0 z-0 select-none overflow-hidden leading-none',
         'w-24 h-24 sm:w-28 sm:h-28 md:w-32 md:h-32 landscape-short:w-16 landscape-short:h-16',
@@ -67,6 +68,7 @@ export const GlassCornerCurl = memo(function GlassCornerCurl({
         <button
           type="button"
           tabIndex={-1}
+          data-wheel="page-nav"
           onClick={(e) => {
             e.stopPropagation()
             onPageCurlClick?.()

@@ -53,6 +53,7 @@ export const NeonCornerCurl = memo(function NeonCornerCurl({
 
   return (
     <div
+      data-wheel="page-nav"
       className={cn(
         'fixed bottom-0 right-0 z-0 select-none overflow-hidden leading-none',
         'w-36 h-36 sm:w-44 sm:h-44 md:w-52 md:h-52 landscape-short:w-24 landscape-short:h-24',
@@ -65,6 +66,7 @@ export const NeonCornerCurl = memo(function NeonCornerCurl({
         <button
           type="button"
           tabIndex={-1}
+          data-wheel="page-nav"
           onClick={(e) => {
             e.stopPropagation()
             onPageCurlClick?.()

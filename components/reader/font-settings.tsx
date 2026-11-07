@@ -159,6 +159,7 @@ export const FontSettings = memo(function FontSettings({
         aria-controls={panelId}
         aria-label="Görünüm ve Okuma Ayarları (Aa)"
         title="Görünüm ve Okuma Ayarları (Aa)"
+        data-wheel="font-scale"
         className={cn('ctl panel size-10 md:size-12 landscape-short:size-9 cursor-pointer', open && 'ctl-primary')}
       >
         <span className="font-serif font-bold text-sm md:text-base tracking-tighter select-none">Aa</span>

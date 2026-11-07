@@ -154,6 +154,7 @@ export const ContextPeek = memo(function ContextPeek({
             <button
               ref={searchButtonRef}
               type="button"
+              data-wheel="page-nav"
               onClick={() => setIsSearchOpen((prev) => !prev)}
               className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-mono tabular-nums text-muted-foreground/80 hover:text-muted-foreground/80 active:text-muted-foreground/80 focus:text-muted-foreground/80 bg-transparent hover:bg-transparent active:bg-transparent transition-none cursor-pointer outline-none border-none select-none"
               title="Sayfaya atla veya kelime ara"
@@ -166,6 +167,7 @@ export const ContextPeek = memo(function ContextPeek({
             <button
               ref={searchButtonRef}
               type="button"
+              data-wheel="page-nav"
               onClick={() => setIsSearchOpen((prev) => !prev)}
               className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-mono tabular-nums text-muted-foreground/80 hover:text-muted-foreground/80 active:text-muted-foreground/80 focus:text-muted-foreground/80 bg-transparent hover:bg-transparent active:bg-transparent transition-none cursor-pointer outline-none border-none select-none"
               title="Kelime ara veya sayfaya atla"

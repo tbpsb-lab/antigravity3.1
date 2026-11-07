@@ -111,14 +111,26 @@ export function ReaderApp() {
   }, [])
 
   // İlk giriş kontrolü: Daha önce hız testi yapılmamış veya kapatılmamışsa davet butonunu göster
+  // Kullanıcı 1 dakika içinde tıklamazsa kendiliğinden kapansın
   useEffect(() => {
+    let timer: NodeJS.Timeout | undefined
     try {
       const isCompleted = localStorage.getItem('odak_speed_test_completed')
       const isDismissed = localStorage.getItem('odak_speed_test_dismissed')
       if (!isCompleted && !isDismissed) {
         setShowSpeedTestBanner(true)
+        timer = setTimeout(() => {
+          setShowSpeedTestBanner(false)
+          try {
+            localStorage.setItem('odak_speed_test_dismissed', 'true')
+          } catch {}
+        }, 60000)
       }
     } catch {}
+
+    return () => {
+      if (timer) clearTimeout(timer)
+    }
   }, [])
 
   const dismissSpeedTestBanner = useCallback(() => {
@@ -739,6 +751,44 @@ export function ReaderApp() {
     }
   }, [zen, pageInfo, currentBookPageNumber, chunks, seek, triggerPulse])
 
+  const handlePrevBookPage = useCallback(() => {
+    if (zen || !pageInfo) return
+    const currentPage = currentBookPageNumber
+    if (!currentPage || currentPage <= 1) return
+
+    const targetPage = currentPage - 1
+    let finalIdx = chunks.findIndex((c) => c.pageNumber === targetPage)
+    if (finalIdx === -1) {
+      for (let i = chunks.length - 1; i >= 0; i--) {
+        if ((chunks[i].pageNumber || 0) <= targetPage) {
+          finalIdx = i
+          break
+        }
+      }
+    }
+
+    if (finalIdx !== -1) {
+      rampStepRef.current = 0
+      seek(finalIdx)
+      triggerPulse()
+      triggerHaptic('tap')
+    }
+  }, [zen, pageInfo, currentBookPageNumber, chunks, seek, triggerPulse])
+
+  const changeFontScale = useCallback(
+    (delta: number) => {
+      setFontScale((prev) => {
+        const next = Math.round(Math.min(1.6, Math.max(0.5, prev + delta)) * 10) / 10
+        if (next !== prev) {
+          triggerHaptic('tap')
+          showAudioToast(`Yazı Boyutu: %${Math.round(next * 100)}`)
+        }
+        return next
+      })
+    },
+    [showAudioToast],
+  )
+
   // Klavye ok tuşları ve mouse wheel için kademeli değişim
   const changeWpm = useCallback(
     (delta: number) => {
@@ -828,9 +878,13 @@ export function ReaderApp() {
     action()
   }
 
-  // Farenin scroll tekeriyle (mouse wheel) okuma hızı kontrolü
+  // Farenin scroll tekeriyle (mouse wheel) akıllı alan duyarlı kontrol (Sadece Masaüstü)
   useEffect(() => {
-    let lastWheelTime = 0
+    let lastWpmTime = 0
+    let lastPageTime = 0
+    let lastFontTime = 0
+    let lastChunkTime = 0
+    let lastContextTime = 0
 
     const handleGlobalWheel = (e: WheelEvent) => {
       if (anyModalOpen || e.ctrlKey || e.metaKey) return
@@ -849,20 +903,89 @@ export function ReaderApp() {
       if (Math.abs(e.deltaY) < 4) return
 
       const now = performance.now()
-      if (now - lastWheelTime < 60) return
-      lastWheelTime = now
+      const isUp = e.deltaY < 0
+      const isFinePointer = typeof window !== 'undefined' && window.matchMedia('(pointer: fine)').matches
 
-      if (e.cancelable) {
-        e.preventDefault()
+      // Zen modunda veya masaüstü ince işaretçi yoksa sadece okuma hızı değişimi
+      if (zen || !isFinePointer) {
+        if (now - lastWpmTime < 60) return
+        lastWpmTime = now
+        if (e.cancelable) e.preventDefault()
+        changeWpm(isUp ? WPM_STEP : -WPM_STEP)
+        return
       }
-      changeWpm(e.deltaY < 0 ? WPM_STEP : -WPM_STEP)
+
+      // 1. Masaüstü: Sf: X/Y butonu veya Sayfa Kıvrımı üzerindeyse sayfa numarasını değiştir
+      const pageTarget = target?.closest?.('[data-wheel="page-nav"]')
+      if (pageTarget) {
+        if (now - lastPageTime < 240) return
+        lastPageTime = now
+        if (e.cancelable) e.preventDefault()
+        if (isUp) {
+          handleNextBookPage()
+        } else {
+          handlePrevBookPage()
+        }
+        return
+      }
+
+      // 2. Masaüstü: Aa butonu üzerindeyse yazı boyutunu (font scale) değiştir
+      const fontTarget = target?.closest?.('[data-wheel="font-scale"]')
+      if (fontTarget) {
+        if (now - lastFontTime < 140) return
+        lastFontTime = now
+        if (e.cancelable) e.preventDefault()
+        changeFontScale(isUp ? 0.1 : -0.1)
+        return
+      }
+
+      // 3. Masaüstü: 1k / 2k / 3k chunk butonu üzerindeyse kelime öbeğini değiştir
+      const chunkTarget = target?.closest?.('[data-wheel="chunk-size"]')
+      if (chunkTarget) {
+        if (now - lastChunkTime < 200) return
+        lastChunkTime = now
+        if (e.cancelable) e.preventDefault()
+        handleChunkSizeChange(isUp ? Math.min(3, chunkSize + 1) : Math.max(1, chunkSize - 1))
+        return
+      }
+
+      // 4. Masaüstü: Bağlam penceresi (context peek) üzerindeyse sonraki / önceki bağlama geç
+      const contextTarget = target?.closest?.('[data-wheel="context-peek"]')
+      if (contextTarget) {
+        if (now - lastContextTime < 200) return
+        lastContextTime = now
+        if (e.cancelable) e.preventDefault()
+        if (isUp) {
+          handleStepNext()
+        } else {
+          handleStepPrev()
+        }
+        return
+      }
+
+      // 5. Diğer tüm alanlar: Varsayılan olarak okuma hızını (WPM) değiştir
+      if (now - lastWpmTime < 60) return
+      lastWpmTime = now
+      if (e.cancelable) e.preventDefault()
+      changeWpm(isUp ? WPM_STEP : -WPM_STEP)
     }
 
     window.addEventListener('wheel', handleGlobalWheel, { passive: false })
     return () => {
       window.removeEventListener('wheel', handleGlobalWheel)
     }
-  }, [changeWpm, anyModalOpen])
+  }, [
+    changeWpm,
+    anyModalOpen,
+    zen,
+    handleNextBookPage,
+    handlePrevBookPage,
+    changeFontScale,
+    handleChunkSizeChange,
+    chunkSize,
+    handleStepNext,
+    handleStepPrev,
+  ])
 
   // Dipnot ayarı değiştiğinde de kalınan kelimeyi koru
   const handleReadFootnotesChange = useCallback(
@@ -1374,7 +1497,10 @@ export function ReaderApp() {
           </div>
 
           {/* Alt Zarif Bağlam Şeridi */}
-          <div className="context-peek-box relative z-20 w-full max-w-3xl shrink-0 mt-1 sm:mt-1.5 landscape-short:mt-0.5 min-h-[84px] sm:min-h-[108px] md:min-h-[128px] max-h-[102px] sm:max-h-[132px] md:max-h-[156px] landscape-short:min-h-[72px] landscape-short:max-h-[86px] flex flex-col overflow-visible pointer-events-auto">
+          <div
+            data-wheel="context-peek"
+            className="context-peek-box relative z-20 w-full max-w-3xl shrink-0 mt-1 sm:mt-1.5 landscape-short:mt-0.5 min-h-[84px] sm:min-h-[108px] md:min-h-[128px] max-h-[102px] sm:max-h-[132px] md:max-h-[156px] landscape-short:min-h-[72px] landscape-short:max-h-[86px] flex flex-col overflow-visible pointer-events-auto"
+          >
             <ContextPeek
               words={words}
               chunks={chunks}

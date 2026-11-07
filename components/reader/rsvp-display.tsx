@@ -523,10 +523,11 @@ export const RsvpDisplay = memo(function RsvpDisplay({
             playing ? 'opacity-0 pointer-events-none' : 'opacity-100',
           )}
         >
-          <div className="relative inline-flex items-center">
+          <div className="relative inline-flex items-center" data-wheel="chunk-size">
             {onCycleChunkSize ? (
               <button
                 type="button"
+                data-wheel="chunk-size"
                 onClick={(e) => {
                   e.stopPropagation()
                   onCycleChunkSize()
@@ -545,7 +546,10 @@ export const RsvpDisplay = memo(function RsvpDisplay({
                 {chunkSize}K
               </button>
             ) : chunkSize > 1 ? (
-              <span className="rounded-full border border-foreground/15 bg-foreground/[0.04] px-2 py-0.5 md:px-2.5 md:py-1 text-[10px] md:text-xs text-foreground/85 font-mono font-medium select-none">
+              <span
+                data-wheel="chunk-size"
+                className="rounded-full border border-foreground/15 bg-foreground/[0.04] px-2 py-0.5 md:px-2.5 md:py-1 text-[10px] md:text-xs text-foreground/85 font-mono font-medium select-none"
+              >
                 {chunkSize}K
               </span>
             ) : null}

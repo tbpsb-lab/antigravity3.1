@@ -43,10 +43,10 @@ export const ContextPeek = memo(function ContextPeek({
   const searchButtonRef = useRef<HTMLButtonElement>(null)
 
   // Konteyner boyutuna göre ekranda dikey ve yatay eksende ne kadar kelime alabileceğini dinamik hesapla.
-  // 3 satırın taşmadan, kelime kırpılmadan %100 ekrana sığmasını ve her sayfanın ardışık olmasını sağlar.
+  // Tam 3 satırın taşmadan, kelime kırpılmadan %100 ekrana sığmasını ve her sayfanın ardışık olmasını sağlar.
   const capacity = useMemo(() => {
     if (!containerSize.width) {
-      return 21 // İlk yükleme / SSR için dengeli varsayılan
+      return 24 // İlk yükleme / SSR için dengeli varsayılan
     }
     // İki yandaki butonlar ve boşluklar düşülmüş metin alanı
     const buttonSpace = containerSize.width >= 768 ? 96 : 72
@@ -56,18 +56,17 @@ export const ContextPeek = memo(function ContextPeek({
     }
 
     // Türkçede 1 kelimenin ortalama kapladığı alan (harf genişliği + boşluk + buton padding)
-    // Math.floor ile garanti altına alınarak satır taşması ve kelime kırpılması sıfırlanır.
-    let wordSlotPx = 60
+    let wordSlotPx = 56
     if (containerSize.width >= 768) {
-      wordSlotPx = 76
+      wordSlotPx = 72
     } else if (containerSize.width >= 600) {
-      wordSlotPx = 66
+      wordSlotPx = 64
     } else {
-      wordSlotPx = 58
+      wordSlotPx = 54
     }
 
-    const wordsPerLine = Math.max(4, Math.floor(availableWidth / wordSlotPx))
-    return Math.max(12, 3 * wordsPerLine)
+    const wordsPerLine = Math.max(5, Math.floor(availableWidth / wordSlotPx))
+    return Math.max(15, 3 * wordsPerLine)
   }, [containerSize.width])
 
   // Kapasite değiştikçe ana bileşene bildir
@@ -118,16 +117,9 @@ export const ContextPeek = memo(function ContextPeek({
       ref={containerRef}
       className="flex flex-1 min-h-0 flex-col overflow-visible transition-opacity duration-300 select-none w-full opacity-100"
     >
-      {/* Üst Bilgi Başlığı (Sol: Kelime Sayısı ve Konumu, Orta: Kitap Sayfa Numarası, Sağ: Kalan Süre) */}
-      <div className="grid grid-cols-3 items-center mb-1 px-1 shrink-0 landscape-short:mb-0.5">
-        <div className="justify-self-start">
-          {words.length > 0 && (
-            <span className="text-[11px] font-mono tabular-nums text-muted-foreground/85">
-              {start + 1} - {end} / {words.length}
-            </span>
-          )}
-        </div>
-        <div className="justify-self-center text-center relative flex items-center justify-center">
+      {/* Üst Bilgi Başlığı (Sol: sf: X/Y ve Mini Arama Atlama, Sağ: Kalan Süre) */}
+      <div className="flex items-center justify-between mb-1 px-1 shrink-0 landscape-short:mb-0.5">
+        <div className="relative flex items-center">
           {bookPageLabel ? (
             <button
               ref={searchButtonRef}
@@ -167,7 +159,8 @@ export const ContextPeek = memo(function ContextPeek({
             triggerRef={searchButtonRef}
           />
         </div>
-        <div className="justify-self-end text-right">
+
+        <div className="text-right">
           {remainingTime && (
             <span className="text-[11px] font-mono tabular-nums text-muted-foreground/85">
               {remainingTime}
@@ -195,7 +188,7 @@ export const ContextPeek = memo(function ContextPeek({
 
         {/* Ortadaki Metin Alanı: Scrollbar kesinlikle görünmez (scrollbar-none), tüm ekranlarda (mobil, tablet, masaüstü) KESİNLİKLE 3 SATIR */}
         <div className="flex-1 min-h-0 h-full overflow-hidden [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden flex items-start">
-          <p className="text-pretty text-xs sm:text-[13px] md:text-[14.5px] leading-[1.32] sm:leading-[1.38] md:leading-[1.42] text-muted-foreground w-full select-none m-0 p-0">
+          <p className="text-pretty text-xs sm:text-[13.5px] md:text-[15px] leading-[1.4] sm:leading-[1.45] md:leading-[1.48] text-muted-foreground w-full select-none m-0 p-0 line-clamp-3">
             {slice.map((w, i) => {
               const absolute = start + i
               const current = absolute >= index && absolute < index + chunkSize

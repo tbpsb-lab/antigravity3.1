@@ -41,7 +41,7 @@ export function PageSearchPopover({
   const [mounted, setMounted] = useState(false)
   const [query, setQuery] = useState('')
   const [selectedIndex, setSelectedIndex] = useState(0)
-  const [coords, setCoords] = useState<{ bottom: number; left: number } | null>(null)
+  const [coords, setCoords] = useState<{ bottom: number; left: number; arrowLeft: number } | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const popoverRef = useRef<HTMLDivElement>(null)
 
@@ -49,18 +49,34 @@ export function PageSearchPopover({
     setMounted(true)
   }, [])
 
-  // Konumu butonun tam üstüne dinamik hizala
+  // Konumu butonun tam üstüne dinamik hizala ve ekran taşmasını önle
   const updatePosition = useCallback(() => {
     if (triggerRef?.current) {
       const rect = triggerRef.current.getBoundingClientRect()
+      const buttonCenter = rect.left + rect.width / 2
+      const measuredWidth = popoverRef.current?.offsetWidth || (typeof window !== 'undefined' && window.innerWidth >= 640 ? 340 : 290)
+      const popoverWidth = Math.min(measuredWidth, typeof window !== 'undefined' ? window.innerWidth - 24 : measuredWidth)
+      const halfWidth = popoverWidth / 2
+
+      // Popover merkezini ekran sınırları içinde tut (en az 12px kenar payı)
+      const minCenter = halfWidth + 12
+      const maxCenter = (typeof window !== 'undefined' ? window.innerWidth : 360) - halfWidth - 12
+      const centerLeft = Math.max(minCenter, Math.min(maxCenter, buttonCenter))
+
+      // Ok işaretinin popover içindeki göreceli sol konumu (px cinsinden)
+      const relativeArrowLeft = buttonCenter - (centerLeft - halfWidth)
+      const clampedArrowLeft = Math.max(16, Math.min(popoverWidth - 16, relativeArrowLeft))
+
       setCoords({
-        bottom: Math.max(16, window.innerHeight - rect.top + 10),
-        left: Math.round(rect.left + rect.width / 2),
+        bottom: Math.max(16, window.innerHeight - rect.top + 8),
+        left: Math.round(centerLeft),
+        arrowLeft: Math.round(clampedArrowLeft),
       })
     } else {
       setCoords({
         bottom: 120,
-        left: Math.round(window.innerWidth / 2),
+        left: typeof window !== 'undefined' ? Math.round(window.innerWidth / 2) : 160,
+        arrowLeft: 160,
       })
     }
   }, [triggerRef])
@@ -238,8 +254,9 @@ export function PageSearchPopover({
       >
         {/* Butonu İşaret Eden Minik Cam Ok (Arrow Pointer) */}
         <div
+          style={{ left: coords ? `${coords.arrowLeft}px` : '50%' }}
           className={cn(
-            'absolute -bottom-1.5 left-1/2 -translate-x-1/2 size-3 rotate-45 border-b border-r shadow-2xs',
+            'absolute -bottom-1.5 -translate-x-1/2 size-3 rotate-45 border-b border-r shadow-2xs',
             (!theme || theme === 'ios') && 'bg-white border-slate-300',
             theme === 'kindle' && 'bg-[#fbf5e5] border-[#cbba92]',
             theme === 'linear' && 'bg-[#0f0d19] border-purple-500/50',

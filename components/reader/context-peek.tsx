@@ -4,6 +4,7 @@ import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import { ChevronLeft, ChevronRight, Search } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useElementSize } from '@/lib/use-element-size'
+import { triggerHaptic } from '@/lib/haptics'
 import { PageSearchPopover } from './page-search-popover'
 import type { ChunkItem, BookPageInfo, ThemeId } from '@/lib/rsvp'
 
@@ -21,6 +22,7 @@ type ContextPeekProps = {
   onVisibleCountChange?: (count: number) => void
   onStepPrev?: () => void
   onStepNext?: () => void
+  onSeekChunk?: (chunkIndex: number) => void
   hasPrev?: boolean
   hasNext?: boolean
 }
@@ -39,6 +41,7 @@ export const ContextPeek = memo(function ContextPeek({
   onVisibleCountChange,
   onStepPrev,
   onStepNext,
+  onSeekChunk,
 }: ContextPeekProps) {
   const [containerRef, containerSize] = useElementSize<HTMLDivElement>()
   const [isSearchOpen, setIsSearchOpen] = useState(false)
@@ -111,37 +114,45 @@ export const ContextPeek = memo(function ContextPeek({
   const canGoPrev = start > 0
   const canGoNext = end < words.length
 
-  const handlePrev = () => {
-    if (onStepPrev) {
-      onStepPrev()
-      return
-    }
+  const handlePrev = (e?: React.MouseEvent) => {
+    e?.stopPropagation()
     if (!canGoPrev) return
-    const targetWordIdx = Math.max(0, start - capacity)
+    const targetWordIdx = Math.max(0, (pageIndex - 1) * capacity)
     if (chunks && chunks.length > 0) {
       const targetChunkIdx = chunks.findIndex((c) => c.startIndex >= targetWordIdx)
       const finalIdx = targetChunkIdx !== -1 ? targetChunkIdx : 0
-      onJump(chunks[finalIdx]?.startIndex ?? targetWordIdx)
+      if (onSeekChunk) {
+        onSeekChunk(finalIdx)
+      } else if (onStepPrev) {
+        onStepPrev()
+      } else {
+        onJump(chunks[finalIdx]?.startIndex ?? targetWordIdx)
+      }
     } else {
       onJump(targetWordIdx)
     }
+    triggerHaptic('tap')
   }
 
-  const handleNext = () => {
-    if (onStepNext) {
-      onStepNext()
-      return
-    }
+  const handleNext = (e?: React.MouseEvent) => {
+    e?.stopPropagation()
     if (!canGoNext) return
-    const targetWordIdx = start + capacity
+    const targetWordIdx = (pageIndex + 1) * capacity
     if (targetWordIdx >= words.length) return
     if (chunks && chunks.length > 0) {
       const targetChunkIdx = chunks.findIndex((c) => c.startIndex >= targetWordIdx)
       const finalIdx = targetChunkIdx !== -1 ? targetChunkIdx : chunks.length - 1
-      onJump(chunks[finalIdx]?.startIndex ?? targetWordIdx)
+      if (onSeekChunk) {
+        onSeekChunk(finalIdx)
+      } else if (onStepNext) {
+        onStepNext()
+      } else {
+        onJump(chunks[finalIdx]?.startIndex ?? targetWordIdx)
+      }
     } else {
       onJump(targetWordIdx)
     }
+    triggerHaptic('tap')
   }
 
   return (

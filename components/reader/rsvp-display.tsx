@@ -267,14 +267,14 @@ export const RsvpDisplay = memo(function RsvpDisplay({
   const maxSideChars = Math.max(Array.from(leftPart).length, Array.from(rightPart).length, 1)
 
   // Yatay taşmayı %100 önleyen dinamik Fit-to-Width oranı (Mobil + Masaüstü md: font tabanlarıyla tam uyumlu)
-  // Kelime sayısına göre otomatik font boyutlandırma:
-  // - 1 kelime: %100 (1.0)
-  // - 2 kelime: %80 (0.80) -> %20 düşer
-  // - 3 kelime: %60 (0.60) -> %40 düşer (her kelimede %20)
-  // - 1 kelimeye tekrar dönünce %100'e otomatik çıkar.
+  // Kelime sayısına göre font büyüklüğünü %20'şer puan düşür:
+  // - 1 kelime: fontScale (örn. %150 ise %150, %100 ise %100)
+  // - 2 kelime: fontScale - 0.20 (örn. %150 -> %130, %100 -> %80)
+  // - 3 kelime: fontScale - 0.40 (örn. %150 -> %110, %100 -> %60)
+  // - 1 kelimeye tekrar dönünce başlangıçtaki fontScale değerine otomatik çıkar.
   // Bu sayede yatay eksende sıkışmalar önlenir ve görüş alanı rahatlar.
-  const chunkFontMultiplier = chunkSize === 2 ? 0.8 : chunkSize >= 3 ? 0.6 : 1.0
-  const effectiveFontScale = fontScale * chunkFontMultiplier
+  const chunkFontDelta = chunkSize === 2 ? -0.2 : chunkSize >= 3 ? -0.4 : 0
+  const effectiveFontScale = Math.max(0.4, Math.round((fontScale + chunkFontDelta) * 100) / 100)
 
   let autoFitScale = 1
   const containerWidth = containerSize.width || 0

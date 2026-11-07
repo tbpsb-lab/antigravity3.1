@@ -667,7 +667,7 @@ export function ReaderApp() {
   )
 
   // Esnek Bağlam Penceresi ve Sayfalama
-  const [contextPageSize, setContextPageSize] = useState(24)
+  const [contextPageSize, setContextPageSize] = useState(27)
 
   const handleStepPrev = useCallback(() => {
     rampStepRef.current = 0
@@ -1534,6 +1534,7 @@ export function ReaderApp() {
                 !zen ? `${formatRemaining(chunks.length - index - 1, wpm, chunkSize)} kaldı` : undefined
               }
               onJump={handleContextJump}
+              onSeekChunk={seek}
               onVisibleCountChange={setContextPageSize}
               onStepPrev={handleStepPrev}
               onStepNext={handleStepNext}

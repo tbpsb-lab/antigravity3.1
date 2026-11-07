@@ -168,20 +168,55 @@ export function PageSearchPopover({
       }
     }
 
-    // 2. Kelime Bazlı Metin Araması
+    // 2. Kelime ve Çoklu Kelime / Öbek (2, 3+ kelime) Bazlı Metin Araması
     const lowerQuery = toTurkishLower(trimmed)
-    if (lowerQuery.length >= 2 || !isNumeric) {
-      let count = 0
-      for (let i = 0; i < words.length; i++) {
-        const rawWord = words[i]
-        const cleanWord = toTurkishLower(rawWord.replace(/[.,;:!?"'“”‘’()[\]\-]/g, ''))
-        const fullLower = toTurkishLower(rawWord)
+    const queryTokens = lowerQuery.split(/\s+/).filter(Boolean)
+    const isMultiWord = queryTokens.length > 1
+    const normalizedQuery = queryTokens.join(' ')
 
-        if (cleanWord.includes(lowerQuery) || fullLower.includes(lowerQuery)) {
-          count++
+    if (lowerQuery.length >= 2 || !isNumeric || isMultiWord) {
+      const tokenCount = queryTokens.length
+      const cleanRegex = /[.,;:!?"'“”‘’()[\]\-]/g
+
+      for (let i = 0; i <= words.length - tokenCount; i++) {
+        let isMatch = false
+
+        if (!isMultiWord) {
+          // Tek kelime araması
+          const rawWord = words[i]
+          const cleanWord = toTurkishLower(rawWord.replace(cleanRegex, ''))
+          const fullLower = toTurkishLower(rawWord)
+          if (cleanWord.includes(lowerQuery) || fullLower.includes(lowerQuery)) {
+            isMatch = true
+          }
+        } else {
+          // Öbek (2, 3+ kelime) araması: İlk kelime ön filtresi ile yüksek performans
+          const firstWordClean = toTurkishLower(words[i].replace(cleanRegex, ''))
+          const firstWordRaw = toTurkishLower(words[i])
+          if (firstWordClean.includes(queryTokens[0]) || firstWordRaw.includes(queryTokens[0])) {
+            const phraseWords = words.slice(i, i + tokenCount)
+            const cleanPhrase = phraseWords
+              .map((w) => toTurkishLower(w.replace(cleanRegex, '')))
+              .join(' ')
+            const rawPhrase = phraseWords
+              .map((w) => toTurkishLower(w))
+              .join(' ')
+
+            if (
+              cleanPhrase.includes(normalizedQuery) ||
+              rawPhrase.includes(normalizedQuery) ||
+              cleanPhrase.includes(lowerQuery) ||
+              rawPhrase.includes(lowerQuery)
+            ) {
+              isMatch = true
+            }
+          }
+        }
+
+        if (isMatch) {
           if (results.length < 15) {
             const sStart = Math.max(0, i - 3)
-            const sEnd = Math.min(words.length, i + 5)
+            const sEnd = Math.min(words.length, i + tokenCount + 4)
             const snippetWords = words.slice(sStart, sEnd)
             const snippet = snippetWords.join(' ')
 
@@ -191,12 +226,16 @@ export function PageSearchPopover({
               if (ch) wordPage = ch.pageNumber
             }
 
+            const matchedTitle = isMultiWord
+              ? words.slice(i, i + tokenCount).join(' ')
+              : words[i]
+
             results.push({
               id: `word-${i}`,
               type: 'word',
               wordIndex: i,
               pageNumber: wordPage,
-              title: words[i],
+              title: matchedTitle,
               snippet,
             })
           }

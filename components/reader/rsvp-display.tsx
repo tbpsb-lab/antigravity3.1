@@ -280,14 +280,18 @@ export const RsvpDisplay = memo(function RsvpDisplay({
   const containerWidth = containerSize.width || 0
 
   if (containerWidth > 0) {
-    const isDesktopStage = containerWidth >= 680
+    const isDesktop = containerWidth >= 1024
+    const isTablet = containerWidth >= 680 && containerWidth < 1024
     const padding = containerWidth < 540 ? 16 : 36
     const availableHalfWidth = Math.max(80, containerWidth / 2 - padding)
     const availableFullWidth = Math.max(160, containerWidth - padding * 2)
 
-    const estimatedBasePx = isDesktopStage
+    // Tablet ve telefon görünümünde varsayılan font tabanı %20 artırıldı, masaüstü font tabanı aynı kaldı
+    const estimatedBasePx = isDesktop
       ? Math.min(57.6, Math.max(30.7, containerWidth * 0.0544))
-      : Math.min(44.8, Math.max(22.4, containerWidth * 0.0416))
+      : isTablet
+        ? Math.min(69.1, Math.max(36.8, containerWidth * 0.065))
+        : Math.min(53.8, Math.max(26.9, containerWidth * 0.05))
 
     const currentPx = estimatedBasePx * effectiveFontScale
 
@@ -377,7 +381,7 @@ export const RsvpDisplay = memo(function RsvpDisplay({
         onTouchEnd={handleTouchEnd}
         onTouchCancel={handleTouchEnd}
         className={cn(
-          'rsvp-stage group relative flex flex-col justify-center min-h-[96px] sm:min-h-[110px] md:min-h-[140px] w-full px-4 py-3.5 text-left outline-none transition-[border-color,background-color,box-shadow] duration-300 sm:px-8 sm:py-5 md:px-10 md:py-6 [@media(max-height:640px)]:py-2.5 landscape-short:py-1.5 select-none touch-none overscroll-none',
+          'rsvp-stage group relative flex flex-col justify-center min-h-[102px] sm:min-h-[114px] md:min-h-[144px] lg:min-h-[140px] w-full px-4 py-3.5 text-left outline-none transition-[border-color,background-color,box-shadow] duration-300 sm:px-8 sm:py-5 md:px-10 md:py-6 [@media(max-height:640px)]:py-2.5 landscape-short:py-1.5 select-none touch-none overscroll-none',
           showChunkCallout ? 'overflow-visible' : 'overflow-hidden',
           isPulsing && 'pulse-jump',
           playing
@@ -440,7 +444,7 @@ export const RsvpDisplay = memo(function RsvpDisplay({
             <span
               aria-live="off"
               style={wordStyle}
-              className="reader-word relative grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-baseline whitespace-pre py-[0.08em] leading-[1.3] [--word-base:clamp(1.4rem,4.2cqi,2.8rem)] md:[--word-base:clamp(1.9rem,5.4cqi,3.6rem)] landscape-short:[--word-base:clamp(1.1rem,6.4vh,2rem)] select-none tracking-normal"
+              className="reader-word relative grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-baseline whitespace-pre py-[0.08em] leading-[1.3] [--word-base:clamp(1.68rem,5.04cqi,3.36rem)] md:[--word-base:clamp(2.28rem,6.48cqi,4.32rem)] lg:[--word-base:clamp(1.9rem,5.4cqi,3.6rem)] landscape-short:[--word-base:clamp(1.32rem,7.68vh,2.4rem)] select-none tracking-normal"
             >
               {/* Sol parça: Sağa yaslı */}
               <span className="min-w-0 text-right overflow-visible">
@@ -478,7 +482,7 @@ export const RsvpDisplay = memo(function RsvpDisplay({
               aria-live="off"
               style={wordStyle}
               className={cn(
-                'reader-word relative flex w-full items-center justify-center py-[0.08em] text-center select-none max-w-full flex-nowrap gap-x-[0.3em] items-baseline leading-[1.3] [--word-base:clamp(1.4rem,4.2cqi,2.8rem)] md:[--word-base:clamp(1.9rem,5.4cqi,3.6rem)] landscape-short:[--word-base:clamp(1.1rem,6.4vh,2rem)]',
+                'reader-word relative flex w-full items-center justify-center py-[0.08em] text-center select-none max-w-full flex-nowrap gap-x-[0.3em] items-baseline leading-[1.3] [--word-base:clamp(1.68rem,5.04cqi,3.36rem)] md:[--word-base:clamp(2.28rem,6.48cqi,4.32rem)] lg:[--word-base:clamp(1.9rem,5.4cqi,3.6rem)] landscape-short:[--word-base:clamp(1.32rem,7.68vh,2.4rem)]',
                 isFootnote && 'italic text-amber-800 dark:text-amber-300 flex-wrap text-balance',
               )}
             >

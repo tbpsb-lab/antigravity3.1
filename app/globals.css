@@ -621,7 +621,7 @@ html[data-theme='kindle']::-webkit-scrollbar-track {
   }
 
   .rsvp-stage .reader-word {
-    --word-base: clamp(0.92rem, 5vh, 1.4rem) !important;
+    --word-base: clamp(1.1rem, 6vh, 1.68rem) !important;
   }
 
   header.top-bar-stage {

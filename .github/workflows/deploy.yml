@@ -40,15 +40,11 @@ jobs:
 
       - name: Build Next.js
         run: |
-          pnpm build 2>&1 | tee build.log
-
-      - name: Report Build Failure
-        if: failure()
-        run: |
-          echo "## ❌ Build Failure Details" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          tail -n 80 build.log >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
+          if ! pnpm build 2>&1 | tee build.log; then
+            ERR_MSG=$(tail -n 25 build.log | tr '\n' ' ' | tr '"' "'")
+            echo "::error title=NextBuildError::$ERR_MSG"
+            exit 1
+          fi
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3

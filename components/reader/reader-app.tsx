@@ -589,7 +589,7 @@ export function ReaderApp() {
       if (newSize === chunkSize) return
 
       const activeWordIndex = chunks[index]?.startIndex ?? index
-      const nextChunks = createChunks(text, newSize, { enableFootnotes: readFootnotes })
+      const nextChunks = createChunks(text, newSize, { enableFootnotes: readFootnotes, pageInfo })
       const nextIndex = findChunkIndexForWord(nextChunks, activeWordIndex)
 
       setChunkSize(newSize)
@@ -599,7 +599,7 @@ export function ReaderApp() {
       if (chunkBadgeTimerRef.current) clearTimeout(chunkBadgeTimerRef.current)
       chunkBadgeTimerRef.current = setTimeout(() => setChunkBadge(null), 1200)
     },
-    [chunkSize, chunks, index, text, readFootnotes],
+    [chunkSize, chunks, index, text, readFootnotes, pageInfo],
   )
 
   const cycleChunkSize = useCallback(() => {
@@ -661,9 +661,13 @@ export function ReaderApp() {
     const currentWordIdx = currentChunk?.startIndex ?? 0
     const pageSize = Math.max(1, contextPageSize)
     const pageIdx = Math.floor(currentWordIdx / pageSize)
-    const targetWordIdx = Math.max(0, (pageIdx - 1) * pageSize)
-    const targetChunkIdx = findChunkIndexForWord(chunks, targetWordIdx)
-    seek(targetChunkIdx)
+    if (pageIdx <= 0) return
+
+    const targetPageIdx = pageIdx - 1
+    const targetWordIdx = targetPageIdx * pageSize
+    const targetChunkIdx = chunks.findIndex((c) => c.startIndex >= targetWordIdx)
+    const finalIdx = targetChunkIdx !== -1 ? targetChunkIdx : 0
+    seek(finalIdx)
   }, [currentChunk, contextPageSize, chunks, seek])
 
   const handleStepNext = useCallback(() => {
@@ -671,9 +675,16 @@ export function ReaderApp() {
     const currentWordIdx = currentChunk?.startIndex ?? 0
     const pageSize = Math.max(1, contextPageSize)
     const pageIdx = Math.floor(currentWordIdx / pageSize)
-    const targetWordIdx = Math.min(Math.max(0, words.length - 1), (pageIdx + 1) * pageSize)
-    const targetChunkIdx = findChunkIndexForWord(chunks, targetWordIdx)
-    seek(targetChunkIdx)
+    const targetPageIdx = pageIdx + 1
+    const targetWordIdx = targetPageIdx * pageSize
+
+    if (targetWordIdx >= words.length) return
+
+    // Hedef sayfanın ilk chunk'ına atla (startIndex >= targetWordIdx olan ilk chunk)
+    // Böylece çoklu kelime öbeklerinde (chunkSize > 1) önceki sayfaya takılı kalmaz, daima sonraki sayfaya kesin olarak ilerler!
+    const targetChunkIdx = chunks.findIndex((c) => c.startIndex >= targetWordIdx)
+    const finalIdx = targetChunkIdx !== -1 ? targetChunkIdx : chunks.length - 1
+    seek(finalIdx)
   }, [currentChunk, contextPageSize, words.length, chunks, seek])
 
   const handleContextJump = useCallback(

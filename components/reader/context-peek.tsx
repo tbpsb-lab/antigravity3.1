@@ -110,15 +110,36 @@ export const ContextPeek = memo(function ContextPeek({
   const canGoNext = end < words.length
 
   const handlePrev = () => {
+    if (onStepPrev) {
+      onStepPrev()
+      return
+    }
     if (!canGoPrev) return
     const targetWordIdx = Math.max(0, start - capacity)
-    onJump(targetWordIdx)
+    if (chunks && chunks.length > 0) {
+      const targetChunkIdx = chunks.findIndex((c) => c.startIndex >= targetWordIdx)
+      const finalIdx = targetChunkIdx !== -1 ? targetChunkIdx : 0
+      onJump(chunks[finalIdx]?.startIndex ?? targetWordIdx)
+    } else {
+      onJump(targetWordIdx)
+    }
   }
 
   const handleNext = () => {
+    if (onStepNext) {
+      onStepNext()
+      return
+    }
     if (!canGoNext) return
-    const targetWordIdx = Math.min(words.length - 1, start + capacity)
-    onJump(targetWordIdx)
+    const targetWordIdx = start + capacity
+    if (targetWordIdx >= words.length) return
+    if (chunks && chunks.length > 0) {
+      const targetChunkIdx = chunks.findIndex((c) => c.startIndex >= targetWordIdx)
+      const finalIdx = targetChunkIdx !== -1 ? targetChunkIdx : chunks.length - 1
+      onJump(chunks[finalIdx]?.startIndex ?? targetWordIdx)
+    } else {
+      onJump(targetWordIdx)
+    }
   }
 
   return (

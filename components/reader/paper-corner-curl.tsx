@@ -7,6 +7,7 @@ import paperCornerCurlImg from '@/assets/logos/paper-corner-curl.png'
 
 type PaperCornerCurlProps = {
   visible: boolean
+  zen?: boolean
   className?: string
 }
 
@@ -15,10 +16,12 @@ type PaperCornerCurlProps = {
   * - Ekranın en sağ alt köşesine yerleşir.
   * - Orijinal yüksek çözünürlüklü render görselinden kayıpsız ayıklanan fotogerçekçi sayfa kıvrımı.
   * - Dokulu parşömen kağıdı, 3D kıvrım derinliği ve yumuşak alt gölgesi retina kalitesinde net görünür.
+  * - Zen (okuma) modunda dikkati dağıtmamak için %80 transparan (%20 görünür) hale gelir.
   * - pointer-events-none ile hiçbir tıklama veya dokunma hareketini engellemez.
   */
 export const PaperCornerCurl = memo(function PaperCornerCurl({
   visible,
+  zen = false,
   className,
 }: PaperCornerCurlProps) {
   if (!visible) return null
@@ -40,7 +43,11 @@ export const PaperCornerCurl = memo(function PaperCornerCurl({
         height={192}
         priority
         unoptimized
-        className="w-full h-full object-contain object-bottom-right pointer-events-none select-none"
+        style={{ opacity: zen ? 0.2 : 1 }}
+        className={cn(
+          'w-full h-full object-contain object-bottom-right pointer-events-none select-none transition-opacity duration-500 ease-out',
+          zen ? 'opacity-20' : 'opacity-100',
+        )}
       />
     </div>
   )

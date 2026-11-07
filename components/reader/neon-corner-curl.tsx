@@ -7,6 +7,7 @@ import neonCornerCurlImg from '@/assets/logos/neon-corner-curl.png'
 
 type NeonCornerCurlProps = {
   visible: boolean
+  zen?: boolean
   className?: string
 }
 
@@ -15,10 +16,12 @@ type NeonCornerCurlProps = {
  * - Ekranın en sağ alt köşesine yerleşir.
  * - Cam kıvrımından 1.2 kat daha büyük (mobilde 77px, tablette 96px, masaüstünde 115px).
  * - Kıvrımın dış tarafında canlı mor neon ışıması ve tüpler, merkeze bakan iç tarafında ise sadece spiralli elektrik kabloları yer alır.
+ * - Zen (okuma) modunda dikkati dağıtmamak için %80 transparan (%20 görünür) hale gelir.
  * - pointer-events-none ile hiçbir tıklama veya dokunma hareketini engellemez.
  */
 export const NeonCornerCurl = memo(function NeonCornerCurl({
   visible,
+  zen = false,
   className,
 }: NeonCornerCurlProps) {
   if (!visible) return null
@@ -40,7 +43,11 @@ export const NeonCornerCurl = memo(function NeonCornerCurl({
         height={208}
         priority
         unoptimized
-        className="w-full h-full object-contain object-bottom-right pointer-events-none select-none"
+        style={{ opacity: zen ? 0.2 : 1 }}
+        className={cn(
+          'w-full h-full object-contain object-bottom-right pointer-events-none select-none transition-opacity duration-500 ease-out',
+          zen ? 'opacity-20' : 'opacity-100',
+        )}
       />
     </div>
   )

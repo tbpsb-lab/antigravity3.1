@@ -1392,10 +1392,10 @@ export function ReaderApp() {
         </div>
       )}
 
-      {/* Tematik Sağ Alt Köşe Sayfa Kıvrımları (z-10: Pencerelerin ve kontrollerin arkasında) */}
-      <PaperCornerCurl visible={theme === 'kindle'} />
-      <GlassCornerCurl visible={theme === 'ios'} />
-      <NeonCornerCurl visible={theme === 'linear'} />
+      {/* Tematik Sağ Alt Köşe Sayfa Kıvrımları (z-10: Pencerelerin ve kontrollerin arkasında, Zen modunda %20 görünür / %80 transparan) */}
+      <PaperCornerCurl visible={theme === 'kindle'} zen={zen} />
+      <GlassCornerCurl visible={theme === 'ios'} zen={zen} />
+      <NeonCornerCurl visible={theme === 'linear'} zen={zen} />
 
       <SpeedTestModal
         open={speedTestOpen}

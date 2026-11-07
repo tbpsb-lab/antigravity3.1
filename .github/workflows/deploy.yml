@@ -40,11 +40,11 @@ jobs:
 
       - name: Build Next.js
         run: |
-          if ! pnpm build 2>&1 | tee build.log; then
-            ERR_MSG=$(tail -n 25 build.log | tr '\n' ' ' | tr '"' "'")
-            echo "::error title=NextBuildError::$ERR_MSG"
+          pnpm build > build.log 2>&1 || {
+            ERR=$(tail -n 25 build.log | tr '\n' ' ' | tr '"' "'")
+            echo "::error title=BuildFailed::$ERR"
             exit 1
-          fi
+          }
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3

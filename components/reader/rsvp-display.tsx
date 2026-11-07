@@ -174,84 +174,7 @@ export const RsvpDisplay = memo(function RsvpDisplay({
     return () => window.removeEventListener('pointerdown', handlePointerDown)
   }, [showChunkCallout, dismissChunkCallout])
 
-  // 1 & 2. KURAL: Piksel Eşiği (25px) ve Kademe (25 WPM) ile Canlı Hız Kontrolü
-  const touchStateRef = useRef<{
-    startY: number
-    startX: number
-    startWpm: number
-    isSwiping: boolean
-    hasSwiped: boolean
-  } | null>(null)
-
-  const handleTouchStart = (e: TouchEvent) => {
-    if (e.touches.length !== 1 || isScrubbingRef.current) return
-    const target = e.target as HTMLElement | null
-    if (target?.closest('[role="progressbar"]')) return
-
-    const touch = e.touches[0]
-    lastHapticStepRef.current = 0
-    touchStateRef.current = {
-      startY: touch.clientY,
-      startX: touch.clientX,
-      startWpm: wpm,
-      isSwiping: false,
-      hasSwiped: false,
-    }
-  }
-
-  // Mobil Chrome'da aşağı kaydırma (swipe down) sırasında tarayıcının pull-to-refresh
-  // yenileme animasyonunu %100 engelleyen tekil native pasif-olmayan touchmove dinleyicisi
-  useEffect(() => {
-    const el = stageNodeRef.current
-    if (!el) return
-
-    const onNativeTouchMove = (e: globalThis.TouchEvent) => {
-      if (!touchStateRef.current || e.touches.length !== 1 || isScrubbingRef.current) return
-      const touch = e.touches[0]
-      const deltaY = touch.clientY - touchStateRef.current.startY
-      const deltaX = touch.clientX - touchStateRef.current.startX
-
-      if (!touchStateRef.current.isSwiping && Math.abs(deltaY) > 8 && Math.abs(deltaY) > Math.abs(deltaX)) {
-        touchStateRef.current.isSwiping = true
-        touchStateRef.current.hasSwiped = true
-      }
-
-      if (touchStateRef.current.isSwiping) {
-        if (e.cancelable) {
-          e.preventDefault()
-        }
-        // Dikey eksendeki her 25 piksel = 1 kademe (25 WPM)
-        const pixelDistance = -deltaY // Yukarı = pozitif
-        const steps = Math.trunc(pixelDistance / 25)
-        if (steps !== lastHapticStepRef.current) {
-          lastHapticStepRef.current = steps
-          triggerHaptic('step')
-        }
-        const targetWpm = touchStateRef.current.startWpm + steps * WPM_STEP
-        onWpmSet?.(targetWpm)
-      }
-    }
-
-    el.addEventListener('touchmove', onNativeTouchMove, { passive: false })
-    return () => {
-      el.removeEventListener('touchmove', onNativeTouchMove)
-    }
-  }, [onWpmSet])
-
-  const handleTouchEnd = () => {
-    if (!touchStateRef.current) return
-    const wasSwiping = touchStateRef.current.hasSwiped
-    touchStateRef.current = null
-
-    if (wasSwiping) {
-      onWpmDragEnd?.()
-    }
-  }
-
   const handleChildClick = (action?: () => void) => {
-    if (touchStateRef.current?.hasSwiped) {
-      return
-    }
     action?.()
   }
 
@@ -377,9 +300,6 @@ export const RsvpDisplay = memo(function RsvpDisplay({
     <section aria-label="Okuma penceresi" className="relative w-full">
       <div
         ref={setStageRef}
-        onTouchStart={handleTouchStart}
-        onTouchEnd={handleTouchEnd}
-        onTouchCancel={handleTouchEnd}
         className={cn(
           'rsvp-stage group relative flex flex-col justify-center min-h-[102px] sm:min-h-[114px] md:min-h-[144px] lg:min-h-[140px] w-full px-4 py-3.5 text-left outline-none transition-[border-color,background-color,box-shadow] duration-300 sm:px-8 sm:py-5 md:px-10 md:py-6 [@media(max-height:640px)]:py-2.5 landscape-short:py-1.5 select-none touch-none overscroll-none',
           showChunkCallout ? 'overflow-visible' : 'overflow-hidden',

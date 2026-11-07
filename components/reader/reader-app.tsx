@@ -808,79 +808,121 @@ export function ReaderApp() {
     [showWpmToast, hideWpmToastWithFade],
   )
 
-  // Zen / Okuma Sırasında Tam Ekran Dokunma ve 25px Eşikli Kaydırma Jesti
-  const zenTouchStateRef = useRef<{
+  // Tablet ve Telefonda Tam Ekran Dokunma ve 25px Eşikli WPM Kaydırma Jesti (Hem Zen Hem Normal Modda "Her Yerden")
+  const touchSwipeStateRef = useRef<{
     startY: number
     startX: number
     startWpm: number
     isSwiping: boolean
     hasSwiped: boolean
   } | null>(null)
-  const zenLastHapticStepRef = useRef<number>(0)
-  const zenOverlayRef = useRef<HTMLDivElement | null>(null)
+  const touchSwipeLastHapticStepRef = useRef<number>(0)
+  const justSwipedRef = useRef<boolean>(false)
+  const clearJustSwipedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const wpmRef = useRef(wpm)
 
-  const handleZenTouchStart = (e: React.TouchEvent) => {
-    if (e.touches.length !== 1) return
-    const touch = e.touches[0]
-    zenLastHapticStepRef.current = 0
-    zenTouchStateRef.current = {
-      startY: touch.clientY,
-      startX: touch.clientX,
-      startWpm: wpm,
-      isSwiping: false,
-      hasSwiped: false,
-    }
-  }
-
-  // Mobil Chrome'da aşağı kaydırma sırasında pull-to-refresh'i %100 engelleyen tekil native touchmove dinleyicisi
   useEffect(() => {
-    const el = zenOverlayRef.current
-    if (!el) return
+    wpmRef.current = wpm
+  }, [wpm])
 
-    const onNativeTouchMove = (e: TouchEvent) => {
-      if (!zenTouchStateRef.current || e.touches.length !== 1) return
-      const touch = e.touches[0]
-      const deltaY = touch.clientY - zenTouchStateRef.current.startY
-      const deltaX = touch.clientX - zenTouchStateRef.current.startX
+  // Mobil ve Tablette parmakla yukarı/aşağı kaydırıldığında WPM hızını akıcı olarak değiştir
+  useEffect(() => {
+    const handleGlobalTouchStart = (e: TouchEvent) => {
+      if (e.touches.length !== 1) return
 
-      if (!zenTouchStateRef.current.isSwiping && Math.abs(deltaY) > 8 && Math.abs(deltaY) > Math.abs(deltaX)) {
-        zenTouchStateRef.current.isSwiping = true
-        zenTouchStateRef.current.hasSwiped = true
+      // Açık modal veya popover (Aa, Kitaplık/Metin, Arama, Hız Testi, Kılavuz, Bitiş) varsa dokunmayı engelleme
+      if (textSheetOpen || speedTestOpen || aboutOpen || completionOpen) return
+
+      // Etkileşimli diyalog, açılır liste, menü, slider, progressbar veya input üzerindeyse WPM jesti başlatma
+      const target = e.target as HTMLElement | null
+      if (
+        target?.closest(
+          '[role="dialog"], [role="listbox"], [role="menu"], [role="slider"], [role="progressbar"], input, textarea, select, .prevent-wpm-swipe',
+        )
+      ) {
+        return
       }
 
-      if (zenTouchStateRef.current.isSwiping) {
+      const touch = e.touches[0]
+      touchSwipeLastHapticStepRef.current = 0
+      touchSwipeStateRef.current = {
+        startY: touch.clientY,
+        startX: touch.clientX,
+        startWpm: wpmRef.current,
+        isSwiping: false,
+        hasSwiped: false,
+      }
+    }
+
+    const onNativeTouchMove = (e: TouchEvent) => {
+      if (!touchSwipeStateRef.current || e.touches.length !== 1) return
+      const touch = e.touches[0]
+      const deltaY = touch.clientY - touchSwipeStateRef.current.startY
+      const deltaX = touch.clientX - touchSwipeStateRef.current.startX
+
+      // 8px dikey hareket eşiği ve belirgin dikey yön kontrolü
+      if (!touchSwipeStateRef.current.isSwiping && Math.abs(deltaY) > 8 && Math.abs(deltaY) > Math.abs(deltaX)) {
+        touchSwipeStateRef.current.isSwiping = true
+        touchSwipeStateRef.current.hasSwiped = true
+      }
+
+      if (touchSwipeStateRef.current.isSwiping) {
         if (e.cancelable) {
           e.preventDefault()
         }
-        const pixelDistance = -deltaY
+        // Dikey eksendeki her 25 piksel = 1 kademe (25 WPM)
+        const pixelDistance = -deltaY // Yukarı = pozitif artış
         const steps = Math.trunc(pixelDistance / 25)
-        if (steps !== zenLastHapticStepRef.current) {
-          zenLastHapticStepRef.current = steps
+        if (steps !== touchSwipeLastHapticStepRef.current) {
+          touchSwipeLastHapticStepRef.current = steps
           triggerHaptic('step')
         }
-        const targetWpm = zenTouchStateRef.current.startWpm + steps * WPM_STEP
+        const targetWpm = touchSwipeStateRef.current.startWpm + steps * WPM_STEP
         setWpmDirect(targetWpm)
       }
     }
 
-    el.addEventListener('touchmove', onNativeTouchMove, { passive: false })
+    const handleGlobalTouchEnd = () => {
+      if (!touchSwipeStateRef.current) return
+      const wasSwiping = touchSwipeStateRef.current.hasSwiped
+      touchSwipeStateRef.current = null
+
+      if (wasSwiping) {
+        justSwipedRef.current = true
+        if (clearJustSwipedTimerRef.current) clearTimeout(clearJustSwipedTimerRef.current)
+        clearJustSwipedTimerRef.current = setTimeout(() => {
+          justSwipedRef.current = false
+        }, 150)
+        hideWpmToastWithFade(1000)
+      }
+    }
+
+    const handleGlobalClickCapture = (e: MouseEvent) => {
+      if (justSwipedRef.current) {
+        e.stopPropagation()
+        e.preventDefault()
+        justSwipedRef.current = false
+      }
+    }
+
+    window.addEventListener('touchstart', handleGlobalTouchStart, { passive: true })
+    window.addEventListener('touchmove', onNativeTouchMove, { passive: false })
+    window.addEventListener('touchend', handleGlobalTouchEnd, { passive: true })
+    window.addEventListener('touchcancel', handleGlobalTouchEnd, { passive: true })
+    window.addEventListener('click', handleGlobalClickCapture, { capture: true })
+
     return () => {
-      el.removeEventListener('touchmove', onNativeTouchMove)
+      window.removeEventListener('touchstart', handleGlobalTouchStart)
+      window.removeEventListener('touchmove', onNativeTouchMove)
+      window.removeEventListener('touchend', handleGlobalTouchEnd)
+      window.removeEventListener('touchcancel', handleGlobalTouchEnd)
+      window.removeEventListener('click', handleGlobalClickCapture, { capture: true })
+      if (clearJustSwipedTimerRef.current) clearTimeout(clearJustSwipedTimerRef.current)
     }
-  }, [setWpmDirect, zen])
-
-  const handleZenTouchEnd = () => {
-    if (!zenTouchStateRef.current) return
-    const wasSwiping = zenTouchStateRef.current.hasSwiped
-    zenTouchStateRef.current = null
-
-    if (wasSwiping) {
-      hideWpmToastWithFade(1000)
-    }
-  }
+  }, [setWpmDirect, hideWpmToastWithFade, textSheetOpen, speedTestOpen, aboutOpen, completionOpen])
 
   const handleZenClick = (action: () => void) => {
-    if (zenTouchStateRef.current?.hasSwiped) {
+    if (justSwipedRef.current) {
       return
     }
     action()
@@ -1612,10 +1654,6 @@ export function ReaderApp() {
       {/* Okuma Sırasında Tam Ekran Dokunma ve Jest Katmanı */}
       {zen && (
         <div
-          ref={zenOverlayRef}
-          onTouchStart={handleZenTouchStart}
-          onTouchEnd={handleZenTouchEnd}
-          onTouchCancel={handleZenTouchEnd}
           className="fixed inset-0 z-20 flex select-none pointer-events-auto touch-none overscroll-none"
         >
           {/* Sol %25: Akıllı cümle başı geri sar */}

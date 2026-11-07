@@ -33,11 +33,19 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       {
+        url: `${BASE_PATH}/favicon.ico`,
+        sizes: 'any',
+      },
+      {
         url: `${BASE_PATH}/icon-light-32x32.png`,
+        sizes: '32x32',
+        type: 'image/png',
         media: '(prefers-color-scheme: light)',
       },
       {
         url: `${BASE_PATH}/icon-dark-32x32.png`,
+        sizes: '32x32',
+        type: 'image/png',
         media: '(prefers-color-scheme: dark)',
       },
       {

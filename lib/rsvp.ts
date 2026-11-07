@@ -92,6 +92,7 @@ export function cleanPunctuationAndCamelCase(text: string): string {
 
   // 1. Noktalama işaretlerinden ve kapanış tırnaklarından sonra boşluk unutulmuşsa ayır (3.14 veya 12,5 gibi sayıları bozmadan):
   t = t.replace(/([.,!?;:…]["”’»]+|["”’»]+[.,!?;:…])([\p{L}])/gu, '$1 $2')
+  t = t.replace(/(?<!feng şui)(?<=\p{L})(["”»])(?=\p{L})/gu, '$1 ')
   t = t.replace(/([.,!?;:…])([\p{L}])/gu, '$1 $2')
 
   // 2. Küçük harften hemen sonra büyük harf geliyorsa ayır:

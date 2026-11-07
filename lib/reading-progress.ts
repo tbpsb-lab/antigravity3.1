@@ -162,6 +162,23 @@ export function loadLastActiveDoc(): { title: string; text: string; pageInfo?: B
   }
 }
 
+export function saveLastActiveDoc(title: string, text: string, pageInfo?: BookPageInfo | null): void {
+  if (typeof window === 'undefined') return
+  try {
+    if (text.length < 1500000) {
+      localStorage.setItem(
+        LAST_DOC_KEY,
+        JSON.stringify({
+          title,
+          text,
+          pageInfo: pageInfo ?? null,
+          updatedAt: Date.now(),
+        }),
+      )
+    }
+  } catch {}
+}
+
 /**
  * Kaydedilen kelime indeksine karşılık gelen chunk indeksini bulur.
  */

@@ -21,6 +21,8 @@ import {
   ALL_VOWELS,
   BOUND_CONTINUATION_REGEX,
   NEVER_BOUND_SUFFIX_RIGHT,
+  KNOWN_EXPLICIT_COMPOUNDS,
+  TURKISH_QUESTION_PARTICLES,
 } from './turkish-word-splitter'
 import type { BookPageInfo } from './rsvp'
 
@@ -758,6 +760,10 @@ export function cleanPunctuationAndCamelCase(text: string): string {
   // 1. Noktalama işaretlerinden sonra boşluk unutulmuşsa ayır (örn. 3.14 ve 12,5 rakamlarını bozmadan):
   t = t.replace(/([.,!?;:])([a-zA-ZÇĞİÖŞÜçğıöşü])/g, '$1 $2')
 
+  // Kapanış tırnaklarından sonra harf geliyorsa ayır (örn: "Beyim"diyerek -> "Beyim" diyerek)
+  t = t.replace(/([.,!?]["”’»]+|["”’»]+[.,!?])([a-zA-ZçğıöşüÇĞİÖŞÜ])/g, '$1 $2')
+  t = t.replace(/(?<!feng şui)(?<=[a-zA-ZçğıöşüÇĞİÖŞÜ0-9])(["”»])(?=[a-zA-ZçğıöşüÇĞİÖŞÜ])/g, '$1 ')
+
   // 2. Küçük harften hemen sonra büyük harf geliyorsa ayır:
   t = t.replace(/([a-zçğıöşü])([A-ZÇĞİÖŞÜ])/g, '$1 $2')
 
@@ -774,6 +780,12 @@ export function cleanPunctuationAndCamelCase(text: string): string {
 export function cleanIntraLineHyphens(rawLineText: string): string {
   if (!rawLineText) return ''
   let t = rawLineText
+
+  t = t.replace(/\byumu\s+şuyor\b/g, 'yumuşuyor').replace(/\bmu\s+şuyor\b/g, 'muşuyor')
+  t = t.replace(/dinlen\s+din\./g, 'dinlendin.')
+  t = t.replace(/içi\s+ısırısın/g, 'içi ısınsın')
+  t = t.replace(/\bbudınum\b/g, 'bu durum').replace(/\bbudınumun\b/g, 'bu durumun')
+  t = t.replace(/\bbanklar\b/g, 'barıklar').replace(/\banklar\b/g, 'arıklar')
 
   // 1. Harfleri ayrı yazılmış kelimeleri birleştir
   t = collapseSpacedLetters(t)
@@ -1257,11 +1269,14 @@ export function cleanIntraLineHyphens(rawLineText: string): string {
   t = t.replace(/([a-zçğıöşü]{2,})dnn\b/g, '$1dım')
 
   // 17. Tek harfli ve kelime içi kerning kopmalarını sözlük doğrulamasıyla birleştir ("B undan" -> "Bundan", "Tırnağı yla" -> "Tırnağıyla", "hatırlaya maz" -> "hatırlayamaz")
-  t = t.replace(/\b([BCÇDFGĞHJKLMNPRSŞTVYZWhy])\s+([a-zçğıöşü]{2,})\b/g, (full, c1, rest) =>
-    isValidTurkishWord(c1 + rest) ? c1 + rest : full,
+  t = t.replace(
+    /(?<!['’])\b([wWbcçdfgğhjklmnprsştvyzBCÇDFGĞHJKLMNPRSŞTVYZ])\s+([a-zçğıöşü]{2,})\b/g,
+    (full, c1, rest) => (isValidTurkishWord(c1 + rest) ? c1 + rest : full),
   )
   t = t.replace(/\bÜ\s+zeri([a-zçğıöşü]+)\b/g, 'Üzeri$1')
   t = t.replace(/\bkuvv\s+etli\b/g, 'kuvvetli')
+  t = t.replace(/\bdef\s+asında\b/g, 'defasında')
+  t = t.replace(/\bsoruyorsun\s+uz\b/g, 'soruyorsunuz')
 
   // Satır içi kopmuş kelimeleri sözlük doğrulamasıyla birleştir
   const lineTokens = t.split(/\s+/).filter(Boolean)
@@ -1270,15 +1285,50 @@ export function cleanIntraLineHyphens(rawLineText: string): string {
     for (let idx = 1; idx < lineTokens.length; idx++) {
       const curr = lineTokens[idx]
       const prev = mergedTokens[mergedTokens.length - 1]
+
+      // Kesme işareti veya tire olan kelimeleri satır içinde otomatik birleştirme!
+      if (prev.endsWith('-') || prev.endsWith('­') || curr.endsWith('-') || curr.endsWith('­')) {
+        mergedTokens.push(curr)
+        continue
+      }
+      if (prev.includes("'") || prev.includes('’') || curr.includes("'") || curr.includes('’')) {
+        mergedTokens.push(curr)
+        continue
+      }
+      if (prev.includes('__FN_') || curr.includes('__FN_')) {
+        mergedTokens.push(curr)
+        continue
+      }
+
       const currCore = curr.replace(/[^\wçğıöşüÇĞİÖŞÜ]+$/, '')
       if (/[a-zA-ZçğıöşüÇĞİÖŞÜ]$/.test(prev) && /^[a-zçğıöşü]{2,}$/.test(currCore)) {
         const prevCore = toTurkishLower(prev.replace(/^[^\wçğıöşüÇĞİÖŞÜ]+/, ''))
         const nextCore = toTurkishLower(currCore)
-        const comb = prevCore + nextCore
+
         if (
-          !NEVER_BOUND_SUFFIX_RIGHT.has(nextCore) &&
-          ((!isValidTurkishWord(prevCore) || !isValidTurkishWord(nextCore)) && isValidTurkishWord(comb))
+          TURKISH_QUESTION_PARTICLES.has(nextCore) ||
+          NEVER_MERGE_PAIR_LEFT.has(prevCore) ||
+          NEVER_BOUND_SUFFIX_RIGHT.has(nextCore)
         ) {
+          mergedTokens.push(curr)
+          continue
+        }
+
+        const comb = prevCore + nextCore
+        const validPrev = isValidTurkishWord(prevCore)
+        const validNext = isValidTurkishWord(nextCore)
+
+        // İkisi de zaten geçerli kelime ise ASLA birleştirme (bilinen bileşikler hariç)
+        if (validPrev && validNext) {
+          if (KNOWN_EXPLICIT_COMPOUNDS.has(comb)) {
+            mergedTokens[mergedTokens.length - 1] = prev + curr
+            continue
+          }
+          mergedTokens.push(curr)
+          continue
+        }
+
+        if (isValidTurkishWord(comb)) {
           mergedTokens[mergedTokens.length - 1] = prev + curr
           continue
         }
@@ -1316,9 +1366,11 @@ export function cleanIntraLineHyphens(rawLineText: string): string {
   t = t.replace(/([a-zA-ZçğıöşüÇĞİÖŞÜ0-9]):'(?=\s|$)/g, '$1."')
   t = t.replace(/([a-zA-ZçğıöşüÇĞİÖŞÜ0-9]);'(?=\s|$)/g, '$1,"')
 
-  // 22. Bitişik tırnak ve diyalog başlangıçlarını ayır ("sayılır:'"Evet" -> 'sayılır." "Evet')
+  // 22. Bitişik tırnak ve diyalog başlangıçlarını ayır ("sayılır:'"Evet" -> 'sayılır." "Evet', "Beyim"diyerek -> "Beyim" diyerek)
   t = t.replace(/([.:!?…])(["”’»]+)([A-ZÇĞİÖŞÜ"“‘])/g, '$1$2 $3')
   t = t.replace(/([:;])'([A-ZÇĞİÖŞÜ])/g, '$1" $2')
+  t = t.replace(/([.,!?]["”’»]+|["”’»]+[.,!?])([a-zA-ZçğıöşüÇĞİÖŞÜ])/g, '$1 $2')
+  t = t.replace(/(?<!feng şui)(?<=[a-zA-ZçğıöşüÇĞİÖŞÜ0-9])(["”»])(?=[a-zA-ZçğıöşüÇĞİÖŞÜ])/g, '$1 ')
 
   // 23. Noktalama ve camelCase Temizliği (3. Adım)
   t = cleanPunctuationAndCamelCase(t)
@@ -1465,6 +1517,21 @@ function tryMergeWordPair(
   }
   if (la === lb) return null
   if (
+    lastWord.includes("'") ||
+    lastWord.includes('’') ||
+    nextWord.includes("'") ||
+    nextWord.includes('’')
+  ) {
+    return null
+  }
+  if (
+    NEVER_MERGE_PAIR_LEFT.has(la) ||
+    NEVER_BOUND_SUFFIX_RIGHT.has(lb) ||
+    TURKISH_QUESTION_PARTICLES.has(lb)
+  ) {
+    return null
+  }
+  if (
     ['fark', 'terk', 'arz', 'kul', 'ret', 'hak', 'af', 'his', 'zannet', 'ayırt'].includes(la) &&
     /^(et|ed|ol)/.test(lb)
   ) {
@@ -1517,6 +1584,15 @@ function tryMergeWordPair(
   const validA = isValidTurkishWord(la)
   const validB = isValidTurkishWord(lb)
   const validComb = isValidTurkishWord(combined)
+
+  // KRİTİK KURAL: İki kelime de zaten tek başına geçerli birer Türkçe kelime ise,
+  // bilinen birleşik kelimeler (KNOWN_EXPLICIT_COMPOUNDS) haricinde ASLA birleştirme!
+  if (validA && validB) {
+    if (KNOWN_EXPLICIT_COMPOUNDS.has(combined)) {
+      return cleanIntraLineHyphens(lastWord + cleanNext)
+    }
+    return null
+  }
 
   if ((!validA || !validB) && validComb) {
     return cleanIntraLineHyphens(lastWord + cleanNext)

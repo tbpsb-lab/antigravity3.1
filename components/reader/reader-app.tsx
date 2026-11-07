@@ -23,6 +23,7 @@ import {
   saveReadingProgress,
   loadReadingProgress,
   loadLastActiveDoc,
+  saveLastActiveDoc,
   findChunkIndexForWord,
 } from '@/lib/reading-progress'
 import { DEFAULT_BOOK_PAGE_INFO, DEFAULT_BOOK_TEXT, DEFAULT_BOOK_TITLE } from '@/lib/default-book'
@@ -982,18 +983,20 @@ export function ReaderApp() {
     const activeChunkSize = settings.chunkSize ?? 1
     const activeFootnotes = settings.readFootnotes ?? true
     const hasMigratedDefaultBook =
-      typeof window !== 'undefined' && localStorage.getItem('odak_default_yasamak_v3') === 'true'
+      typeof window !== 'undefined' && localStorage.getItem('odak_default_yasamak_v5') === 'true'
     const lastDoc = loadLastActiveDoc()
 
     const isOldUnmigratedDoc =
       !hasMigratedDefaultBook &&
       (!lastDoc ||
         lastDoc.text === SAMPLE_TEXT ||
-        /7478|yashamaq|yaşamak/i.test(lastDoc.title || ''))
+        /7478|yashamaq|yaşamak/i.test(lastDoc.title || '') ||
+        lastDoc.text.includes('Bundan on yaş daha gençken'))
 
     if (isOldUnmigratedDoc) {
       try {
-        localStorage.setItem('odak_default_yasamak_v3', 'true')
+        localStorage.setItem('odak_default_yasamak_v5', 'true')
+        saveLastActiveDoc(DEFAULT_BOOK_TEXT, DEFAULT_BOOK_TITLE, DEFAULT_BOOK_PAGE_INFO)
       } catch {}
       setText(DEFAULT_BOOK_TEXT)
       setDocTitle(DEFAULT_BOOK_TITLE)

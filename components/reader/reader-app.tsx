@@ -1602,6 +1602,18 @@ export function ReaderApp() {
     dismissKindleSync()
   }, [kindleSyncPrompt, triggerPulse, seek, handleChunkSizeChange, handleThemeChange, showAudioToast, dismissKindleSync])
 
+  // Eşleşme sonlandırıldığında karşı cihazda bilgilendirme bildirimi göster
+  useEffect(() => {
+    const handleDeviceUnpaired = (e: Event) => {
+      const customEvent = e as CustomEvent<{ senderDeviceId?: string; senderDeviceName?: string }>
+      const devName = customEvent.detail?.senderDeviceName || 'Diğer cihaz'
+      showAudioToast(`${devName} ile eşleşme sonlandı`)
+      triggerHaptic('warning')
+    }
+    window.addEventListener('device-unpaired-notify', handleDeviceUnpaired)
+    return () => window.removeEventListener('device-unpaired-notify', handleDeviceUnpaired)
+  }, [showAudioToast])
+
   useEffect(() => {
     const manager = new SyncChannelManager((payload) => {
       const myVault = getSyncVaultId()
@@ -2061,6 +2073,10 @@ export function ReaderApp() {
       <SyncModal
         open={syncModalOpen}
         onClose={() => setSyncModalOpen(false)}
+        onDeviceRemoved={(devId, devName) => {
+          syncManagerRef.current?.broadcastUnpair(devId, devName)
+          showAudioToast(`${devName} ile eşleşme sonlandı`)
+        }}
         index={index}
         pageNumber={currentChunk?.pageNumber ?? pageInfo?.currentPage}
         wpm={wpm}

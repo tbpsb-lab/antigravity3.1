@@ -33,6 +33,7 @@ type SyncModalProps = {
   onClose: () => void
   onManualSyncCodeApplied?: (newVaultId: string) => void
   onApplySyncUrlParams?: (params: ParsedSyncResult) => void
+  onDeviceRemoved?: (deviceId: string, deviceName: string) => void
   index?: number
   pageNumber?: number
   wpm?: number
@@ -46,6 +47,7 @@ export const SyncModal = memo(function SyncModal({
   onClose,
   onManualSyncCodeApplied,
   onApplySyncUrlParams,
+  onDeviceRemoved,
   index,
   pageNumber,
   wpm,
@@ -370,10 +372,16 @@ export const SyncModal = memo(function SyncModal({
     }
   }
 
-  const handleRemoveDevice = (id: string) => {
+  const handleRemoveDevice = (id: string, name?: string) => {
     const updated = removePairedDevice(id)
     setDevices(updated)
     triggerHaptic('tap')
+    const devName = name || 'Cihaz'
+    onDeviceRemoved?.(id, devName)
+    setConnectedSuccessMsg(`${devName} eşleşmesi kaldırıldı`)
+    setTimeout(() => {
+      setConnectedSuccessMsg(null)
+    }, 2000)
   }
 
   if (!open) return null
@@ -670,7 +678,7 @@ export const SyncModal = memo(function SyncModal({
                     {!dev.isCurrent && (
                       <button
                         type="button"
-                        onClick={() => handleRemoveDevice(dev.id)}
+                        onClick={() => handleRemoveDevice(dev.id, dev.name)}
                         className="text-muted-foreground hover:text-destructive transition-colors p-0.5 shrink-0"
                         title="Bağlantıyı kes"
                         aria-label="Bağlantıyı kes"

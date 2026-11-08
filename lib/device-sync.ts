@@ -16,11 +16,13 @@ export type SyncedDevice = {
 }
 
 export type SyncPayload = {
-  type?: 'progress' | 'presence' | 'presence_query'
+  type?: 'progress' | 'presence' | 'presence_query' | 'unpair'
   vaultId: string
   senderDeviceId: string
   senderDeviceName: string
   senderDeviceType?: 'desktop' | 'mobile' | 'tablet'
+  targetDeviceId?: string
+  targetDeviceName?: string
   docTitle?: string
   wordIndex: number
   pageNumber?: number
@@ -35,7 +37,54 @@ export type SyncPayload = {
 const VAULT_KEY = 'hizlioku_sync_vault_id'
 const DEVICE_ID_KEY = 'hizlioku_device_id'
 const DEVICES_LIST_KEY = 'hizlioku_paired_devices'
+const UNPAIRED_TOMBSTONES_KEY = 'hizlioku_unpaired_tombstones'
 const CHANNEL_NAME = 'hizlioku_realtime_sync'
+
+export function generateNewVaultCode(): string {
+  const randomCode = Math.floor(1000 + Math.random() * 9000)
+  return `HZL-${randomCode}`
+}
+
+export function markDeviceUnpaired(deviceId: string): void {
+  if (typeof window === 'undefined') return
+  try {
+    const raw = localStorage.getItem(UNPAIRED_TOMBSTONES_KEY)
+    const set: Record<string, number> = raw ? JSON.parse(raw) : {}
+    set[deviceId] = Date.now()
+    localStorage.setItem(UNPAIRED_TOMBSTONES_KEY, JSON.stringify(set))
+  } catch {}
+}
+
+export function isDeviceUnpaired(deviceId: string): boolean {
+  if (typeof window === 'undefined') return false
+  try {
+    const raw = localStorage.getItem(UNPAIRED_TOMBSTONES_KEY)
+    if (!raw) return false
+    const set: Record<string, number> = JSON.parse(raw)
+    const timestamp = set[deviceId]
+    if (!timestamp) return false
+    if (Date.now() - timestamp > 7 * 86400000) return false
+    return true
+  } catch {
+    return false
+  }
+}
+
+export function clearUnpairedTombstone(deviceId?: string): void {
+  if (typeof window === 'undefined') return
+  try {
+    if (deviceId) {
+      const raw = localStorage.getItem(UNPAIRED_TOMBSTONES_KEY)
+      if (raw) {
+        const set: Record<string, number> = JSON.parse(raw)
+        delete set[deviceId]
+        localStorage.setItem(UNPAIRED_TOMBSTONES_KEY, JSON.stringify(set))
+      }
+    } else {
+      localStorage.removeItem(UNPAIRED_TOMBSTONES_KEY)
+    }
+  } catch {}
+}
 
 export function getDeviceType(): 'desktop' | 'mobile' | 'tablet' {
   if (typeof window === 'undefined') return 'desktop'
@@ -187,6 +236,7 @@ export function getPairedDevices(): SyncedDevice[] {
 
 export function upsertPairedDevice(dev: { id: string; name: string; type: 'desktop' | 'mobile' | 'tablet' }): SyncedDevice[] {
   if (typeof window === 'undefined') return []
+  clearUnpairedTombstone(dev.id)
   const currentId = getDeviceId()
   let list = getPairedDevices()
 
@@ -223,9 +273,15 @@ export function upsertPairedDevice(dev: { id: string; name: string; type: 'deskt
 
 export function removePairedDevice(deviceId: string): SyncedDevice[] {
   if (typeof window === 'undefined') return []
+  markDeviceUnpaired(deviceId)
   let list = getPairedDevices().filter((d) => d.id !== deviceId)
   try {
     localStorage.setItem(DEVICES_LIST_KEY, JSON.stringify(list))
+    window.dispatchEvent(
+      new CustomEvent('paired-devices-updated', {
+        detail: { deviceId, isRemoved: true },
+      })
+    )
   } catch {}
   return list
 }
@@ -494,6 +550,15 @@ export class SyncChannelManager {
           if (raw && (raw.event === 'message' || !raw.event) && raw.message) {
             const payload = typeof raw.message === 'string' ? JSON.parse(raw.message) : raw.message
             if (payload && typeof payload === 'object' && payload.senderDeviceId !== getDeviceId()) {
+              if (payload.type === 'unpair') {
+                this.handleIncoming(payload)
+                continue
+              }
+
+              if (isDeviceUnpaired(payload.senderDeviceId)) {
+                continue
+              }
+
               if (payload.senderDeviceId && payload.senderDeviceName) {
                 upsertPairedDevice({
                   id: payload.senderDeviceId,
@@ -526,6 +591,41 @@ export class SyncChannelManager {
     // Kendi cihazımızın gönderdiği paketleri atla
     if (payload.senderDeviceId === getDeviceId()) return
 
+    // Unpair (Eşleşmeyi Sonlandırma) paketi geldiyse:
+    if (payload.type === 'unpair') {
+      const myId = getDeviceId()
+      const targetId = payload.targetDeviceId
+
+      if (targetId === myId || targetId === '*') {
+        // Bu cihaz eşleşmeden çıkarıldı! Karşı cihazı listemizden sil
+        removePairedDevice(payload.senderDeviceId)
+
+        // Ortak vault'tan ayrıl, bağımsız yeni kod üret
+        const newVaultId = generateNewVaultCode()
+        setSyncVaultId(newVaultId)
+        this.updateVaultId(newVaultId)
+
+        // Bildirimi ilet
+        const senderName = payload.senderDeviceName || 'Diğer cihaz'
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(
+            new CustomEvent('device-unpaired-notify', {
+              detail: {
+                senderDeviceId: payload.senderDeviceId,
+                senderDeviceName: senderName,
+              },
+            })
+          )
+        }
+      } else if (targetId) {
+        removePairedDevice(targetId)
+      }
+      return
+    }
+
+    // Eğer bu cihaz silinmişler listesindeyse ve yeni eşleşme yapılmadıysa atla
+    if (isDeviceUnpaired(payload.senderDeviceId)) return
+
     // Karşı cihazın varlığını cihaz listesine işle
     if (payload.senderDeviceId && payload.senderDeviceName) {
       upsertPairedDevice({
@@ -541,6 +641,32 @@ export class SyncChannelManager {
     }
 
     this.onMessageCallback?.(payload)
+  }
+
+  public broadcastUnpair(targetDeviceId: string, targetDeviceName?: string): void {
+    if (this.isDestroyed) return
+    const fullPayload: SyncPayload = {
+      type: 'unpair',
+      vaultId: this.vaultId,
+      senderDeviceId: getDeviceId(),
+      senderDeviceName: getDeviceName(),
+      senderDeviceType: getDeviceType(),
+      targetDeviceId,
+      targetDeviceName,
+      wordIndex: 0,
+      chunkSize: 1,
+      wpm: 300,
+      theme: 'ios',
+      fontFace: 'theme',
+      fontScale: 1,
+      timestamp: Date.now(),
+    }
+
+    try {
+      this.channel?.postMessage(fullPayload)
+    } catch {}
+
+    this.postToCloud(fullPayload)
   }
 
   public broadcast(payload: Omit<SyncPayload, 'senderDeviceId' | 'senderDeviceName' | 'timestamp' | 'vaultId'>): void {

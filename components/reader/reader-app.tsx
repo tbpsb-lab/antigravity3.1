@@ -1441,6 +1441,7 @@ export function ReaderApp() {
     let urlTargetIndex: number | null = null
     let urlTargetPage: number | null = null
     let urlSyncDetails: string | null = null
+    let urlChunk: string | null = null
 
     try {
       if (typeof window !== 'undefined' && window.location.search) {
@@ -1449,7 +1450,7 @@ export function ReaderApp() {
         const urlIdx = params.get('idx') || params.get('i')
         const urlPage = params.get('p') || params.get('page')
         const urlWpm = params.get('wpm') || params.get('w')
-        const urlChunk = params.get('chunk') || params.get('c')
+        urlChunk = params.get('chunk') || params.get('c')
         const urlTheme = params.get('theme') || params.get('t')
         const urlFont = params.get('font') || params.get('f')
         const urlDid = params.get('did') || params.get('d')

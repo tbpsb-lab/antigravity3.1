@@ -1699,10 +1699,6 @@ export function ReaderApp() {
 
   // Gerçek Zamanlı Cihaz & Sekme Senkronizasyonu (Karekod & Vault)
   const syncManagerRef = useRef<SyncChannelManager | null>(null)
-  const indexRef = useRef(index)
-  useEffect(() => {
-    indexRef.current = index
-  }, [index])
 
   const broadcastSyncState = useCallback(() => {
     if (!syncManagerRef.current) return

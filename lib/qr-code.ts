@@ -60,7 +60,7 @@ export function generateQRMatrix(text: string): boolean[][] {
   const utf8 = new TextEncoder().encode(text)
   const len = utf8.length
 
-  // Dinamik sürüm seçimi: Boyuta göre v2 (25x25), v3 (29x29), v4 (33x33)
+  // Dinamik sürüm seçimi: Boyuta göre v2 (25x25), v3 (29x29), v4 (33x33), v5 (37x37), v6 (41x41)
   let version = 3
   let totalDataBytes = 44
   let ecBytes = 26
@@ -73,10 +73,18 @@ export function generateQRMatrix(text: string): boolean[][] {
     version = 3
     totalDataBytes = 44
     ecBytes = 26
-  } else {
+  } else if (len <= 62) {
     version = 4
     totalDataBytes = 64
     ecBytes = 36
+  } else if (len <= 84) {
+    version = 5
+    totalDataBytes = 86
+    ecBytes = 48
+  } else {
+    version = 6
+    totalDataBytes = 108
+    ecBytes = 64
   }
 
   const size = version * 4 + 17
@@ -110,7 +118,7 @@ export function generateQRMatrix(text: string): boolean[][] {
 
   // 2. Hizalama Deseni (Alignment Pattern 5x5) - Version >= 2
   if (version >= 2) {
-    const alignPos = version === 2 ? 18 : version === 3 ? 22 : 26
+    const alignPos = 18 + (version - 2) * 4
     for (let dr = -2; dr <= 2; dr++) {
       for (let dc = -2; dc <= 2; dc++) {
         const nr = alignPos + dr
@@ -187,21 +195,54 @@ export function generateQRMatrix(text: string): boolean[][] {
   // Reed-Solomon Hata Düzeltme Kodları ve Blok Birleştirme (Interleaving)
   const finalCodewords: number[] = []
   if (version === 4) {
-    // Version 4-M ISO/IEC 18004 standardı: 2 bağımsız blok (her biri 32 veri baytı, 18 EC baytı)
+    // Version 4-M ISO/IEC 18004: 2 bağımsız blok (her biri 32 veri baytı, 18 EC baytı)
     const b1Data = dataBytes.slice(0, 32)
     const b2Data = dataBytes.slice(32, 64)
     const b1Ec = rsEncode(b1Data, 18)
     const b2Ec = rsEncode(b2Data, 18)
 
-    // Veri baytlarını ardışık çapraz yerleştir (Interleave data)
     for (let i = 0; i < 32; i++) {
       finalCodewords.push(b1Data[i])
       finalCodewords.push(b2Data[i])
     }
-    // Hata düzeltme baytlarını ardışık çapraz yerleştir (Interleave EC)
     for (let i = 0; i < 18; i++) {
       finalCodewords.push(b1Ec[i])
       finalCodewords.push(b2Ec[i])
+    }
+  } else if (version === 5) {
+    // Version 5-M ISO/IEC 18004: 2 bağımsız blok (her biri 43 veri baytı, 24 EC baytı)
+    const b1Data = dataBytes.slice(0, 43)
+    const b2Data = dataBytes.slice(43, 86)
+    const b1Ec = rsEncode(b1Data, 24)
+    const b2Ec = rsEncode(b2Data, 24)
+
+    for (let i = 0; i < 43; i++) {
+      finalCodewords.push(b1Data[i])
+      finalCodewords.push(b2Data[i])
+    }
+    for (let i = 0; i < 24; i++) {
+      finalCodewords.push(b1Ec[i])
+      finalCodewords.push(b2Ec[i])
+    }
+  } else if (version === 6) {
+    // Version 6-M ISO/IEC 18004: 4 bağımsız blok (her biri 27 veri baytı, 16 EC baytı)
+    const blocksData = [
+      dataBytes.slice(0, 27),
+      dataBytes.slice(27, 54),
+      dataBytes.slice(54, 81),
+      dataBytes.slice(81, 108),
+    ]
+    const blocksEc = blocksData.map((b) => rsEncode(b, 16))
+
+    for (let i = 0; i < 27; i++) {
+      for (let b = 0; b < 4; b++) {
+        finalCodewords.push(blocksData[b][i])
+      }
+    }
+    for (let i = 0; i < 16; i++) {
+      for (let b = 0; b < 4; b++) {
+        finalCodewords.push(blocksEc[b][i])
+      }
     }
   } else {
     // Version 2-M ve 3-M: Tek blok

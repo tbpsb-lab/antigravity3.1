@@ -149,11 +149,47 @@ export function removePairedDevice(deviceId: string): SyncedDevice[] {
   return list
 }
 
-export function generateSyncUrl(vaultId: string): string {
+export type SyncUrlParams = {
+  index?: number
+  wordIndex?: number
+  pageNumber?: number
+  wpm?: number
+  chunkSize?: number
+  theme?: string
+  fontFace?: string
+}
+
+export function generateSyncUrl(vaultId: string, extra?: SyncUrlParams): string {
   if (typeof window === 'undefined') return ''
   const origin = window.location.origin
   const pathname = window.location.pathname
-  return `${origin}${pathname}?sync=${encodeURIComponent(vaultId)}`
+  const params = new URLSearchParams()
+  
+  // Kompakt eşleme parametreleri (Karekodun anında ve yüksek çözünürlükle taranabilmesi için)
+  const cleanCode = vaultId.replace(/^HZL-/, '')
+  params.set('s', cleanCode)
+
+  if (typeof extra?.index === 'number' && extra.index >= 0) {
+    params.set('idx', String(extra.index))
+  }
+  if (typeof extra?.pageNumber === 'number' && extra.pageNumber > 0) {
+    params.set('p', String(extra.pageNumber))
+  }
+  if (typeof extra?.wpm === 'number' && extra.wpm > 0) {
+    params.set('w', String(extra.wpm))
+  }
+  if (typeof extra?.chunkSize === 'number') {
+    params.set('c', String(extra.chunkSize))
+  }
+  if (extra?.theme) {
+    const tCode = extra.theme === 'kindle' ? 'k' : extra.theme === 'linear' ? 'n' : 'i'
+    params.set('t', tCode)
+  }
+  if (extra?.fontFace) {
+    const fCode = extra.fontFace === 'theme' ? 't' : extra.fontFace === 'sans' ? 's' : extra.fontFace === 'serif' ? 'r' : 'm'
+    params.set('f', fCode)
+  }
+  return `${origin}${pathname}?${params.toString()}`
 }
 
 /**

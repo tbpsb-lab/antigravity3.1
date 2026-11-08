@@ -29,12 +29,24 @@ type SyncModalProps = {
   open: boolean
   onClose: () => void
   onManualSyncCodeApplied?: (newVaultId: string) => void
+  index?: number
+  pageNumber?: number
+  wpm?: number
+  chunkSize?: number
+  theme?: string
+  fontFace?: string
 }
 
 export const SyncModal = memo(function SyncModal({
   open,
   onClose,
   onManualSyncCodeApplied,
+  index,
+  pageNumber,
+  wpm,
+  chunkSize,
+  theme,
+  fontFace,
 }: SyncModalProps) {
   const [vaultId, setVaultId] = useState<string>('')
   const [copied, setCopied] = useState(false)
@@ -51,8 +63,15 @@ export const SyncModal = memo(function SyncModal({
 
   const syncUrl = useMemo(() => {
     if (!vaultId) return ''
-    return generateSyncUrl(vaultId)
-  }, [vaultId])
+    return generateSyncUrl(vaultId, {
+      index,
+      pageNumber,
+      wpm,
+      chunkSize,
+      theme,
+      fontFace,
+    })
+  }, [vaultId, index, pageNumber, wpm, chunkSize, theme, fontFace])
 
   const { path: qrPath, size: qrSize } = useMemo(() => {
     if (!syncUrl) return { path: '', size: 29 }
@@ -123,7 +142,7 @@ export const SyncModal = memo(function SyncModal({
         </div>
 
         {/* Karekod Alanı */}
-        <div className="flex flex-col items-center justify-center gap-3 py-1">
+        <div className="flex flex-col items-center justify-center gap-2.5 py-1">
           <div className="relative p-4 sm:p-5 bg-white rounded-2xl shadow-md border border-neutral-200 flex items-center justify-center">
             {qrPath ? (
               <svg
@@ -140,8 +159,32 @@ export const SyncModal = memo(function SyncModal({
             )}
           </div>
 
+          {/* Karekod İçeriğindeki Anlık Konum ve Tercih Rozetleri */}
+          <div className="flex flex-wrap items-center justify-center gap-1.5 text-[10.5px] font-mono text-muted-foreground">
+            {pageNumber ? (
+              <span className="rounded-full bg-primary/10 text-primary border border-primary/20 px-2.5 py-0.5 font-semibold">
+                Sayfa {pageNumber}
+              </span>
+            ) : null}
+            {typeof index === 'number' ? (
+              <span className="rounded-full bg-muted/60 border border-border/40 px-2 py-0.5">
+                {index + 1}. Öbek
+              </span>
+            ) : null}
+            {wpm ? (
+              <span className="rounded-full bg-muted/60 border border-border/40 px-2 py-0.5">
+                {wpm} k/dk
+              </span>
+            ) : null}
+            {theme ? (
+              <span className="rounded-full bg-muted/60 border border-border/40 px-2 py-0.5 capitalize">
+                {theme === 'kindle' ? 'Kağıt' : theme === 'linear' ? 'Neon' : 'Cam'}
+              </span>
+            ) : null}
+          </div>
+
           <p className="text-center text-[11.5px] text-muted-foreground leading-relaxed max-w-xs">
-            Diğer cihazınızın kamerasını okutun; kalınan yer, hız ve ayarlarınız saniyesinde bağlansın.
+            Telefonunuzun kamerasını okutun; kaldığınız kelime, sayfa, hız ve ayarlarınız saniyesinde bağlansın.
           </p>
         </div>
 

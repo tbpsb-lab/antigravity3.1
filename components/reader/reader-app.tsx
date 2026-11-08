@@ -1209,6 +1209,92 @@ export function ReaderApp() {
     // Ses modu varsayılan olarak daima kapalı başlar (Autoplay ve kullanıcı isteği gereği)
     setNeuroAudioEnabled(false)
 
+    // Karekod veya Paylaşım URL'sinden Gelen Canlı Senkronizasyon Verilerini Çöz
+    let urlTargetIndex: number | null = null
+    let urlTargetPage: number | null = null
+    let urlSyncDetails: string | null = null
+
+    try {
+      if (typeof window !== 'undefined' && window.location.search) {
+        const params = new URLSearchParams(window.location.search)
+        const urlSync = params.get('sync') || params.get('s')
+        const urlIdx = params.get('idx') || params.get('i')
+        const urlPage = params.get('p') || params.get('page')
+        const urlWpm = params.get('wpm') || params.get('w')
+        const urlChunk = params.get('chunk') || params.get('c')
+        const urlTheme = params.get('theme') || params.get('t')
+        const urlFont = params.get('font') || params.get('f')
+
+        if (urlSync && urlSync.trim()) {
+          const cleanSync = urlSync.trim().toUpperCase()
+          const formatted = cleanSync.startsWith('HZL-') ? cleanSync : `HZL-${cleanSync}`
+          setSyncVaultId(formatted)
+        }
+
+        if (urlTheme) {
+          const resolvedTheme: ThemeId =
+            urlTheme === 'k' || urlTheme === 'kindle'
+              ? 'kindle'
+              : urlTheme === 'n' || urlTheme === 'l' || urlTheme === 'linear'
+              ? 'linear'
+              : 'ios'
+          setTheme(resolvedTheme)
+        }
+
+        if (urlFont) {
+          const resolvedFont: FontFace =
+            urlFont === 's' || urlFont === 'sans'
+              ? 'sans'
+              : urlFont === 'r' || urlFont === 'serif'
+              ? 'serif'
+              : urlFont === 'm' || urlFont === 'mono'
+              ? 'mono'
+              : 'theme'
+          setFontFace(resolvedFont)
+        }
+
+        if (urlChunk) {
+          const parsedChunk = parseInt(urlChunk, 10)
+          if ([1, 2, 3].includes(parsedChunk)) {
+            setChunkSize(parsedChunk)
+          }
+        }
+
+        if (urlWpm) {
+          const parsedWpm = parseInt(urlWpm, 10)
+          if (parsedWpm >= MIN_WPM && parsedWpm <= MAX_WPM) {
+            setWpm(parsedWpm)
+          }
+        }
+
+        if (urlIdx) {
+          const parsedIdx = parseInt(urlIdx, 10)
+          if (!isNaN(parsedIdx) && parsedIdx >= 0) {
+            urlTargetIndex = parsedIdx
+          }
+        }
+
+        if (urlPage) {
+          const parsedPage = parseInt(urlPage, 10)
+          if (!isNaN(parsedPage) && parsedPage > 0) {
+            urlTargetPage = parsedPage
+          }
+        }
+
+        if (urlSync || urlIdx || urlPage) {
+          const parts = [
+            urlTargetPage ? `Sayfa ${urlTargetPage}` : null,
+            urlTargetIndex !== null ? `${urlTargetIndex + 1}. Öbek` : null,
+          ].filter(Boolean)
+          urlSyncDetails = parts.length > 0 ? parts.join(' • ') : 'Kaldığınız yer'
+
+          // URL'yi temizle (temiz adres çubuğu için)
+          const cleanPath = window.location.pathname
+          window.history.replaceState({}, '', cleanPath)
+        }
+      }
+    } catch {}
+
     const activeChunkSize = Math.max(1, Math.min(3, settings.chunkSize ?? 1))
     const activeFootnotes = settings.readFootnotes ?? true
     const hasMigratedDefaultBook =
@@ -1230,7 +1316,14 @@ export function ReaderApp() {
       setText(DEFAULT_BOOK_TEXT)
       setDocTitle(DEFAULT_BOOK_TITLE)
       setPageInfo(DEFAULT_BOOK_PAGE_INFO)
-      setIndex(0)
+      if (urlTargetIndex !== null) {
+        setIndex(urlTargetIndex)
+        if (urlSyncDetails) {
+          showAudioToast(`Masaüstü ile eşitlendi (${urlSyncDetails})`)
+        }
+      } else {
+        setIndex(0)
+      }
     } else if (lastDoc && lastDoc.text) {
       const saved = loadReadingProgress(lastDoc.title, lastDoc.text)
       const resolvedPageInfo =
@@ -1240,7 +1333,14 @@ export function ReaderApp() {
       setText(lastDoc.text)
       if (lastDoc.title) setDocTitle(lastDoc.title)
       setPageInfo(resolvedPageInfo)
-      if (saved && (saved.wordIndex > 0 || saved.index > 0)) {
+      
+      if (urlTargetIndex !== null) {
+        setIndex(urlTargetIndex)
+        saveReadingProgress(lastDoc.title || DEFAULT_BOOK_TITLE, lastDoc.text, urlTargetIndex, resolvedPageInfo)
+        if (urlSyncDetails) {
+          showAudioToast(`Masaüstü ile eşitlendi (${urlSyncDetails})`)
+        }
+      } else if (saved && (saved.wordIndex > 0 || saved.index > 0)) {
         const initialChunks = createChunks(lastDoc.text, activeChunkSize, {
           enableFootnotes: activeFootnotes,
           pageInfo: resolvedPageInfo,
@@ -1775,6 +1875,12 @@ export function ReaderApp() {
       <SyncModal
         open={syncModalOpen}
         onClose={() => setSyncModalOpen(false)}
+        index={index}
+        pageNumber={currentChunk?.pageNumber ?? pageInfo?.currentPage}
+        wpm={wpm}
+        chunkSize={chunkSize}
+        theme={theme}
+        fontFace={fontFace}
         onManualSyncCodeApplied={(newCode) => {
           showAudioToast(`Eşleşme Kodu: ${newCode}`)
           broadcastSyncState()

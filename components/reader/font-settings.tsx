@@ -215,11 +215,12 @@ export const FontSettings = memo(function FontSettings({
       >
         {/* Üst Alan: Sol Kolon (Temalar + Yazı Ailesi + Kelime Öbeği) & Sağ Kolon (En Üstten En Alta Uzanan Dikey Kadran) */}
         <div className="grid grid-cols-[1fr_auto] gap-1.5 items-stretch">
-          {/* Sol Kolon: Temalar (Satır 1), Yazı Ailesi (Satır 2), Kelime Öbekleri (Satır 3) */}
-          <div className="flex flex-col gap-1 min-w-0">
+          {/* Sol Kolon: Temalar (Satır 1), Yazı Ailesi (Satır 2), Kelime Öbekleri (Satır 3) - Aralarında İnce Ayırıcı Çizgiler */}
+          <div className="flex flex-col divide-y divide-border/25 min-w-0">
             {/* 1. Tema Seçimi (Sola doğru kompakt haplar - Kadrana yer açar) */}
             {onThemeChange && (
-              <div role="radiogroup" aria-label="Tasarım teması" className="grid grid-cols-3 gap-1">
+              <div className="pb-1">
+                <div role="radiogroup" aria-label="Tasarım teması" className="grid grid-cols-3 gap-1">
                 <button
                   type="button"
                   role="radio"
@@ -298,10 +299,12 @@ export const FontSettings = memo(function FontSettings({
                   </span>
                 </button>
               </div>
+            </div>
             )}
 
             {/* 2. Yazı Tipi Ailesi (Aa Tema, Aa Mono, Aa Sans, Aa Serif) */}
-            <div role="radiogroup" aria-label="Yazı tipi ailesi" className="grid grid-cols-4 gap-1">
+            <div className="py-1">
+              <div role="radiogroup" aria-label="Yazı tipi ailesi" className="grid grid-cols-4 gap-1">
               {FONT_FACES.map((f) => {
                 const active = f.id === face
                 return (
@@ -329,11 +332,13 @@ export const FontSettings = memo(function FontSettings({
                   </button>
                 )
               })}
+              </div>
             </div>
 
             {/* 3. Kelime Öbeği (1 kelime, 2 kelime, 3 kelime) */}
             {onChunkSizeChange && (
-              <div role="radiogroup" aria-label="Kelime öbeği boyutu" className="grid grid-cols-3 gap-1">
+              <div className="pt-1">
+                <div role="radiogroup" aria-label="Kelime öbeği boyutu" className="grid grid-cols-3 gap-1">
                 {[1, 2, 3].map((size) => {
                   const active = chunkSize === size
                   return (
@@ -365,6 +370,7 @@ export const FontSettings = memo(function FontSettings({
                     </button>
                   )
                 })}
+                </div>
               </div>
             )}
           </div>

@@ -580,8 +580,8 @@ export class SyncChannelManager {
         if (!text || this.isDestroyed) continue
         const fileLines = text.trim().split('\n')
 
-        let newestProgress: SyncPayload | null = null
-        let highestTimestamp = 0
+        // Her bir eşleşmiş uzak cihazın en son durumunu topla (Çoklu cihaz senkronizasyonu)
+        const latestPerDevice = new Map<string, SyncPayload>()
 
         for (const line of fileLines) {
           if (!line.trim()) continue
@@ -620,9 +620,10 @@ export class SyncChannelManager {
 
                 if (payload.type === 'progress' || !payload.type) {
                   const ts = payload.timestamp || (raw.time ? raw.time * 1000 : 0)
-                  if (ts >= highestTimestamp) {
-                    highestTimestamp = ts
-                    newestProgress = payload
+                  payload.timestamp = ts
+                  const existing = latestPerDevice.get(payload.senderDeviceId)
+                  if (!existing || ts >= (existing.timestamp || 0)) {
+                    latestPerDevice.set(payload.senderDeviceId, payload)
                   }
                 }
               }
@@ -630,8 +631,11 @@ export class SyncChannelManager {
           } catch {}
         }
 
-        if (newestProgress && !this.isDestroyed) {
-          this.handleIncoming(newestProgress)
+        if (!this.isDestroyed) {
+          // Her bir uzak cihazın en güncel durumunu değerlendirmeye gönder
+          for (const devPayload of latestPerDevice.values()) {
+            this.handleIncoming(devPayload)
+          }
         }
         break
       } catch {}

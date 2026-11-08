@@ -27,6 +27,57 @@ import {
   findChunkIndexForWord,
 } from '@/lib/reading-progress'
 import { DEFAULT_BOOK_PAGE_INFO, DEFAULT_BOOK_TEXT, DEFAULT_BOOK_TITLE } from '@/lib/default-book'
+import { CURATED_LIBRARY } from '@/lib/curated-library'
+
+function isSameDocument(title1?: string, title2?: string): boolean {
+  if (!title1 && !title2) return true
+  if (!title1 || !title2) return false
+  const clean1 = title1.trim().toLowerCase().replace(/[^a-z0-9çğıöşü]/gi, '')
+  const clean2 = title2.trim().toLowerCase().replace(/[^a-z0-9çğıöşü]/gi, '')
+  if (clean1 === clean2) return true
+  if (clean1.length >= 5 && clean2.length >= 5) {
+    if (clean1.includes(clean2) || clean2.includes(clean1)) return true
+  }
+  return false
+}
+
+function findDocumentByTitle(targetTitle?: string): { title: string; text: string; pageInfo?: BookPageInfo | null } | null {
+  if (!targetTitle) return null
+  const cleanTarget = targetTitle.trim().toLowerCase().replace(/[^a-z0-9çğıöşü]/gi, '')
+
+  // 1. Varsayılan Kitap (Yaşamak)
+  const cleanDefault = DEFAULT_BOOK_TITLE.toLowerCase().replace(/[^a-z0-9çğıöşü]/gi, '')
+  if (cleanTarget === cleanDefault || /yashamaq|yaşamak/i.test(targetTitle)) {
+    return {
+      title: DEFAULT_BOOK_TITLE,
+      text: DEFAULT_BOOK_TEXT,
+      pageInfo: DEFAULT_BOOK_PAGE_INFO,
+    }
+  }
+
+  // 2. Seçkiler Kitaplığı (Curated Library)
+  for (const item of CURATED_LIBRARY) {
+    const cleanItem = item.title.toLowerCase().replace(/[^a-z0-9çğıöşü]/gi, '')
+    if (cleanTarget === cleanItem || cleanTarget.includes(cleanItem) || cleanItem.includes(cleanTarget)) {
+      return {
+        title: item.title,
+        text: item.text,
+        pageInfo: null,
+      }
+    }
+  }
+
+  // 3. Son Aktif Doküman (LAST_DOC_KEY)
+  const lastDoc = loadLastActiveDoc()
+  if (lastDoc && lastDoc.title) {
+    const cleanLast = lastDoc.title.toLowerCase().replace(/[^a-z0-9çğıöşü]/gi, '')
+    if (cleanTarget === cleanLast || cleanTarget.includes(cleanLast) || cleanLast.includes(cleanTarget)) {
+      return lastDoc
+    }
+  }
+
+  return null
+}
 import { loadReaderSettings, saveReaderSettings } from '@/lib/reader-settings'
 import { AmbientAura } from './ambient-aura'
 import { TopBar } from './top-bar'
@@ -90,6 +141,8 @@ export function ReaderApp() {
   const [kindleSyncPrompt, setKindleSyncPrompt] = useState<{
     deviceName: string
     deviceType: 'mobile' | 'tablet' | 'desktop'
+    docTitle?: string
+    isDifferentDoc?: boolean
     wordIndex: number
     pageNumber?: number
     wpm?: number
@@ -99,22 +152,67 @@ export function ReaderApp() {
     timestamp: number
   } | null>(null)
   const kindleSyncTimerRef = useRef<NodeJS.Timeout | null>(null)
-  const dismissedIndexRef = useRef<number | null>(null)
+  const kindleSyncPromptRef = useRef(kindleSyncPrompt)
+  useEffect(() => {
+    kindleSyncPromptRef.current = kindleSyncPrompt
+  }, [kindleSyncPrompt])
+
+  const dismissedSyncKeyRef = useRef<string | null>(null)
+  const prevSessionLastActiveRef = useRef<number>(
+    typeof window !== 'undefined'
+      ? parseInt(localStorage.getItem('hizlioku_local_last_active_ts') || '0', 10) || 0
+      : 0
+  )
+  const lastHiddenTimeRef = useRef<number>(0)
   const playingRef = useRef(playing)
   useEffect(() => {
     playingRef.current = playing
   }, [playing])
 
+  const docTitleRef = useRef(docTitle)
+  useEffect(() => {
+    docTitleRef.current = docTitle
+  }, [docTitle])
+
+  const recordLocalActivity = useCallback(() => {
+    const now = Date.now()
+    try {
+      localStorage.setItem('hizlioku_local_last_active_ts', String(now))
+    } catch {}
+  }, [])
+
+  // Kullanıcı bu cihazda okumaya başladığında yerel aktif oturum zamanını güncelle
+  useEffect(() => {
+    if (playing) {
+      recordLocalActivity()
+      prevSessionLastActiveRef.current = Date.now()
+    }
+  }, [playing, recordLocalActivity])
+
+  // Açılıştan 15 saniye sonra yerel oturum zamanını güncelle
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      recordLocalActivity()
+      prevSessionLastActiveRef.current = Date.now()
+    }, 15000)
+    return () => clearTimeout(timer)
+  }, [recordLocalActivity])
+
   const dismissKindleSync = useCallback(() => {
-    if (kindleSyncPrompt) {
-      dismissedIndexRef.current = kindleSyncPrompt.wordIndex
+    if (kindleSyncPromptRef.current) {
+      const p = kindleSyncPromptRef.current
+      const key = p.isDifferentDoc
+        ? `diff_${p.docTitle || ''}_${p.wordIndex}_${p.timestamp}`
+        : `${p.docTitle || ''}_${p.wordIndex}`
+      dismissedSyncKeyRef.current = key
     }
     if (kindleSyncTimerRef.current) {
       clearTimeout(kindleSyncTimerRef.current)
       kindleSyncTimerRef.current = null
     }
     setKindleSyncPrompt(null)
-  }, [kindleSyncPrompt])
+    kindleSyncPromptRef.current = null
+  }, [])
   const [showSpeedTestBanner, setShowSpeedTestBanner] = useState(false)
 
   const anyModalOpen = speedTestOpen || completionOpen || aboutOpen || syncModalOpen
@@ -149,7 +247,7 @@ export function ReaderApp() {
     if (audioToastTimerRef.current) clearTimeout(audioToastTimerRef.current)
     audioToastTimerRef.current = setTimeout(() => {
       setAudioToast(null)
-    }, 2200)
+    }, 4500) // İki katı süre (4.5 sn)
   }, [])
 
   // İlk giriş kontrolü: Daha önce hız testi yapılmamış veya kapatılmamışsa davet butonunu göster
@@ -591,6 +689,9 @@ export function ReaderApp() {
 
     const handleVisibilityChange = () => {
       if (document.hidden || document.visibilityState === 'hidden') {
+        const now = Date.now()
+        lastHiddenTimeRef.current = now
+        recordLocalActivity()
         if (playing) {
           wasPlayingBeforeLockRef.current = true
           lockedIndexRef.current = indexRef.current
@@ -601,12 +702,16 @@ export function ReaderApp() {
       } else if (document.visibilityState === 'visible') {
         if (unlockTimer) clearTimeout(unlockTimer)
         wasPlayingBeforeLockRef.current = false
+        if (lastHiddenTimeRef.current) {
+          prevSessionLastActiveRef.current = lastHiddenTimeRef.current
+        }
         // Ekran açıldığında diğer cihazlardan gelen yeni pozisyon var mı diye hemen kontrol et
         syncManagerRef.current?.fetchLatestCloudState()
       }
     }
 
     const handlePageHide = () => {
+      recordLocalActivity()
       broadcastSyncState()
     }
 
@@ -1605,46 +1710,68 @@ export function ReaderApp() {
     })
   }, [docTitle, pageInfo, chunkSize, wpm, theme, fontFace, fontScale])
 
-  // Kindle Bildirimine tıklandığında yumuşak ve zarif geçişle kalınan yere atla
+  // Kindle Bildirimine tıklandığında yumuşak ve zarif geçişle kalınan yere atla veya metne geç
   const handleApplyKindleSync = useCallback(() => {
     if (!kindleSyncPrompt) return
-    dismissedIndexRef.current = kindleSyncPrompt.wordIndex
+    const targetPrompt = kindleSyncPrompt
+    dismissKindleSync()
     triggerHaptic('jump')
     triggerPulse()
+    recordLocalActivity()
+    prevSessionLastActiveRef.current = Date.now()
 
-    if (typeof kindleSyncPrompt.wpm === 'number') {
-      setWpm(kindleSyncPrompt.wpm)
+    if (typeof targetPrompt.wpm === 'number') {
+      setWpm(targetPrompt.wpm)
     }
-    if (kindleSyncPrompt.theme && ['ios', 'linear', 'kindle'].includes(kindleSyncPrompt.theme)) {
-      handleThemeChange(kindleSyncPrompt.theme as ThemeId)
+    if (targetPrompt.theme && ['ios', 'linear', 'kindle'].includes(targetPrompt.theme)) {
+      handleThemeChange(targetPrompt.theme as ThemeId)
     }
-    if (kindleSyncPrompt.fontFace && ['theme', 'sans', 'serif', 'mono'].includes(kindleSyncPrompt.fontFace)) {
-      setFontFace(kindleSyncPrompt.fontFace as FontFace)
+    if (targetPrompt.fontFace && ['theme', 'sans', 'serif', 'mono'].includes(targetPrompt.fontFace)) {
+      setFontFace(targetPrompt.fontFace as FontFace)
     }
 
     const targetChunkSize =
-      typeof kindleSyncPrompt.chunkSize === 'number' && [1, 2, 3].includes(kindleSyncPrompt.chunkSize)
-        ? kindleSyncPrompt.chunkSize
+      typeof targetPrompt.chunkSize === 'number' && [1, 2, 3].includes(targetPrompt.chunkSize)
+        ? targetPrompt.chunkSize
         : chunkSize
 
     if (targetChunkSize !== chunkSize) {
       setChunkSize(targetChunkSize)
     }
 
-    if (typeof kindleSyncPrompt.wordIndex === 'number') {
-      const nextChunks = createChunks(text, targetChunkSize, { enableFootnotes: readFootnotes, pageInfo })
-      const targetChunkIdx = findChunkIndexForWord(nextChunks, kindleSyncPrompt.wordIndex)
-      seek(targetChunkIdx)
-    }
-
     const details = [
-      kindleSyncPrompt.pageNumber ? `Sayfa ${kindleSyncPrompt.pageNumber}` : null,
-      `${kindleSyncPrompt.wordIndex + 1}. kelime`,
+      targetPrompt.pageNumber ? `Sayfa ${targetPrompt.pageNumber}` : null,
+      typeof targetPrompt.wordIndex === 'number' && targetPrompt.wordIndex >= 0
+        ? `${targetPrompt.wordIndex + 1}. kelime`
+        : null,
     ].filter(Boolean).join(' • ')
 
-    showAudioToast(`Eşitlendi (${details})`)
-    dismissKindleSync()
-  }, [kindleSyncPrompt, triggerPulse, seek, chunkSize, text, readFootnotes, pageInfo, handleThemeChange, showAudioToast, dismissKindleSync])
+    // 1. FARKLI METİN / PDF DURUMUNDA GEÇİŞ:
+    if (targetPrompt.isDifferentDoc && targetPrompt.docTitle) {
+      const foundDoc = findDocumentByTitle(targetPrompt.docTitle)
+      if (foundDoc) {
+        applyText(foundDoc.text, foundDoc.title, foundDoc.pageInfo)
+        const nextChunks = createChunks(foundDoc.text, targetChunkSize, {
+          enableFootnotes: readFootnotes,
+          pageInfo: foundDoc.pageInfo,
+        })
+        const targetChunkIdx = findChunkIndexForWord(nextChunks, targetPrompt.wordIndex)
+        seek(targetChunkIdx)
+        showAudioToast(`"${foundDoc.title}" metnine geçildi (${details || 'Başlangıç'})`)
+      } else {
+        showAudioToast(`"${targetPrompt.docTitle}" dosyasını bu cihazda açtığınızda kaldığınız yerden devam edilecek`)
+      }
+      return
+    }
+
+    // 2. AYNI METİNDE KALINAN YERE ATLA:
+    if (typeof targetPrompt.wordIndex === 'number' && targetPrompt.wordIndex >= 0) {
+      const nextChunks = createChunks(text, targetChunkSize, { enableFootnotes: readFootnotes, pageInfo })
+      const targetChunkIdx = findChunkIndexForWord(nextChunks, targetPrompt.wordIndex)
+      seek(targetChunkIdx)
+      showAudioToast(`Eşitlendi (${details || 'Kalınan yer'})`)
+    }
+  }, [kindleSyncPrompt, triggerPulse, seek, chunkSize, text, readFootnotes, pageInfo, handleThemeChange, showAudioToast, dismissKindleSync, applyText, recordLocalActivity])
 
   // Cihaz Eşleşme ve Ayrılma Canlı Bildirimleri (Zen Modu Hariç)
   useEffect(() => {
@@ -1692,30 +1819,99 @@ export function ReaderApp() {
       if (payload.type === 'progress' || !payload.type) {
         if (playingRef.current) return // Okuma devam ederken dikkat dağıtma
 
+        const curTitle = docTitleRef.current
+        const isSameDoc = isSameDocument(curTitle, payload.docTitle)
         const targetIdx = typeof payload.wordIndex === 'number' ? payload.wordIndex : -1
         const curWordIdx = chunksRef.current[indexRef.current]?.startIndex ?? indexRef.current
+        const remoteTs = payload.timestamp || Date.now()
+        const lastLocalActiveTs = prevSessionLastActiveRef.current || 0
 
-        // KULLANICI MANTIĞI: Yalnızca karşı cihaz mevcut cihazdan DAHA İLERİDEYSE uyar (Kindle Whispersync)
-        if (targetIdx > curWordIdx) {
-          if (dismissedIndexRef.current === targetIdx) return
+        // 1. KURAL: AYNI METİN / AYNI PDF DURUMU
+        // KULLANICI KURALI: Yalnızca karşı cihaz mevcut cihazdan DAHA İLERİDEYSE uyar.
+        // "Çünkü tablette çıkmasına gerek yok, zaten tablette en öndeyim. Kitapta ya da metinde ilerideyim okumuşum bir sunumu. Okuma olarak geride olanlar uyarı alsın."
+        if (isSameDoc) {
+          // Eğer karşı cihaz mevcut cihazdan daha ileride DEĞİLSE, KESİNLİKLE uyarı gösterme!
+          if (targetIdx <= curWordIdx) return
+
+          // Kullanıcı bu konumu daha önce kapattıysa tekrar rahatsız etme
+          const syncKey = `${payload.docTitle || ''}_${targetIdx}`
+          if (dismissedSyncKeyRef.current === syncKey) return
+
+          // Eğer ekranda halihazırda bir uyarı varsa ve o uyarı bu yeni gelen pozisyondan daha ilerideyse değiştirme
+          if (kindleSyncPromptRef.current) {
+            const existing = kindleSyncPromptRef.current
+            if (!existing.isDifferentDoc && existing.wordIndex >= targetIdx) {
+              return
+            }
+          }
 
           triggerHaptic('tap')
-          setKindleSyncPrompt({
+          const promptData = {
             deviceName: payload.senderDeviceName || 'Diğer Cihazınız',
             deviceType: payload.senderDeviceType || 'desktop',
+            docTitle: payload.docTitle || curTitle,
+            isDifferentDoc: false,
             wordIndex: targetIdx,
             pageNumber: payload.pageNumber,
             wpm: payload.wpm,
             chunkSize: payload.chunkSize,
             theme: payload.theme,
             fontFace: payload.fontFace,
-            timestamp: payload.timestamp || Date.now(),
-          })
+            timestamp: remoteTs,
+          }
+          setKindleSyncPrompt(promptData)
+          kindleSyncPromptRef.current = promptData
 
           if (kindleSyncTimerRef.current) clearTimeout(kindleSyncTimerRef.current)
           kindleSyncTimerRef.current = setTimeout(() => {
             setKindleSyncPrompt(null)
-          }, 8000)
+            kindleSyncPromptRef.current = null
+          }, 16000) // İki katı süre (16 sn)
+          return
+        }
+
+        // 2. KURAL: FARKLI METİN / FARKLI PDF DURUMU
+        // KULLANICI KURALI: En son kullanılan cihaz haricindeki diğer yeni açılan cihazda uyarı olsun.
+        // Örneğin masaüstünde açıp 10 dk sonra tekrar açtığımda masaüstünde uyarı görmeyeyim.
+        // Ama arada tabletten açıp başka metinlere gittiysem bunu masaüstünü açtığımda göreyim.
+        if (!isSameDoc) {
+          // Yalnızca karşı cihazdaki etkinlik, bu cihazdaki son aktif oturumdan DAHA YENİYSE uyar!
+          // Eğer bu cihaz kapatıldıktan sonra başka cihazda hiçbir şey açılmadıysa UYARI ÇIKMAZ.
+          if (remoteTs <= lastLocalActiveTs) return
+
+          const syncKey = `diff_${payload.docTitle || ''}_${targetIdx}_${remoteTs}`
+          if (dismissedSyncKeyRef.current === syncKey) return
+
+          // Eğer ekranda zaten bir farklı metin uyarısı varsa ve bu yeni gelenden daha yeniyse değiştirme
+          if (kindleSyncPromptRef.current) {
+            const existing = kindleSyncPromptRef.current
+            if (existing.isDifferentDoc && existing.timestamp >= remoteTs) {
+              return
+            }
+          }
+
+          triggerHaptic('tap')
+          const promptData = {
+            deviceName: payload.senderDeviceName || 'Diğer Cihazınız',
+            deviceType: payload.senderDeviceType || 'desktop',
+            docTitle: payload.docTitle || 'Başka Bir Belge',
+            isDifferentDoc: true,
+            wordIndex: targetIdx,
+            pageNumber: payload.pageNumber,
+            wpm: payload.wpm,
+            chunkSize: payload.chunkSize,
+            theme: payload.theme,
+            fontFace: payload.fontFace,
+            timestamp: remoteTs,
+          }
+          setKindleSyncPrompt(promptData)
+          kindleSyncPromptRef.current = promptData
+
+          if (kindleSyncTimerRef.current) clearTimeout(kindleSyncTimerRef.current)
+          kindleSyncTimerRef.current = setTimeout(() => {
+            setKindleSyncPrompt(null)
+            kindleSyncPromptRef.current = null
+          }, 16000) // İki katı süre (16 sn)
         }
       }
     })
@@ -1861,7 +2057,7 @@ export function ReaderApp() {
         hidden={zen}
       />
 
-      {/* Kindle Tarzı Kesintisiz ve Zarif Cihazlar Arası Eşitleme Bildirimi (8 sn sonra kendiliğinden kaybolur) */}
+      {/* Kindle Tarzı Kesintisiz ve Zarif Cihazlar Arası Eşitleme Bildirimi (16 sn sonra kendiliğinden kaybolur) */}
       {kindleSyncPrompt && !zen && (
         <div className="fixed top-[max(4.25rem,calc(env(safe-area-inset-top,0px)+3.75rem))] sm:top-16 inset-x-0 z-[70] flex justify-center px-3 pointer-events-none animate-in fade-in slide-in-from-top-3 duration-300">
           <div
@@ -1880,12 +2076,28 @@ export function ReaderApp() {
               </div>
               <div className="min-w-0 text-left">
                 <div className="text-xs font-bold truncate flex items-center gap-1.5">
-                  <span>{kindleSyncPrompt.deviceName} cihazında kaldınız</span>
+                  <span>
+                    {kindleSyncPrompt.isDifferentDoc
+                      ? `${kindleSyncPrompt.deviceName} cihazınızda başka bir metindesiniz`
+                      : `${kindleSyncPrompt.deviceName} cihazında kaldınız`}
+                  </span>
                   <span className="size-1.5 rounded-full bg-emerald-500 animate-ping" />
                 </div>
                 <div className="text-[11px] text-muted-foreground font-mono truncate">
-                  {kindleSyncPrompt.pageNumber ? `Sayfa ${kindleSyncPrompt.pageNumber} • ` : ''}
-                  {kindleSyncPrompt.wordIndex + 1}. kelimedesiniz
+                  {kindleSyncPrompt.isDifferentDoc ? (
+                    <span>
+                      {kindleSyncPrompt.docTitle}
+                      {kindleSyncPrompt.pageNumber ? ` • Sayfa ${kindleSyncPrompt.pageNumber}` : ''}
+                      {typeof kindleSyncPrompt.wordIndex === 'number' && kindleSyncPrompt.wordIndex >= 0
+                        ? ` • ${kindleSyncPrompt.wordIndex + 1}. kelime`
+                        : ''}
+                    </span>
+                  ) : (
+                    <span>
+                      {kindleSyncPrompt.pageNumber ? `Sayfa ${kindleSyncPrompt.pageNumber} • ` : ''}
+                      {kindleSyncPrompt.wordIndex + 1}. kelimedesiniz
+                    </span>
+                  )}
                 </div>
               </div>
             </div>
@@ -1895,7 +2107,7 @@ export function ReaderApp() {
                 type="button"
                 className="px-3 py-1.5 rounded-xl bg-primary text-primary-foreground text-xs font-bold shadow-md flex items-center gap-1 hover:bg-primary/90 transition-all cursor-pointer active:scale-95"
               >
-                Oraya Git →
+                {kindleSyncPrompt.isDifferentDoc ? 'Bu Metne Geç →' : 'Oraya Git →'}
               </button>
               <button
                 type="button"

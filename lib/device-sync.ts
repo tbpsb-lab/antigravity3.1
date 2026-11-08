@@ -39,6 +39,11 @@ const DEVICE_ID_KEY = 'hizlioku_device_id'
 const DEVICES_LIST_KEY = 'hizlioku_paired_devices'
 const CHANNEL_NAME = 'hizlioku_realtime_sync'
 
+export const CLOUD_SYNC_SERVERS = [
+  'https://ntfy.envs.net',
+  'https://ntfy.sh',
+]
+
 export function generateNewVaultCode(): string {
   const randomCode = Math.floor(1000 + Math.random() * 9000)
   return `HZL-${randomCode}`
@@ -517,12 +522,16 @@ export class SyncChannelManager {
       }
 
       es.onerror = () => {
-        // İlk sunucu bağlantısı hata verirse yedek sunucuya otomatik geçiş yap
-        if (serverIdx === 0 && !this.isDestroyed) {
+        // Tarayıcı EventSource varsayılan olarak yeniden bağlanmayı dener.
+        // Yalnızca bağlantı tamamen kapandıysa (CLOSED) yedek sunucuya geç.
+        if (es.readyState === EventSource.CLOSED && !this.isDestroyed) {
           try {
             es.close()
           } catch {}
-          this.connectCloudStream(1)
+          const nextIdx = (serverIdx + 1) % CLOUD_SYNC_SERVERS.length
+          setTimeout(() => {
+            if (!this.isDestroyed) this.connectCloudStream(nextIdx)
+          }, 2000)
         }
       }
 
@@ -560,7 +569,7 @@ export class SyncChannelManager {
                   continue
                 }
 
-                // Kar???? cihaz varl??????n?? listeye ekle
+                // Karşı cihaz varlığını listeye ekle
                 if (payload.senderDeviceId && payload.senderDeviceName) {
                   upsertPairedDevice({
                     id: payload.senderDeviceId,
@@ -591,10 +600,10 @@ export class SyncChannelManager {
 
   private handleIncoming(payload: SyncPayload) {
     if (!payload || typeof payload !== 'object') return
-    // Kendi cihaz??m??z??n g??nderdi??i paketleri atla
+    // Kendi cihazımızın gönderdiği paketleri atla
     if (payload.senderDeviceId === getDeviceId()) return
 
-    // Unpair (E??le??meyi Sonland??rma) paketi geldiyse:
+    // Unpair (Eşleşmeyi Sonlandırma) paketi geldiyse:
     if (payload.type === 'unpair') {
       const myId = getDeviceId()
       const targetId = payload.targetDeviceId
@@ -609,7 +618,7 @@ export class SyncChannelManager {
         this.updateVaultId(newVaultId)
 
         // Bildirimi ilet
-        const senderName = payload.senderDeviceName || 'Di??er cihaz'
+        const senderName = payload.senderDeviceName || 'Diğer cihaz'
         if (typeof window !== 'undefined') {
           window.dispatchEvent(
             new CustomEvent('device-unpaired-notify', {

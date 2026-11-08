@@ -575,7 +575,12 @@ export function ReaderApp() {
           lockedIndexRef.current = indexRef.current
           setPlaying(false)
         }
+        // Telefon ekranı kilitlendiği veya sekme gizlendiği an son pozisyonu buluta anında ilet
+        broadcastSyncState()
       } else if (document.visibilityState === 'visible') {
+        // Ekran açıldığında diğer cihazlardan gelen yeni pozisyon var mı diye hemen kontrol et
+        syncManagerRef.current?.fetchLatestCloudState()
+
         if (wasPlayingBeforeLockRef.current) {
           wasPlayingBeforeLockRef.current = false
           const startIdx = findCurrentSentenceStartIndex(chunksRef.current, lockedIndexRef.current)
@@ -592,12 +597,21 @@ export function ReaderApp() {
       }
     }
 
+    const handlePageHide = () => {
+      broadcastSyncState()
+    }
+
     document.addEventListener('visibilitychange', handleVisibilityChange)
+    window.addEventListener('pagehide', handlePageHide)
+    window.addEventListener('beforeunload', handlePageHide)
+
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange)
+      window.removeEventListener('pagehide', handlePageHide)
+      window.removeEventListener('beforeunload', handlePageHide)
       if (unlockTimer) clearTimeout(unlockTimer)
     }
-  }, [playing, triggerPulse])
+  }, [playing, triggerPulse, broadcastSyncState])
 
   // 1, 2 & 3. KURAL: Akıllı Cümle Başı Geri Sarma (Sentence-Boundary Rewind)
   const handleSmartRewind = useCallback(() => {
@@ -1542,18 +1556,20 @@ export function ReaderApp() {
 
   const broadcastSyncState = useCallback(() => {
     if (!syncManagerRef.current) return
+    const curIdx = indexRef.current
+    const curChunk = chunksRef.current[curIdx]
     syncManagerRef.current.broadcast({
       type: 'progress',
       docTitle,
-      wordIndex: index,
-      pageNumber: currentChunk?.pageNumber ?? pageInfo?.currentPage,
+      wordIndex: curIdx,
+      pageNumber: curChunk?.pageNumber ?? pageInfo?.currentPage,
       chunkSize,
       wpm,
       theme,
       fontFace,
       fontScale,
     })
-  }, [docTitle, index, currentChunk, pageInfo, chunkSize, wpm, theme, fontFace, fontScale])
+  }, [docTitle, pageInfo, chunkSize, wpm, theme, fontFace, fontScale])
 
   // Kindle Bildirimine tıklandığında yumuşak ve zarif geçişle kalınan yere atla
   const handleApplyKindleSync = useCallback(() => {
@@ -1594,7 +1610,8 @@ export function ReaderApp() {
       // İlerleme paketi geldiyse: Ekranı aniden zıplatmak yerine Kindle tarzı zarif bildirim göster
       if (payload.type === 'progress' || !payload.type) {
         const targetIdx = typeof payload.wordIndex === 'number' ? payload.wordIndex : -1
-        if (targetIdx >= 0 && Math.abs(targetIdx - indexRef.current) > 2) {
+        const curIdx = indexRef.current
+        if (targetIdx >= 0 && targetIdx !== curIdx) {
           setKindleSyncPrompt({
             deviceName: payload.senderDeviceName || 'Diğer Cihazınız',
             deviceType: payload.senderDeviceType || 'desktop',
@@ -1610,7 +1627,7 @@ export function ReaderApp() {
           if (kindleSyncTimerRef.current) clearTimeout(kindleSyncTimerRef.current)
           kindleSyncTimerRef.current = setTimeout(() => {
             setKindleSyncPrompt(null)
-          }, 5000)
+          }, 8000)
         }
       }
     })
@@ -1630,6 +1647,15 @@ export function ReaderApp() {
     if (!playing) {
       broadcastSyncState()
     }
+  }, [playing, broadcastSyncState])
+
+  // Okuma esnasında düzenli periyotla (3 saniyede bir) buluta pozisyon yedekle (Telefon kapanırsa bile son 2-3 saniye korunur)
+  useEffect(() => {
+    if (!playing) return
+    const interval = setInterval(() => {
+      broadcastSyncState()
+    }, 3000)
+    return () => clearInterval(interval)
   }, [playing, broadcastSyncState])
 
   const textControlElement = useMemo(
@@ -1740,49 +1766,53 @@ export function ReaderApp() {
         hidden={zen}
       />
 
-      {/* Kindle Tarzı Kesintisiz ve Zarif Cihazlar Arası Eşitleme Bildirimi (5 sn sonra kendiliğinden kaybolur) */}
+      {/* Kindle Tarzı Kesintisiz ve Zarif Cihazlar Arası Eşitleme Bildirimi (8 sn sonra kendiliğinden kaybolur) */}
       {kindleSyncPrompt && !zen && (
         <div className="fixed top-12 sm:top-14 inset-x-0 z-40 flex justify-center px-3 pointer-events-none animate-in fade-in slide-in-from-top-2 duration-300">
           <div
             onClick={handleApplyKindleSync}
-            className="pointer-events-auto flex items-center justify-between gap-2.5 px-3.5 py-2 rounded-2xl border border-primary/30 bg-background/95 shadow-xl backdrop-blur-md cursor-pointer hover:border-primary/60 hover:scale-[1.01] active:scale-[0.99] transition-all max-w-sm sm:max-w-md w-full text-foreground"
+            className="pointer-events-auto flex items-center justify-between gap-2.5 px-3.5 py-2.5 rounded-2xl border border-primary/40 bg-background/95 shadow-2xl backdrop-blur-md cursor-pointer hover:border-primary/80 hover:scale-[1.01] active:scale-[0.99] transition-all max-w-sm sm:max-w-md w-full text-foreground ring-1 ring-primary/20"
           >
             <div className="flex items-center gap-2.5 min-w-0">
-              <div className="size-7 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+              <div className="size-8 rounded-xl bg-primary/15 text-primary flex items-center justify-center shrink-0">
                 {kindleSyncPrompt.deviceType === 'mobile' ? (
-                  <Smartphone className="size-4 text-sky-500" />
+                  <Smartphone className="size-4.5 text-sky-500" />
                 ) : kindleSyncPrompt.deviceType === 'tablet' ? (
-                  <Tablet className="size-4 text-purple-500" />
+                  <Tablet className="size-4.5 text-purple-500" />
                 ) : (
-                  <Laptop className="size-4 text-emerald-500" />
+                  <Laptop className="size-4.5 text-emerald-500" />
                 )}
               </div>
               <div className="min-w-0 text-left">
-                <div className="text-xs font-bold truncate">
-                  {kindleSyncPrompt.deviceName} cihazında kaldınız
+                <div className="text-xs font-bold truncate flex items-center gap-1.5">
+                  <span>{kindleSyncPrompt.deviceName} cihazında kaldınız</span>
+                  <span className="size-1.5 rounded-full bg-emerald-500 animate-ping" />
                 </div>
-                <div className="text-[10.5px] text-muted-foreground font-mono truncate">
+                <div className="text-[11px] text-muted-foreground font-mono truncate">
                   {kindleSyncPrompt.pageNumber ? `Sayfa ${kindleSyncPrompt.pageNumber} • ` : ''}
-                  {kindleSyncPrompt.wordIndex + 1}. kelime
+                  {kindleSyncPrompt.wordIndex + 1}. kelimedesiniz
                 </div>
               </div>
             </div>
 
-            <div className="flex items-center gap-1.5 shrink-0">
-              <span className="text-[11px] font-bold text-primary flex items-center gap-0.5 underline underline-offset-2">
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                className="px-2.5 py-1 rounded-xl bg-primary text-primary-foreground text-xs font-bold shadow-xs flex items-center gap-1 hover:bg-primary/90 transition-colors cursor-pointer"
+              >
                 Oraya Git →
-              </span>
+              </button>
               <button
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation()
                   dismissKindleSync()
                 }}
-                className="ctl size-5 rounded-full hover:bg-muted text-muted-foreground hover:text-foreground flex items-center justify-center cursor-pointer"
+                className="ctl size-6 rounded-full hover:bg-muted text-muted-foreground hover:text-foreground flex items-center justify-center cursor-pointer"
                 title="Kapat"
                 aria-label="Kapat"
               >
-                <X className="size-3" />
+                <X className="size-3.5" />
               </button>
             </div>
           </div>

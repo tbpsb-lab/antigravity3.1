@@ -396,6 +396,9 @@ export class SyncChannelManager {
   private onMessageCallback: ((payload: SyncPayload) => void) | null = null
   private vaultId: string
   private isDestroyed = false
+  private visibilityHandler: (() => void) | null = null
+  private focusHandler: (() => void) | null = null
+  private lastIncomingProgressTimestamp = 0
 
   constructor(onMessage: (payload: SyncPayload) => void, initialVaultId?: string) {
     this.onMessageCallback = onMessage
@@ -417,8 +420,25 @@ export class SyncChannelManager {
     // 2. Cihazlar Arası Canlı Bulut Senkronizasyonu (ntfy.sh SSE)
     this.connectCloudStream()
 
-    // 3. Başlangıçta diğer cihazlara "Ben buradayım" bildir ve diğer cihazları sorgula
+    // 3. Buluttan geçmiş ve en son durumu ANINDA çek (Hızlı HTTP Poll)
+    this.fetchLatestCloudState()
+
+    // 4. Başlangıçta diğer cihazlara "Ben buradayım" bildir ve diğer cihazları sorgula
     this.broadcastPresence()
+
+    // 5. Sekme yeniden öne geldiğinde veya ekran açıldığında anında son durumu kontrol et
+    if (typeof window !== 'undefined') {
+      this.visibilityHandler = () => {
+        if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+          this.fetchLatestCloudState()
+        }
+      }
+      this.focusHandler = () => {
+        this.fetchLatestCloudState()
+      }
+      window.addEventListener('visibilitychange', this.visibilityHandler)
+      window.addEventListener('focus', this.focusHandler)
+    }
   }
 
   private connectCloudStream() {
@@ -427,7 +447,8 @@ export class SyncChannelManager {
 
     try {
       const topic = `hizlioku_sync_${this.vaultId.toLowerCase().replace(/[^a-z0-9_-]/g, '_')}`
-      const sseUrl = `https://ntfy.sh/${topic}/sse`
+      // ?since=24h geçmiş paketlerin de bağlantı kurulur kurulmaz akmasını sağlar
+      const sseUrl = `https://ntfy.sh/${topic}/sse?since=24h`
       const es = new EventSource(sseUrl)
 
       es.onmessage = (e) => {
@@ -447,6 +468,56 @@ export class SyncChannelManager {
       }
 
       this.eventSource = es
+    } catch {}
+  }
+
+  public async fetchLatestCloudState(): Promise<void> {
+    if (!this.vaultId || typeof window === 'undefined' || this.isDestroyed) return
+    try {
+      const topic = `hizlioku_sync_${this.vaultId.toLowerCase().replace(/[^a-z0-9_-]/g, '_')}`
+      // poll=1: ntfy sunucusundaki mevcut birikmiş mesajları bekletmeden anında tek HTTP yanıtı olarak döndürür
+      const res = await fetch(`https://ntfy.sh/${topic}/json?poll=1`, {
+        cache: 'no-store',
+      })
+      if (!res.ok) return
+      const text = await res.text()
+      if (!text || this.isDestroyed) return
+      const lines = text.trim().split('\n')
+
+      let newestProgress: SyncPayload | null = null
+      let newestTimestamp = this.lastIncomingProgressTimestamp
+
+      for (const line of lines) {
+        if (!line.trim()) continue
+        try {
+          const raw = JSON.parse(line)
+          if (raw && (raw.event === 'message' || !raw.event) && raw.message) {
+            const payload = typeof raw.message === 'string' ? JSON.parse(raw.message) : raw.message
+            if (payload && typeof payload === 'object' && payload.senderDeviceId !== getDeviceId()) {
+              if (payload.senderDeviceId && payload.senderDeviceName) {
+                upsertPairedDevice({
+                  id: payload.senderDeviceId,
+                  name: payload.senderDeviceName,
+                  type: payload.senderDeviceType || 'desktop',
+                })
+              }
+
+              if (payload.type === 'progress' || !payload.type) {
+                const ts = payload.timestamp || (raw.time ? raw.time * 1000 : 0)
+                if (ts >= newestTimestamp) {
+                  newestTimestamp = ts
+                  newestProgress = payload
+                }
+              }
+            }
+          }
+        } catch {}
+      }
+
+      if (newestProgress && !this.isDestroyed) {
+        this.lastIncomingProgressTimestamp = newestTimestamp
+        this.handleIncoming(newestProgress)
+      }
     } catch {}
   }
 
@@ -532,6 +603,7 @@ export class SyncChannelManager {
           'Title': 'HizliOku Sync',
         },
         body: JSON.stringify(payload),
+        keepalive: true,
       }).catch(() => {})
     } catch {}
   }
@@ -562,11 +634,18 @@ export class SyncChannelManager {
     }
 
     this.connectCloudStream()
+    this.fetchLatestCloudState()
     this.broadcastPresence()
   }
 
   public destroy(): void {
     this.isDestroyed = true
+    if (typeof window !== 'undefined') {
+      if (this.visibilityHandler) window.removeEventListener('visibilitychange', this.visibilityHandler)
+      if (this.focusHandler) window.removeEventListener('focus', this.focusHandler)
+      this.visibilityHandler = null
+      this.focusHandler = null
+    }
     if (this.channel) {
       this.channel.close()
       this.channel = null

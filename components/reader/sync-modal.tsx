@@ -1,6 +1,7 @@
 'use client'
 
 import { memo, useMemo, useState, useEffect, useRef, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import {
   QrCode,
   X,
@@ -76,40 +77,58 @@ export const SyncModal = memo(function SyncModal({
   const streamRef = useRef<MediaStream | null>(null)
   const scanTimerRef = useRef<number | null>(null)
   const wakeLockRef = useRef<any>(null)
+  const zoomMountedAtRef = useRef<number>(0)
 
   // Ekranı tam parlaklıkta ve açık tutma kontrolleri
-  const requestBrightnessAndFullscreen = useCallback(async () => {
+  const requestBrightnessAndFullscreen = useCallback(() => {
     // 1. Ekran kararmasını önle (Screen Wake Lock)
     try {
       if (typeof navigator !== 'undefined' && 'wakeLock' in navigator && (navigator as any).wakeLock) {
-        wakeLockRef.current = await (navigator as any).wakeLock.request('screen')
+        (navigator as any).wakeLock.request('screen').then((lock: any) => {
+          wakeLockRef.current = lock
+        }).catch(() => {})
       }
     } catch {}
 
-    // 2. Tam Ekran modu ile tüm ekranı parlak beyaz ışığa dönüştür (Fullscreen API)
+    // 2. Tam Ekran modu ile tüm ekranı parlak beyaz ışığa dönüştür (Fullscreen API - Çapraz Tarayıcı & Webkit)
     try {
-      if (typeof document !== 'undefined' && !document.fullscreenElement && document.documentElement.requestFullscreen) {
-        await document.documentElement.requestFullscreen()
+      const doc = typeof document !== 'undefined' ? (document as any) : null
+      if (doc && !doc.fullscreenElement && !doc.webkitFullscreenElement) {
+        const el = document.documentElement as any
+        const req = el.requestFullscreen || el.webkitRequestFullscreen || el.mozRequestFullScreen || el.msRequestFullscreen
+        if (req) {
+          req.call(el).catch(() => {})
+        }
       }
     } catch {}
   }, [])
 
-  const releaseBrightnessAndFullscreen = useCallback(async () => {
+  const releaseBrightnessAndFullscreen = useCallback(() => {
     // 1. Wake lock serbest bırak
     if (wakeLockRef.current) {
       try {
-        await wakeLockRef.current.release()
+        wakeLockRef.current.release()
       } catch {}
       wakeLockRef.current = null
     }
 
     // 2. Tam ekrandan çık
     try {
-      if (typeof document !== 'undefined' && document.fullscreenElement && document.exitFullscreen) {
-        await document.exitFullscreen()
+      const doc = typeof document !== 'undefined' ? (document as any) : null
+      if (doc && (doc.fullscreenElement || doc.webkitFullscreenElement)) {
+        const exit = doc.exitFullscreen || doc.webkitExitFullscreen || doc.mozCancelFullScreen || doc.msExitFullscreen
+        if (exit) {
+          exit.call(doc).catch(() => {})
+        }
       }
     } catch {}
   }, [])
+
+  const handleCloseZoom = useCallback(() => {
+    setIsQrZoomed(false)
+    releaseBrightnessAndFullscreen()
+    triggerHaptic('tap')
+  }, [releaseBrightnessAndFullscreen])
 
   const stopCamera = useCallback(() => {
     if (streamRef.current) {
@@ -550,41 +569,52 @@ export const SyncModal = memo(function SyncModal({
                 )}
               </div>
             ) : (
-              <button
-                type="button"
-                onClick={() => {
-                  if (qrPath) {
-                    setIsQrZoomed(true)
-                    requestBrightnessAndFullscreen()
-                    triggerHaptic('tap')
-                  }
-                }}
-                className="ctl relative p-1.5 bg-white rounded-xl shadow-xs border border-neutral-200 flex items-center justify-center cursor-zoom-in group/qr hover:border-primary/60 hover:shadow-md transition-all active:scale-95 focus:outline-none focus:ring-2 focus:ring-primary/40"
-                title="Karekodu Büyüt (Tıklayın)"
-                aria-label="Karekodu Büyüt"
-              >
-                {qrPath ? (
-                  <>
-                    <svg
-                      viewBox={`-4 -4 ${qrSize + 8} ${qrSize + 8}`}
-                      className="size-24 shape-rendering-crispEdges text-neutral-900 fill-current transition-transform group-hover/qr:scale-102"
-                      aria-label="Senkronizasyon Karekodu"
-                    >
-                      <path d={qrPath} />
-                    </svg>
-                    {/* Büyütme İpucu Rozeti */}
-                    <div className="absolute inset-0 rounded-xl bg-black/10 opacity-0 group-hover/qr:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
-                      <span className="p-1 rounded-full bg-black/75 text-white shadow-xs">
-                        <ZoomIn className="size-3.5" />
-                      </span>
+              <div className="flex flex-col items-center gap-1">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    e.preventDefault()
+                    if (qrPath) {
+                      zoomMountedAtRef.current = Date.now()
+                      setIsQrZoomed(true)
+                      requestBrightnessAndFullscreen()
+                      triggerHaptic('tap')
+                    }
+                  }}
+                  onTouchEnd={(e) => {
+                    e.stopPropagation()
+                  }}
+                  className="relative p-1.5 bg-white rounded-xl shadow-xs border-2 border-neutral-200 hover:border-primary flex items-center justify-center cursor-pointer group/qr transition-all active:scale-95 focus:outline-none focus:ring-2 focus:ring-primary/40 select-none touch-manipulation pointer-events-auto"
+                  title="Karekodu Büyüt & Parlaklığı Fulle (Dokunun)"
+                  aria-label="Karekodu Büyüt ve Parlaklığı Fulle"
+                >
+                  {qrPath ? (
+                    <>
+                      <svg
+                        viewBox={`-4 -4 ${qrSize + 8} ${qrSize + 8}`}
+                        className="size-24 shape-rendering-crispEdges text-neutral-900 fill-current transition-transform group-hover/qr:scale-102 pointer-events-none"
+                        aria-label="Senkronizasyon Karekodu"
+                      >
+                        <path d={qrPath} />
+                      </svg>
+                      {/* Büyütme İpucu Rozeti */}
+                      <div className="absolute inset-0 rounded-xl bg-black/10 opacity-0 group-hover/qr:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
+                        <span className="p-1 rounded-full bg-black/75 text-white shadow-xs pointer-events-none">
+                          <ZoomIn className="size-3.5" />
+                        </span>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="size-24 flex items-center justify-center text-muted-foreground text-[10px]">
+                      Hazırlanıyor...
                     </div>
-                  </>
-                ) : (
-                  <div className="size-24 flex items-center justify-center text-muted-foreground text-[10px]">
-                    Hazırlanıyor...
-                  </div>
-                )}
-              </button>
+                  )}
+                </button>
+                <span className="text-[9px] font-medium text-muted-foreground flex items-center gap-1 select-none pointer-events-none">
+                  <ZoomIn className="size-2.5 text-primary" /> Dokun & Parlat
+                </span>
+              </div>
             )}
           </div>
 
@@ -648,7 +678,7 @@ export const SyncModal = memo(function SyncModal({
             <p className="text-[9.5px] text-muted-foreground leading-tight">
               {isScanning
                 ? 'Kamerayı diğer ekrandaki karekoda tutun.'
-                : 'Diğer cihazdan okutun ya da kamerayla siz tarayın.'}
+                : 'Diğer cihazdan okutun ya da karekoda dokunup ekranı parlatın.'}
             </p>
           </div>
         </div>
@@ -779,21 +809,26 @@ export const SyncModal = memo(function SyncModal({
         )}
       </div>
 
-      {/* Kocaman ve Maksimum Parlak Ekran Karekod Görünümü (Ekran Feneri & Tam Parlaklık Modu) */}
-      {isQrZoomed && (
+      {/* Kocaman ve Maksimum Parlak Ekran Karekod Görünümü (createPortal ile gövdeye bağlanır - Stacking Context & Ghost Click korumalı) */}
+      {isQrZoomed && typeof document !== 'undefined' && createPortal(
         <div
           role="dialog"
           aria-modal="true"
           aria-label="Tam Ekran Parlak Karekod"
-          className="fixed inset-0 z-[100] flex flex-col items-center justify-between p-4 sm:p-6 bg-white text-neutral-950 animate-in fade-in duration-150 select-none cursor-pointer"
-          onClick={() => {
-            setIsQrZoomed(false)
-            releaseBrightnessAndFullscreen()
-            triggerHaptic('tap')
+          className="fixed inset-0 z-[99999] flex flex-col items-center justify-between p-4 sm:p-6 select-none cursor-pointer animate-in fade-in zoom-in-95 duration-150"
+          style={{
+            backgroundColor: '#ffffff',
+            color: '#000000',
+          }}
+          onClick={(e) => {
+            // Dokunma sonrasındaki 400ms içinde gelen sentetik tıklamaları yut (Ghost-click engeli)
+            if (Date.now() - zoomMountedAtRef.current < 400) return
+            e.stopPropagation()
+            handleCloseZoom()
           }}
         >
           {/* Üst Bar: Parlaklık Rozeti, Bilgi ve Kapat Butonu */}
-          <div className="w-full flex items-center justify-between pt-2 px-1 max-w-lg">
+          <div className="w-full flex items-center justify-between pt-2 px-1 max-w-lg" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center gap-2">
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-900 text-xs font-bold shadow-xs">
                 <Sun className="size-4 text-amber-600 animate-spin-slow" />
@@ -805,11 +840,9 @@ export const SyncModal = memo(function SyncModal({
               type="button"
               onClick={(e) => {
                 e.stopPropagation()
-                setIsQrZoomed(false)
-                releaseBrightnessAndFullscreen()
-                triggerHaptic('tap')
+                handleCloseZoom()
               }}
-              className="ctl size-10 sm:size-11 rounded-full bg-neutral-100 hover:bg-neutral-200 text-neutral-800 hover:text-black flex items-center justify-center cursor-pointer transition-all active:scale-90 shadow-sm border border-neutral-300"
+              className="size-10 sm:size-11 rounded-full bg-neutral-100 hover:bg-neutral-200 text-neutral-800 hover:text-black flex items-center justify-center cursor-pointer transition-all active:scale-90 shadow-sm border border-neutral-300"
               aria-label="Kapat"
             >
               <X className="size-6" />
@@ -817,7 +850,7 @@ export const SyncModal = memo(function SyncModal({
           </div>
 
           {/* Orta Alan: Kocaman ve Kristal Netliğinde Karekod */}
-          <div className="flex-1 flex flex-col items-center justify-center gap-3 my-auto w-full">
+          <div className="flex-1 flex flex-col items-center justify-center gap-3 my-auto w-full" onClick={(e) => e.stopPropagation()}>
             {/* Eşleme Kodu */}
             <div className="text-center">
               <span className="text-[11px] font-bold tracking-widest uppercase text-neutral-500 block mb-0.5">
@@ -829,7 +862,11 @@ export const SyncModal = memo(function SyncModal({
             </div>
 
             {/* Kocaman Karekod (Maksimum Kontrast & Keskinlik) */}
-            <div className="p-4 sm:p-6 bg-white rounded-3xl flex items-center justify-center shadow-lg border-2 border-neutral-200">
+            <div
+              className="p-4 sm:p-6 bg-white rounded-3xl flex items-center justify-center shadow-xl border-2 border-neutral-200 cursor-pointer transition-transform hover:scale-[1.01] active:scale-98"
+              onClick={handleCloseZoom}
+              title="Kapatmak için dokunun"
+            >
               {qrPath && (
                 <svg
                   viewBox={`-4 -4 ${qrSize + 8} ${qrSize + 8}`}
@@ -862,12 +899,13 @@ export const SyncModal = memo(function SyncModal({
           </div>
 
           {/* Alt Bilgi: Kapatma İpucu */}
-          <div className="pb-3 text-center">
+          <div className="pb-3 text-center" onClick={(e) => e.stopPropagation()}>
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-neutral-100 text-neutral-600 text-xs font-medium border border-neutral-200">
-              Kapatmak için ekrana herhangi bir yere dokunun
+              Kapatmak için ekrana dokunun
             </span>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )

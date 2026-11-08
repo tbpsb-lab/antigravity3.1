@@ -357,7 +357,7 @@ export const TextSheet = memo(function TextSheet({
         aria-label="Okuma ve İçerik Merkezi"
         inert={!open}
         className={cn(
-          'panel panel-solid z-50 p-3 sm:p-3.5 transition-all duration-200 ease-out shadow-2xl flex flex-col gap-2 rounded-2xl sm:rounded-3xl',
+          'panel panel-solid z-50 p-3 sm:p-3.5 transition-[transform,opacity] duration-200 ease-out shadow-2xl flex flex-col gap-2 rounded-2xl sm:rounded-3xl',
           'max-h-[calc(100dvh-4rem)] overflow-y-auto overscroll-contain touch-pan-y landscape-short:max-h-[calc(100dvh-2.75rem)] landscape-short:p-2 landscape-short:gap-1.5',
           // Mobil: Top-bar'ın hemen altında, ekran kenarlarından taşmayan sabit ve kompakt yerleşim
           'fixed inset-x-3 top-[calc(max(0.75rem,env(safe-area-inset-top))+3.25rem)] landscape-short:top-[calc(max(0.25rem,env(safe-area-inset-top))+2.5rem)] max-w-md mx-auto origin-top',

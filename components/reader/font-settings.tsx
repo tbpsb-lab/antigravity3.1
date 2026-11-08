@@ -98,7 +98,7 @@ function BrainIcon({ className }: { className?: string }) {
 // Temaların Özel Malzeme ve Şekil İkonları
 function CamShape() {
   return (
-    <span className="relative block size-4.5 sm:size-5 rounded-full backdrop-blur-md border border-white/80 dark:border-white/40 bg-gradient-to-br from-white/70 via-white/20 to-white/5 dark:from-white/25 dark:via-white/10 dark:to-transparent shadow-[inset_0_1px_1.5px_rgba(255,255,255,0.9),0_2px_6px_rgba(0,0,0,0.08)] shrink-0">
+    <span className="relative block size-4.5 sm:size-5 rounded-full border border-white/80 dark:border-white/40 bg-gradient-to-br from-white/70 via-white/20 to-white/5 dark:from-white/25 dark:via-white/10 dark:to-transparent shadow-[inset_0_1px_1.5px_rgba(255,255,255,0.9),0_2px_6px_rgba(0,0,0,0.08)] shrink-0">
       <span className="absolute top-0.5 left-1/2 -translate-x-1/2 w-2 h-[1.5px] rounded-full bg-white/95 dark:bg-white/70 pointer-events-none" />
     </span>
   )
@@ -208,7 +208,7 @@ export const FontSettings = memo(function FontSettings({
         aria-label="Görünüm ve okuma ayarları"
         inert={!open}
         className={cn(
-          'panel panel-solid absolute -right-12 top-full z-50 mt-2 w-[min(17.5rem,calc(100vw-1.5rem))] origin-top-right p-2 sm:right-0 transition-all duration-200 ease-out shadow-2xl flex flex-col gap-1',
+          'panel panel-solid absolute -right-12 top-full z-50 mt-2 w-[min(17.5rem,calc(100vw-1.5rem))] origin-top-right p-2 sm:right-0 transition-[transform,opacity] duration-200 ease-out shadow-2xl flex flex-col gap-1',
           'max-h-[calc(100dvh-5.5rem)] overflow-y-auto overscroll-contain touch-pan-y landscape-short:max-h-[calc(100dvh-3.75rem)] landscape-short:w-[min(19rem,calc(100vw-1.5rem))] landscape-short:p-2',
           open ? 'scale-100 opacity-100' : 'pointer-events-none scale-95 opacity-0',
         )}

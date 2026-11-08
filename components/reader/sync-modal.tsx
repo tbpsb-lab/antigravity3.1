@@ -483,11 +483,11 @@ export const SyncModal = memo(function SyncModal({
       role="dialog"
       aria-modal="true"
       aria-label="Cihaz Eşleştirme ve Senkronizasyon"
-      className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-3 bg-background/80 backdrop-blur-md animate-in fade-in duration-150"
+      className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-3 bg-background/80 backdrop-blur-sm animate-in fade-in duration-150"
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-[340px] sm:max-w-[360px] rounded-2xl border border-border/80 bg-background/95 p-3 sm:p-3.5 shadow-2xl backdrop-blur-xl animate-in zoom-in-95 duration-150 overflow-hidden flex flex-col gap-2 text-foreground"
+        className="relative w-full max-w-[340px] sm:max-w-[360px] rounded-2xl border border-border/80 bg-background/95 p-3 sm:p-3.5 shadow-2xl animate-in zoom-in-95 duration-150 overflow-hidden flex flex-col gap-2 text-foreground"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Üst Başlık (Kompakt Tek Satır) */}

@@ -212,7 +212,7 @@ export function AboutModal({ open, onClose, theme, onThemeChange }: AboutModalPr
       role="dialog"
       aria-modal="true"
       aria-labelledby="about-modal-title"
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/75 backdrop-blur-md animate-in fade-in duration-300"
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/75 backdrop-blur-sm animate-in fade-in duration-200"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose()
       }}
@@ -226,7 +226,7 @@ export function AboutModal({ open, onClose, theme, onThemeChange }: AboutModalPr
           theme === 'kindle' &&
             'border-[#cfbe96] shadow-[0_8px_30px_rgba(0,0,0,0.15)] bg-[#fcf8ee] text-[#22180e]',
           theme === 'ios' &&
-            'border-white/90 dark:border-white/25 shadow-[0_16px_50px_rgba(56,189,248,0.25)] bg-white/85 dark:bg-slate-900/85 backdrop-blur-3xl text-slate-900 dark:text-slate-100',
+            'border-white/90 dark:border-white/25 shadow-[0_16px_50px_rgba(56,189,248,0.25)] bg-white/95 dark:bg-slate-900/95 text-slate-900 dark:text-slate-100',
         )}
       >
         {/* Kapat Butonu */}

@@ -141,7 +141,7 @@ function SpeedTestBody({ onClose, onApplySpeed }: Omit<SpeedTestModalProps, 'ope
         tabIndex={-1}
         aria-label="Kapat"
         onClick={onClose}
-        className="absolute inset-0 bg-black/60 backdrop-blur-md animate-in fade-in duration-300"
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200"
       />
 
       <div
@@ -149,7 +149,7 @@ function SpeedTestBody({ onClose, onApplySpeed }: Omit<SpeedTestModalProps, 'ope
         role="dialog"
         aria-modal="true"
         aria-labelledby="speed-test-title"
-        className="panel relative z-10 flex max-h-[92dvh] w-full max-w-xl flex-col gap-4 overflow-y-auto p-5 sm:p-7 shadow-2xl animate-in fade-in zoom-in-95 duration-200 rounded-t-3xl sm:rounded-3xl border border-border/80"
+        className="panel panel-solid relative z-10 flex max-h-[92dvh] w-full max-w-xl flex-col gap-4 overflow-y-auto p-5 sm:p-7 shadow-2xl animate-in fade-in zoom-in-95 duration-200 rounded-t-3xl sm:rounded-3xl border border-border/80"
       >
         {/* Üst Başlık ve Kapatma Butonu */}
         <div className="flex items-center justify-between border-b border-border/60 pb-3">

@@ -329,7 +329,7 @@ export function PageSearchPopover({
         transform: 'translateX(-50%)',
       }}
       className={cn(
-        'panel panel-solid z-[9999] p-2 sm:p-2.5 rounded-2xl shadow-xl flex flex-col gap-1.5 transition-all duration-200 ease-out origin-bottom select-none',
+        'panel panel-solid z-[9999] p-2 sm:p-2.5 rounded-2xl shadow-xl flex flex-col gap-1.5 transition-[transform,opacity] duration-200 ease-out origin-bottom select-none',
         'w-[280px] sm:w-[320px] max-w-[92vw]',
         open
           ? 'scale-100 opacity-100 pointer-events-auto'

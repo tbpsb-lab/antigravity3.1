@@ -369,7 +369,7 @@ export const FontSettings = memo(function FontSettings({
             )}
           </div>
 
-          {/* Sağ Kolon: Dikey Yazı Boyutu Kadranı (En Üst Tema Sınırından En Alt Kelime Öbeği Sınırına Kadar Uzanır) */}
+          {/* Sağ Kolon: Kompakt Dikey Yazı Boyutu Kadranı (En Üst Cam/Neon/Kağıt Sınırından En Alt Kelime Öbeği Sınırına Kadar Tam Hizalı) */}
           <div
             data-wheel="font-scale"
             onWheel={(e) => {
@@ -377,7 +377,7 @@ export const FontSettings = memo(function FontSettings({
               e.stopPropagation()
               step(e.deltaY < 0 ? FONT_SCALE_STEP : -FONT_SCALE_STEP)
             }}
-            className="w-11 sm:w-11.5 h-full flex flex-col items-center justify-between py-1 px-0.5 rounded-xl bg-muted/30 hover:bg-muted/60 border border-border/60 hover:border-primary/50 transition-all select-none shadow-xs group cursor-ns-resize shrink-0"
+            className="w-9 sm:w-10 h-full flex flex-col items-center justify-between py-0.5 px-0.5 rounded-lg bg-muted/30 hover:bg-muted/60 border border-border/60 hover:border-primary/50 transition-all select-none shadow-xs group cursor-ns-resize shrink-0"
             title={`Yazı Boyutu: %${Math.round(scale * 100)} (Tıkla veya Farenin Tekerleğiyle Kaydır)`}
             role="group"
             aria-label="Dikey Yazı Boyutu Kadranı"
@@ -391,15 +391,15 @@ export const FontSettings = memo(function FontSettings({
               aria-label="Yazı Boyutunu Büyüt"
               title="Büyüt"
             >
-              <div className="flex items-start font-serif font-bold text-sm sm:text-base leading-none">
+              <div className="flex items-start font-serif font-bold text-xs sm:text-sm leading-none">
                 <span>A</span>
-                <span className="text-[10px] font-sans -mt-0.5 ml-0.5 font-extrabold">+</span>
+                <span className="text-[8px] font-sans -mt-0.5 ml-0.5 font-extrabold">+</span>
               </div>
-              <ChevronUp className="size-3 text-muted-foreground/60 group-hover:text-primary transition-colors -mt-0.5" />
+              <ChevronUp className="size-2 text-muted-foreground/60 group-hover:text-primary transition-colors -mt-0.5" />
             </button>
 
-            {/* Dikey Seviye Göstergesi (Estetik Çizgiler & Yüzde) */}
-            <div className="flex flex-col items-center justify-center gap-1 my-0.5 w-full px-1 flex-1" aria-hidden="true">
+            {/* Dikey Seviye Göstergesi (Kompakt Çizgiler & Yüzde) */}
+            <div className="flex flex-col items-center justify-center gap-0.5 my-0.5 w-full px-0.5 flex-1" aria-hidden="true">
               {[1.5, 1.3, 1.1, 0.9, 0.7].map((lvl) => {
                 const isReached = scale >= lvl - 0.05
                 const isCurrent = Math.abs(scale - lvl) < 0.1
@@ -407,17 +407,17 @@ export const FontSettings = memo(function FontSettings({
                   <span
                     key={lvl}
                     className={cn(
-                      'h-1 rounded-full transition-all duration-200',
+                      'h-0.5 rounded-full transition-all duration-200',
                       isCurrent
-                        ? 'w-5 bg-primary shadow-[0_0_6px_rgba(var(--primary-rgb),0.7)]'
+                        ? 'w-4 bg-primary shadow-[0_0_5px_rgba(var(--primary-rgb),0.7)]'
                         : isReached
-                          ? 'w-3.5 bg-primary/60'
-                          : 'w-2 bg-muted-foreground/30',
+                          ? 'w-2.5 bg-primary/60'
+                          : 'w-1 bg-muted-foreground/30',
                     )}
                   />
                 )
               })}
-              <span className="font-mono text-[9px] font-bold text-muted-foreground/90 tabular-nums mt-0.5 leading-none">
+              <span className="font-mono text-[7.5px] font-bold text-muted-foreground/90 tabular-nums leading-none mt-0.5">
                 %{Math.round(scale * 100)}
               </span>
             </div>
@@ -431,10 +431,10 @@ export const FontSettings = memo(function FontSettings({
               aria-label="Yazı Boyutunu Küçült"
               title="Küçült"
             >
-              <ChevronDown className="size-3 text-muted-foreground/60 group-hover:text-primary transition-colors -mb-0.5" />
-              <div className="flex items-start font-serif font-bold text-sm sm:text-base leading-none">
+              <ChevronDown className="size-2 text-muted-foreground/60 group-hover:text-primary transition-colors -mb-0.5" />
+              <div className="flex items-start font-serif font-bold text-xs sm:text-sm leading-none">
                 <span>A</span>
-                <span className="text-[10px] font-sans -mt-0.5 ml-0.5 font-extrabold">-</span>
+                <span className="text-[8px] font-sans -mt-0.5 ml-0.5 font-extrabold">-</span>
               </div>
             </button>
           </div>

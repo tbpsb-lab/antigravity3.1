@@ -39,9 +39,11 @@ import { AboutModal } from './about-modal'
 import { PaperCornerCurl } from './paper-corner-curl'
 import { GlassCornerCurl } from './glass-corner-curl'
 import { NeonCornerCurl } from './neon-corner-curl'
-import { FONT_FACES, FontSettings, type FontFace } from './font-settings'
+import { SyncModal } from './sync-modal'
+import { FONT_FACES, FONT_SCALE_MAX, FONT_SCALE_MIN, FontSettings, type FontFace } from './font-settings'
 import { triggerHaptic } from '@/lib/haptics'
 import { NeuroAudioEngine } from '@/lib/neuro-audio'
+import { getSyncVaultId, SyncChannelManager } from '@/lib/device-sync'
 import { useElementHeight } from '@/lib/use-element-height'
 import { useWakeLock } from '@/lib/use-wake-lock'
 import { EyeTracker, type AttentionLossReason } from '@/components/EyeTracker'
@@ -74,9 +76,10 @@ export function ReaderApp() {
   const [speedTestOpen, setSpeedTestOpen] = useState(false)
   const [completionOpen, setCompletionOpen] = useState(false)
   const [aboutOpen, setAboutOpen] = useState(false)
+  const [syncModalOpen, setSyncModalOpen] = useState(false)
   const [showSpeedTestBanner, setShowSpeedTestBanner] = useState(false)
 
-  const anyModalOpen = speedTestOpen || completionOpen || aboutOpen
+  const anyModalOpen = speedTestOpen || completionOpen || aboutOpen || syncModalOpen
 
   // ~500 Kelimelik Doğal Nefes / Dinlenme Aralığı Durumu
   const [isResting, setIsResting] = useState(false)
@@ -1137,9 +1140,13 @@ export function ReaderApp() {
         e.preventDefault()
         toggleFullscreen()
         break
-      case 'KeyM':
+      case 'KeyN':
         e.preventDefault()
         toggleNeuroAudio()
+        break
+      case 'KeyE':
+        e.preventDefault()
+        setSyncModalOpen((prev) => !prev)
         break
       case 'KeyG':
         e.preventDefault()
@@ -1341,6 +1348,65 @@ export function ReaderApp() {
     setSpeedTestOpen(true)
   }, [])
 
+  // Gerçek Zamanlı Cihaz & Sekme Senkronizasyonu (Karekod & Vault)
+  const syncManagerRef = useRef<SyncChannelManager | null>(null)
+
+  const broadcastSyncState = useCallback(() => {
+    if (!syncManagerRef.current) return
+    syncManagerRef.current.broadcast({
+      docTitle,
+      wordIndex: index,
+      chunkSize,
+      wpm,
+      theme,
+      fontFace,
+      fontScale,
+    })
+  }, [docTitle, index, chunkSize, wpm, theme, fontFace, fontScale])
+
+  useEffect(() => {
+    const manager = new SyncChannelManager((payload) => {
+      const myVault = getSyncVaultId()
+      if (payload.vaultId !== myVault) return
+
+      showAudioToast(`${payload.senderDeviceName} ile eşitlendi`)
+
+      if (payload.theme && ['ios', 'linear', 'kindle'].includes(payload.theme)) {
+        handleThemeChange(payload.theme as ThemeId)
+      }
+      if (payload.fontFace && ['theme', 'sans', 'serif', 'mono'].includes(payload.fontFace)) {
+        setFontFace(payload.fontFace as FontFace)
+      }
+      if (typeof payload.fontScale === 'number' && payload.fontScale >= FONT_SCALE_MIN && payload.fontScale <= FONT_SCALE_MAX) {
+        setFontScale(payload.fontScale)
+      }
+      if (typeof payload.chunkSize === 'number' && [1, 2, 3].includes(payload.chunkSize)) {
+        handleChunkSizeChange(payload.chunkSize)
+      }
+      if (typeof payload.wpm === 'number' && payload.wpm >= 100 && payload.wpm <= 1200) {
+        setWpm(payload.wpm)
+      }
+      if (payload.docTitle && payload.docTitle === docTitle) {
+        if (typeof payload.wordIndex === 'number' && payload.wordIndex >= 0 && payload.wordIndex < words.length) {
+          seek(payload.wordIndex)
+        }
+      }
+    })
+
+    syncManagerRef.current = manager
+    return () => {
+      manager.destroy()
+      syncManagerRef.current = null
+    }
+  }, [docTitle, words.length, handleThemeChange, handleChunkSizeChange, seek, showAudioToast])
+
+  // Okuma duraklatıldığında veya değiştiğinde diğer eşleşmiş cihazlara son durumu ilet
+  useEffect(() => {
+    if (!playing) {
+      broadcastSyncState()
+    }
+  }, [playing, broadcastSyncState])
+
   const textControlElement = useMemo(
     () => (
       <TextSheet
@@ -1379,6 +1445,7 @@ export function ReaderApp() {
         onEyeTrackingChange={handleEyeTrackingChange}
         eyeTrackingStatus={eyeTrackingStatus}
         onOpenSpeedTest={handleOpenSpeedTest}
+        onOpenSync={() => setSyncModalOpen(true)}
       />
     ),
     [
@@ -1677,6 +1744,15 @@ export function ReaderApp() {
           setCompletionOpen(false)
           setSheetOpen(true)
           setFontOpen(false)
+        }}
+      />
+
+      <SyncModal
+        open={syncModalOpen}
+        onClose={() => setSyncModalOpen(false)}
+        onManualSyncCodeApplied={(newCode) => {
+          showAudioToast(`Eşleşme Kodu: ${newCode}`)
+          broadcastSyncState()
         }}
       />
 

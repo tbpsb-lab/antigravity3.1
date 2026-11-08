@@ -18,6 +18,7 @@ import {
   Volume2,
   Waves,
   Zap,
+  QrCode,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -165,13 +166,25 @@ export const GUIDE_FEATURES: GuideFeatureItem[] = [
     id: 'neuro-audio-engine',
     title: 'Nöroakustik Ses Motoru',
     subtitle: 'Saf Algoritmik Pembe Gürültü ve 40 Hz Gama Vuruşları',
-    badge: 'M Tuşu',
-    shortcutKey: 'M',
+    badge: 'N Tuşu',
+    shortcutKey: 'N',
     icon: Volume2,
     iconColor: 'text-indigo-500',
     category: 'audio',
     description:
-      "Web Audio API ile harici dosya yüklemeden saf matematiksel Pembe Gürültü (1/f) ve 40 Hz Gama Vuruşları (Sol 200 Hz, Sağ 240 Hz) sentezler. Çevresel gürültüyü maskeler, derin odaklanma sağlar (`M` tuşu).",
+      "Web Audio API ile harici dosya yüklemeden saf matematiksel Pembe Gürültü (1/f) ve 40 Hz Gama Vuruşları (Sol 200 Hz, Sağ 240 Hz) sentezler. Çevresel gürültüyü maskeler, derin odaklanma sağlar (`N` tuşu).",
+  },
+  {
+    id: 'device-sync-qr',
+    title: 'Cihaz Eşleştirme & Karekod Senkronizasyonu',
+    subtitle: 'Ekranlar Arası Kesintisiz Okuma Deneyimi',
+    badge: 'E Tuşu',
+    shortcutKey: 'E',
+    icon: QrCode,
+    iconColor: 'text-sky-500',
+    category: 'core',
+    description:
+      "Hesap ve şifre karmaşası olmadan, tek bir karekod taratarak veya 6 haneli eşleşme kodu ile tüm cihazlarınızı birbirine bağlayın. Kaldığınız kelime, hızınız ve font ayarlarınız tüm ekranlarınızda anında eşitlenir (`E` tuşu).",
   },
   {
     id: 'eye-tracking-ai',
@@ -286,11 +299,18 @@ export const GUIDE_SHORTCUTS: GuideShortcutItem[] = [
     iconColor: 'text-cyan-500',
   },
   {
-    key: 'M Tuşu',
+    key: 'N Tuşu',
     description: 'Nöro-Odak Sesi (Pembe Gürültü & 40 Hz Gama)',
     category: 'temel',
     icon: Volume2,
     iconColor: 'text-indigo-500',
+  },
+  {
+    key: 'E Tuşu',
+    description: 'Cihaz Eşleştirme (Karekod & Ekranlar Arası Eşitleme)',
+    category: 'sistem',
+    icon: QrCode,
+    iconColor: 'text-sky-500',
   },
   {
     key: 'G Tuşu',

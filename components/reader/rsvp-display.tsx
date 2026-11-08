@@ -15,7 +15,7 @@ import { calculateTurkishORP, formatBionicChunk, WPM_STEP, type ChunkItem } from
 import { triggerHaptic } from '@/lib/haptics'
 import { useElementSize } from '@/lib/use-element-size'
 import { TapGuide } from './tap-guide'
-import { ChevronLeft, ChevronRight, Layers } from 'lucide-react'
+import { Layers } from 'lucide-react'
 
 type RsvpDisplayProps = {
   word: string
@@ -658,104 +658,60 @@ export const RsvpDisplay = memo(function RsvpDisplay({
             onTouchEnd={handleProgressTouchEnd}
             onTouchCancel={handleProgressTouchEnd}
             className={cn(
-              'group absolute inset-x-0 bottom-0 flex flex-col justify-end select-none touch-none z-30 transition-all duration-200 cursor-pointer',
+              'group absolute inset-x-0 bottom-0 flex flex-col justify-end select-none touch-none z-30 transition-all duration-150 cursor-pointer',
               isBarActive
-                ? 'h-14 sm:h-16 md:h-18 pb-2.5 sm:pb-3 px-3 sm:px-4 md:px-6 bg-gradient-to-t from-background/60 via-background/30 to-transparent'
-                : 'h-12 sm:h-14 md:h-16 pb-2 sm:pb-2.5 px-3 sm:px-4 md:px-6 hover:bg-foreground/[0.03]',
+                ? 'h-7 sm:h-8 pb-0 px-0'
+                : 'h-4 sm:h-5 pb-0 px-0',
             )}
           >
-            {/* Aktif olduğunda beliren mikro yüzde, kılavuz ve hızlı adım düğmeleri */}
+            {/* Görünmeyen Dokunma Genişleticisi (Görünümü şişirmeden 32px rahat dokunma/tıklama alanı sağlar) */}
+            <div className="absolute -top-4 inset-x-0 h-6 pointer-events-auto" />
+
+            {/* Aktif olduğunda beliren mikro yüzde ve konum bilgisi */}
             {isBarActive && (
-              <div className="flex items-center justify-between px-1 mb-1.5 md:mb-2 pointer-events-auto animate-in fade-in zoom-in-95 duration-150 select-none">
-                {onPrev ? (
-                  <button
-                    type="button"
-                    onPointerDown={(e) => e.stopPropagation()}
-                    onTouchStart={(e) => e.stopPropagation()}
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      onPrev()
-                      triggerHaptic('step')
-                      resetBarActiveTimer()
-                    }}
-                    className="flex items-center gap-1 px-2.5 py-1 md:px-3 md:py-1.5 rounded-lg bg-foreground/10 hover:bg-foreground/15 text-[11px] md:text-xs font-semibold text-foreground transition-all cursor-pointer active:scale-95 shadow-2xs"
-                    title="Önceki cümle başına sar"
-                  >
-                    <ChevronLeft className="size-3.5 md:size-4" />
-                    <span>Cümle</span>
-                  </button>
-                ) : <div />}
-
-                <div className="flex items-center gap-2 md:gap-3 pointer-events-none">
-                  <span className="text-xs md:text-sm font-bold text-primary tracking-wide tabular-nums">
-                    %{Math.round(progressPct)}
-                  </span>
-                  <span className="text-[11px] md:text-xs font-medium text-muted-foreground/85 hidden sm:inline">
-                    Kaydırın veya dokunun
-                  </span>
-                  <span className="text-xs md:text-sm tabular-nums font-semibold text-muted-foreground">
-                    {index + 1} / {total}
-                  </span>
-                </div>
-
-                {onNext ? (
-                  <button
-                    type="button"
-                    onPointerDown={(e) => e.stopPropagation()}
-                    onTouchStart={(e) => e.stopPropagation()}
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      onNext()
-                      triggerHaptic('step')
-                      resetBarActiveTimer()
-                    }}
-                    className="flex items-center gap-1 px-2.5 py-1 md:px-3 md:py-1.5 rounded-lg bg-foreground/10 hover:bg-foreground/15 text-[11px] md:text-xs font-semibold text-foreground transition-all cursor-pointer active:scale-95 shadow-2xs"
-                    title="Sonraki cümle başına sar"
-                  >
-                    <span>Cümle</span>
-                    <ChevronRight className="size-3.5 md:size-4" />
-                  </button>
-                ) : <div />}
+              <div className="flex items-center justify-between px-3 mb-1 pointer-events-none animate-in fade-in zoom-in-95 duration-150 select-none">
+                <span className="text-[10px] font-bold text-primary tracking-wide tabular-nums">
+                  %{Math.round(progressPct)}
+                </span>
+                <span className="text-[9.5px] font-medium text-muted-foreground/80">
+                  Kaydırın veya dokunun
+                </span>
+                <span className="text-[10px] tabular-nums font-semibold text-muted-foreground">
+                  {index + 1} / {total}
+                </span>
               </div>
             )}
 
-            {/* Arka plan izi (Track) */}
+            {/* Orijinal Zarif ve İnce Arka Plan İzi (Track - 4px) */}
             <div
               className={cn(
-                'relative w-full overflow-hidden transition-all duration-200 rounded-full',
+                'relative w-full overflow-hidden transition-all duration-150 rounded-b-2xl sm:rounded-b-3xl',
                 isBarActive
-                  ? 'h-3 sm:h-3.5 md:h-4 bg-foreground/20 ring-1 ring-primary/40 shadow-inner'
-                  : 'h-2 sm:h-2.5 md:h-3 bg-foreground/15 group-hover:h-2.5 group-hover:bg-foreground/20',
+                  ? 'h-1.5 sm:h-2 bg-foreground/20 ring-1 ring-primary/30'
+                  : 'h-1 group-hover:h-1.5 bg-foreground/15',
               )}
             >
               {/* Doluluk göstergesi */}
               <div
-                className={cn(
-                  'h-full transition-[width] duration-75 ease-out rounded-full',
-                  isBarActive
-                    ? 'bg-primary shadow-[0_0_12px_rgba(59,130,246,0.8)]'
-                    : 'bg-primary/90',
-                )}
+                className="h-full bg-primary/85 transition-[width] duration-75 ease-out rounded-full"
                 style={{
                   width: `${progressPct}%`,
                 }}
               />
             </div>
 
-            {/* Parmak altındaki veya mevcut konumdaki odak noktası (Thumb Indicator) - Hem pasif hem aktifte her an görünür */}
-            <div
-              className={cn(
-                'pointer-events-none absolute -translate-x-1/2 rounded-full bg-primary border-2 border-background shadow-md transition-all duration-100',
-                isBarActive
-                  ? isScrubbing
-                    ? 'bottom-2 sm:bottom-2.5 size-6 sm:size-7 md:size-8 scale-110 shadow-[0_0_16px_rgba(59,130,246,0.95)] ring-2 ring-primary/30'
-                    : 'bottom-2 sm:bottom-2.5 size-5.5 sm:size-6.5 md:size-7 shadow-[0_0_12px_rgba(59,130,246,0.8)]'
-                  : 'bottom-1.5 size-4 sm:size-4.5 md:size-5.5 shadow-sm opacity-95 group-hover:scale-110',
-              )}
-              style={{
-                left: `${progressPct}%`,
-              }}
-            />
+            {/* Aktif veya sürükleme durumunda beliren narin odak noktası (Thumb - 12px) */}
+            {(isBarActive || isScrubbing) && (
+              <div
+                className={cn(
+                  'pointer-events-none absolute bottom-0 -translate-x-1/2 rounded-full bg-primary border-2 border-background shadow-[0_0_8px_rgba(59,130,246,0.7)] transition-transform duration-100',
+                  isScrubbing ? 'size-3.5 sm:size-4 scale-110' : 'size-3 sm:size-3.5',
+                )}
+                style={{
+                  left: `${progressPct}%`,
+                }}
+              />
+            )}
           </div>
         )}
       </div>

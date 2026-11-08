@@ -41,7 +41,7 @@ import { GlassCornerCurl } from './glass-corner-curl'
 import { NeonCornerCurl } from './neon-corner-curl'
 import { SyncModal } from './sync-modal'
 import { FONT_FACES, FONT_SCALE_MAX, FONT_SCALE_MIN, FontSettings, type FontFace } from './font-settings'
-import { triggerHaptic } from '@/lib/haptics'
+import { triggerHaptic, primeHaptics } from '@/lib/haptics'
 import { NeuroAudioEngine } from '@/lib/neuro-audio'
 import { getSyncVaultId, SyncChannelManager } from '@/lib/device-sync'
 import { useElementHeight } from '@/lib/use-element-height'
@@ -812,93 +812,138 @@ export function ReaderApp() {
     [showWpmToast, hideWpmToastWithFade],
   )
 
-  // Zen / Okuma Sırasında ve Duraklatılmış Ekranda Dokunma & 25px Eşikli Canlı Hız (WPM) Kaydırma Jesti
-  const zenTouchStateRef = useRef<{
-    startY: number
-    startX: number
-    startWpm: number
-    isSwiping: boolean
-    hasSwiped: boolean
-  } | null>(null)
+  // Mobil Chrome ve Android tarayıcılarda ilk dokunuşta haptik izin kilidini aç (User Activation Priming)
+  useEffect(() => {
+    const unlockHaptics = () => {
+      primeHaptics()
+    }
+    window.addEventListener('pointerdown', unlockHaptics, { passive: true, capture: true, once: true })
+    window.addEventListener('touchstart', unlockHaptics, { passive: true, capture: true, once: true })
+    return () => {
+      window.removeEventListener('pointerdown', unlockHaptics)
+      window.removeEventListener('touchstart', unlockHaptics)
+    }
+  }, [])
+
+  // Zen / Okuma Sırasında ve Duraklatılmış Ekranda Dokunma & Hızlı Haptik Geri Bildirimli Hız (WPM) Kaydırma Jesti
   const zenLastHapticStepRef = useRef<number>(0)
   const zenOverlayRef = useRef<HTMLDivElement | null>(null)
   const hasSwipedRef = useRef<boolean>(false)
   const swipeCooldownTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const cleanupActiveTouchRef = useRef<(() => void) | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (cleanupActiveTouchRef.current) {
+        cleanupActiveTouchRef.current()
+        cleanupActiveTouchRef.current = null
+      }
+    }
+  }, [])
 
   const handleZenTouchStart = (e: React.TouchEvent) => {
     if (e.touches.length !== 1) return
     const touch = e.touches[0]
-    zenLastHapticStepRef.current = 0
+    primeHaptics()
+
+    // Önceki aktif dinleyici varsa temizle
+    if (cleanupActiveTouchRef.current) {
+      cleanupActiveTouchRef.current()
+      cleanupActiveTouchRef.current = null
+    }
+
     if (swipeCooldownTimerRef.current) {
       clearTimeout(swipeCooldownTimerRef.current)
       swipeCooldownTimerRef.current = null
     }
     hasSwipedRef.current = false
-    zenTouchStateRef.current = {
-      startY: touch.clientY,
-      startX: touch.clientX,
-      startWpm: wpm,
-      isSwiping: false,
-      hasSwiped: false,
-    }
-  }
+    zenLastHapticStepRef.current = 0
 
-  // Mobil Chrome ve Safari'de dikey kaydırma sırasında pull-to-refresh'i engelleyen tekil native touchmove dinleyicisi
-  useEffect(() => {
-    const el = zenOverlayRef.current
-    if (!el) return
+    const startY = touch.clientY
+    const startX = touch.clientX
+    const startWpm = wpm
+    let isSwiping = false
+    let hasSwiped = false
 
-    const onNativeTouchMove = (e: TouchEvent) => {
-      if (!zenTouchStateRef.current || e.touches.length !== 1) return
-      const touch = e.touches[0]
-      const deltaY = touch.clientY - zenTouchStateRef.current.startY
-      const deltaX = touch.clientX - zenTouchStateRef.current.startX
+    const onWindowTouchMove = (moveEvent: TouchEvent) => {
+      if (moveEvent.touches.length !== 1) return
+      const currentTouch = moveEvent.touches[0]
+      const deltaY = currentTouch.clientY - startY
+      const deltaX = currentTouch.clientX - startX
+      const absY = Math.abs(deltaY)
+      const absX = Math.abs(deltaX)
 
-      if (!zenTouchStateRef.current.isSwiping && Math.abs(deltaY) > 8 && Math.abs(deltaY) > Math.abs(deltaX)) {
-        zenTouchStateRef.current.isSwiping = true
-        zenTouchStateRef.current.hasSwiped = true
+      const SWIPE_THRESHOLD = 8
+      if (!isSwiping && absY > SWIPE_THRESHOLD && absY > absX) {
+        isSwiping = true
+        hasSwiped = true
         hasSwipedRef.current = true
       }
 
-      if (zenTouchStateRef.current.isSwiping) {
-        if (e.cancelable) {
-          e.preventDefault()
+      if (isSwiping) {
+        if (moveEvent.cancelable) {
+          moveEvent.preventDefault()
         }
-        const pixelDistance = -deltaY // Yukarı = pozitif (hız artır)
-        const steps = Math.trunc(pixelDistance / 25)
-        if (steps !== zenLastHapticStepRef.current) {
-          zenLastHapticStepRef.current = steps
+
+        const pixelDistance = -deltaY // Yukarı kaydırma = pozitif (hız artır)
+        const STEP_PX = 22
+
+        let steps = 0
+        if (pixelDistance > SWIPE_THRESHOLD) {
+          steps = 1 + Math.floor((pixelDistance - SWIPE_THRESHOLD) / STEP_PX)
+        } else if (pixelDistance < -SWIPE_THRESHOLD) {
+          steps = -1 - Math.floor((-pixelDistance - SWIPE_THRESHOLD) / STEP_PX)
+        }
+
+        // Limit sınırlarını hesapla
+        const maxSteps = Math.floor((MAX_WPM - startWpm) / WPM_STEP)
+        const minSteps = -Math.floor((startWpm - MIN_WPM) / WPM_STEP)
+        const clampedSteps = Math.min(maxSteps, Math.max(minSteps, steps))
+
+        if (clampedSteps !== zenLastHapticStepRef.current) {
+          zenLastHapticStepRef.current = clampedSteps
           triggerHaptic('step')
         }
-        const targetWpm = zenTouchStateRef.current.startWpm + steps * WPM_STEP
+
+        const targetWpm = startWpm + clampedSteps * WPM_STEP
         setWpmDirect(targetWpm)
       }
     }
 
-    el.addEventListener('touchmove', onNativeTouchMove, { passive: false })
-    return () => {
-      el.removeEventListener('touchmove', onNativeTouchMove)
+    const onWindowTouchEnd = () => {
+      window.removeEventListener('touchmove', onWindowTouchMove)
+      window.removeEventListener('touchend', onWindowTouchEnd)
+      window.removeEventListener('touchcancel', onWindowTouchEnd)
+      cleanupActiveTouchRef.current = null
+
+      if (hasSwiped || hasSwipedRef.current) {
+        hasSwipedRef.current = true
+        hideWpmToastWithFade(1000)
+        if (swipeCooldownTimerRef.current) clearTimeout(swipeCooldownTimerRef.current)
+        swipeCooldownTimerRef.current = setTimeout(() => {
+          hasSwipedRef.current = false
+          swipeCooldownTimerRef.current = null
+        }, 350)
+      }
     }
-  }, [setWpmDirect])
+
+    cleanupActiveTouchRef.current = () => {
+      window.removeEventListener('touchmove', onWindowTouchMove)
+      window.removeEventListener('touchend', onWindowTouchEnd)
+      window.removeEventListener('touchcancel', onWindowTouchEnd)
+    }
+
+    window.addEventListener('touchmove', onWindowTouchMove, { passive: false })
+    window.addEventListener('touchend', onWindowTouchEnd, { passive: true })
+    window.addEventListener('touchcancel', onWindowTouchEnd, { passive: true })
+  }
 
   const handleZenTouchEnd = () => {
-    if (!zenTouchStateRef.current) return
-    const wasSwiping = zenTouchStateRef.current.hasSwiped || hasSwipedRef.current
-    zenTouchStateRef.current = null
-
-    if (wasSwiping) {
-      hasSwipedRef.current = true
-      hideWpmToastWithFade(1000)
-      if (swipeCooldownTimerRef.current) clearTimeout(swipeCooldownTimerRef.current)
-      swipeCooldownTimerRef.current = setTimeout(() => {
-        hasSwipedRef.current = false
-        swipeCooldownTimerRef.current = null
-      }, 350)
-    }
+    // Window seviyesindeki onWindowTouchEnd tarafından yönetilir
   }
 
   const handleZenClick = (action: () => void) => {
-    if (hasSwipedRef.current || zenTouchStateRef.current?.hasSwiped) {
+    if (hasSwipedRef.current) {
       hasSwipedRef.current = false
       return
     }

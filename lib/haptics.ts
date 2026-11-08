@@ -1,4 +1,24 @@
 // odak Mobil Dokunsal (Haptik) Geri Bildirim Motoru
+let hasPrimed = false
+
+/**
+ * Mobil Chrome ve Android tarayıcılarda kullanıcı jesti (user activation) gereksinimini
+ * ilk dokunuş anında (touchstart / pointerdown) önceden açarak swipe sırasındaki
+ * touchmove kaynaklı kısıtlamayı (Intervention) ortadan kaldırır.
+ */
+export function primeHaptics() {
+  if (typeof window === 'undefined' || hasPrimed) return
+  try {
+    if ('vibrate' in navigator && typeof navigator.vibrate === 'function') {
+      // 0ms çağrısı motorda fiziksel titreşim yapmaz, ancak tarayıcıda izni aktive eder
+      navigator.vibrate(0)
+      hasPrimed = true
+    }
+  } catch {
+    // Sessizce devam et
+  }
+}
+
 export function triggerHaptic(type: 'step' | 'jump' | 'success' | 'tap' = 'step') {
   if (typeof window === 'undefined') return
   try {

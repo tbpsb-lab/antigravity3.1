@@ -55,7 +55,7 @@ export const NeonCornerCurl = memo(function NeonCornerCurl({
     <div
       data-wheel="page-nav"
       className={cn(
-        'fixed bottom-0 right-0 z-0 select-none overflow-hidden leading-none',
+        'fixed bottom-0 right-0 z-30 select-none overflow-hidden leading-none',
         'w-36 h-36 sm:w-44 sm:h-44 md:w-52 md:h-52 landscape-short:w-24 landscape-short:h-24',
         'animate-in fade-in zoom-in-95 duration-500 ease-out',
         isClickable ? 'pointer-events-auto' : 'pointer-events-none',

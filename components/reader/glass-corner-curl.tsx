@@ -56,7 +56,7 @@ export const GlassCornerCurl = memo(function GlassCornerCurl({
     <div
       data-wheel="page-nav"
       className={cn(
-        'fixed bottom-0 right-0 z-0 select-none overflow-hidden leading-none',
+        'fixed bottom-0 right-0 z-30 select-none overflow-hidden leading-none',
         'w-24 h-24 sm:w-28 sm:h-28 md:w-32 md:h-32 landscape-short:w-16 landscape-short:h-16',
         'animate-in fade-in zoom-in-95 duration-500 ease-out',
         'drop-shadow-[-2px_-2px_10px_rgba(56,189,248,0.4)] dark:drop-shadow-[-2px_-2px_14px_rgba(56,189,248,0.55)]',

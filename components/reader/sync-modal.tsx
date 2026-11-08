@@ -63,6 +63,7 @@ export const SyncModal = memo(function SyncModal({
   const [isScanning, setIsScanning] = useState(false)
   const [isCameraLoading, setIsCameraLoading] = useState(false)
   const [scanError, setScanError] = useState<string | null>(null)
+  const [newlyConnectedDeviceId, setNewlyConnectedDeviceId] = useState<string | null>(null)
   const [connectedSuccessMsg, setConnectedSuccessMsg] = useState<string | null>(null)
 
   const videoRef = useRef<HTMLVideoElement | null>(null)
@@ -92,6 +93,7 @@ export const SyncModal = memo(function SyncModal({
       setDevices(getPairedDevices())
       setScanError(null)
       setConnectedSuccessMsg(null)
+      setNewlyConnectedDeviceId(null)
     } else {
       stopCamera()
       setConnectedSuccessMsg(null)
@@ -100,12 +102,39 @@ export const SyncModal = memo(function SyncModal({
 
   // Cihazlar arası varlık (presence) güncellemelerini anında yansıt
   useEffect(() => {
-    const handleUpdate = () => {
-      setDevices(getPairedDevices())
+    const handleUpdate = (e: Event) => {
+      const customEvent = e as CustomEvent<{ deviceId?: string; deviceName?: string; isNew?: boolean }>
+      const updatedList = getPairedDevices()
+      setDevices(updatedList)
+
+      const devId = customEvent?.detail?.deviceId
+      if (devId) {
+        setNewlyConnectedDeviceId(devId)
+        if (customEvent.detail?.isNew) {
+          const devName = customEvent.detail?.deviceName || 'Yeni Cihaz'
+          setConnectedSuccessMsg('✓ Bağlandı: ' + devName)
+          triggerHaptic('success')
+
+          setTimeout(() => {
+            onClose()
+          }, 1200)
+        }
+      }
     }
+
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === 'hizlioku_paired_devices') {
+        setDevices(getPairedDevices())
+      }
+    }
+
     window.addEventListener('paired-devices-updated', handleUpdate)
-    return () => window.removeEventListener('paired-devices-updated', handleUpdate)
-  }, [])
+    window.addEventListener('storage', handleStorage)
+    return () => {
+      window.removeEventListener('paired-devices-updated', handleUpdate)
+      window.removeEventListener('storage', handleStorage)
+    }
+  }, [onClose])
 
   useEffect(() => {
     return () => {
@@ -159,21 +188,36 @@ export const SyncModal = memo(function SyncModal({
     setSyncVaultId(parsed.vaultId)
     setVaultId(parsed.vaultId)
     setManualCode('')
+
+    // Karekoddan karşı cihaz bilgisi geldiyse anında yerel listeye ekle ve vurgula
+    if (parsed.remoteDeviceId && parsed.remoteDeviceName) {
+      upsertPairedDevice({
+        id: parsed.remoteDeviceId,
+        name: parsed.remoteDeviceName,
+        type: parsed.remoteDeviceType || 'desktop',
+      })
+      setNewlyConnectedDeviceId(parsed.remoteDeviceId)
+    }
+
     setDevices(getPairedDevices())
     triggerHaptic('success')
 
-    onManualSyncCodeApplied?.(parsed.vaultId)
+    try {
+      onManualSyncCodeApplied?.(parsed.vaultId)
+    } catch {}
 
-    if (
-      typeof parsed.index === 'number' ||
-      typeof parsed.pageNumber === 'number' ||
-      typeof parsed.wpm === 'number' ||
-      typeof parsed.chunkSize === 'number' ||
-      parsed.theme ||
-      parsed.fontFace
-    ) {
-      onApplySyncUrlParams?.(parsed)
-    }
+    try {
+      if (
+        typeof parsed.index === 'number' ||
+        typeof parsed.pageNumber === 'number' ||
+        typeof parsed.wpm === 'number' ||
+        typeof parsed.chunkSize === 'number' ||
+        parsed.theme ||
+        parsed.fontFace
+      ) {
+        onApplySyncUrlParams?.(parsed)
+      }
+    } catch {}
 
     return true
   }, [onManualSyncCodeApplied, onApplySyncUrlParams])
@@ -185,7 +229,11 @@ export const SyncModal = memo(function SyncModal({
 
     const success = applyExtractedSync(input)
     if (success) {
-      onClose()
+      setConnectedSuccessMsg('✓ Eşleşti! Cihaz bağlandı')
+      setDevices(getPairedDevices())
+      setTimeout(() => {
+        onClose()
+      }, 800)
     }
   }
 
@@ -254,11 +302,11 @@ export const SyncModal = memo(function SyncModal({
           stopCamera()
           const success = applyExtractedSync(codeData)
           if (success) {
-            setConnectedSuccessMsg('Eşleşti! Cihaz bağlandı')
+            setConnectedSuccessMsg('✓ Eşleşti! Cihaz bağlandı')
             setDevices(getPairedDevices())
             setTimeout(() => {
               onClose()
-            }, 600)
+            }, 800)
           }
           return
         }
@@ -584,37 +632,55 @@ export const SyncModal = memo(function SyncModal({
             <span className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wider block mb-0.5">
               Bağlı Cihazlar ({devices.length})
             </span>
-            <div className="flex flex-col gap-1 max-h-16 overflow-y-auto pr-0.5 [scrollbar-width:thin]">
-              {devices.map((dev) => (
-                <div
-                  key={dev.id}
-                  className="flex items-center justify-between gap-1 px-2 py-0.5 rounded-lg border border-border/30 bg-muted/10 text-xs"
-                >
-                  <div className="flex items-center gap-1.5 min-w-0">
-                    {dev.type === 'mobile' ? (
-                      <Smartphone className="size-3 text-sky-500 shrink-0" />
-                    ) : dev.type === 'tablet' ? (
-                      <Tablet className="size-3 text-purple-500 shrink-0" />
-                    ) : (
-                      <Laptop className="size-3 text-emerald-500 shrink-0" />
+            <div className="flex flex-col gap-1 max-h-20 overflow-y-auto pr-0.5 [scrollbar-width:thin]">
+              {devices.map((dev) => {
+                const isNew = dev.id === newlyConnectedDeviceId
+                return (
+                  <div
+                    key={dev.id}
+                    className={cn(
+                      'flex items-center justify-between gap-1.5 px-2 py-1 rounded-lg border text-xs transition-all duration-300',
+                      isNew
+                        ? 'border-emerald-500/80 bg-emerald-500/15 ring-2 ring-emerald-500/40 shadow-xs animate-pulse'
+                        : 'border-border/30 bg-muted/10'
                     )}
-                    <span className="font-medium truncate text-[10px]">
-                      {dev.name} {dev.isCurrent && '(Bu Cihaz)'}
-                    </span>
+                  >
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <div className="relative shrink-0">
+                        {dev.type === 'mobile' ? (
+                          <Smartphone className={cn('size-3.5', isNew ? 'text-emerald-500' : 'text-sky-500')} />
+                        ) : dev.type === 'tablet' ? (
+                          <Tablet className={cn('size-3.5', isNew ? 'text-emerald-500' : 'text-purple-500')} />
+                        ) : (
+                          <Laptop className={cn('size-3.5', isNew ? 'text-emerald-500' : 'text-emerald-500')} />
+                        )}
+                        {isNew && (
+                          <span className="absolute -top-0.5 -right-0.5 size-1.5 rounded-full bg-emerald-400 animate-ping" />
+                        )}
+                      </div>
+                      <span className={cn('truncate text-[10px]', isNew ? 'font-bold text-emerald-600 dark:text-emerald-300' : 'font-medium')}>
+                        {dev.name} {dev.isCurrent && '(Bu Cihaz)'}
+                      </span>
+                      {isNew && (
+                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded-full bg-emerald-500 text-white text-[8px] font-bold shadow-2xs leading-none shrink-0">
+                          <Check className="size-2.5" /> Yeni
+                        </span>
+                      )}
+                    </div>
+                    {!dev.isCurrent && (
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveDevice(dev.id)}
+                        className="text-muted-foreground hover:text-destructive transition-colors p-0.5 shrink-0"
+                        title="Bağlantıyı kes"
+                        aria-label="Bağlantıyı kes"
+                      >
+                        <Trash2 className="size-3" />
+                      </button>
+                    )}
                   </div>
-                  {!dev.isCurrent && (
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveDevice(dev.id)}
-                      className="text-muted-foreground hover:text-destructive transition-colors p-0.5"
-                      title="Bağlantıyı kes"
-                      aria-label="Bağlantıyı kes"
-                    >
-                      <Trash2 className="size-3" />
-                    </button>
-                  )}
-                </div>
-              ))}
+                )
+              })}
             </div>
           </div>
         )}

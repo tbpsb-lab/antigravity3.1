@@ -1535,6 +1535,10 @@ export function ReaderApp() {
 
   // Gerçek Zamanlı Cihaz & Sekme Senkronizasyonu (Karekod & Vault)
   const syncManagerRef = useRef<SyncChannelManager | null>(null)
+  const indexRef = useRef(index)
+  useEffect(() => {
+    indexRef.current = index
+  }, [index])
 
   const broadcastSyncState = useCallback(() => {
     if (!syncManagerRef.current) return
@@ -1590,7 +1594,7 @@ export function ReaderApp() {
       // İlerleme paketi geldiyse: Ekranı aniden zıplatmak yerine Kindle tarzı zarif bildirim göster
       if (payload.type === 'progress' || !payload.type) {
         const targetIdx = typeof payload.wordIndex === 'number' ? payload.wordIndex : -1
-        if (targetIdx >= 0 && Math.abs(targetIdx - index) > 2) {
+        if (targetIdx >= 0 && Math.abs(targetIdx - indexRef.current) > 2) {
           setKindleSyncPrompt({
             deviceName: payload.senderDeviceName || 'Diğer Cihazınız',
             deviceType: payload.senderDeviceType || 'desktop',
@@ -1619,7 +1623,7 @@ export function ReaderApp() {
         clearTimeout(kindleSyncTimerRef.current)
       }
     }
-  }, [index])
+  }, [])
 
   // Okuma duraklatıldığında veya değiştiğinde diğer eşleşmiş cihazlara son durumu ilet
   useEffect(() => {
@@ -2055,7 +2059,7 @@ export function ReaderApp() {
             handleThemeChange(params.theme as ThemeId)
           }
           if (params.fontFace) {
-            handleFontFaceChange(params.fontFace as FontFace)
+            setFontFace(params.fontFace as FontFace)
           }
           const details = [
             params.pageNumber ? `Sayfa ${params.pageNumber}` : null,

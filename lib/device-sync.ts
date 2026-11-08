@@ -191,6 +191,7 @@ export function upsertPairedDevice(dev: { id: string; name: string; type: 'deskt
   let list = getPairedDevices()
 
   const existingIdx = list.findIndex((d) => d.id === dev.id)
+  const isNew = existingIdx === -1 && dev.id !== currentId
   const now = Date.now()
   const cleanName = dev.id === currentId ? `${getDeviceName()} (Bu Cihaz)` : dev.name.replace(' (Bu Cihaz)', '')
 
@@ -210,7 +211,11 @@ export function upsertPairedDevice(dev: { id: string; name: string; type: 'deskt
 
   try {
     localStorage.setItem(DEVICES_LIST_KEY, JSON.stringify(list))
-    window.dispatchEvent(new CustomEvent('paired-devices-updated'))
+    window.dispatchEvent(
+      new CustomEvent('paired-devices-updated', {
+        detail: { deviceId: dev.id, deviceName: cleanName, isNew },
+      })
+    )
   } catch {}
 
   return list
@@ -243,6 +248,9 @@ export type ParsedSyncResult = {
   chunkSize?: number
   theme?: string
   fontFace?: string
+  remoteDeviceId?: string
+  remoteDeviceName?: string
+  remoteDeviceType?: 'desktop' | 'mobile' | 'tablet'
 }
 
 export function parseSyncInput(raw: string | null | undefined): ParsedSyncResult {
@@ -257,6 +265,9 @@ export function parseSyncInput(raw: string | null | undefined): ParsedSyncResult
   let chunkSize: number | undefined
   let theme: string | undefined
   let fontFace: string | undefined
+  let remoteDeviceId: string | undefined
+  let remoteDeviceName: string | undefined
+  let remoteDeviceType: 'desktop' | 'mobile' | 'tablet' | undefined
 
   // 1. URL veya sorgu dizesi içeriyor mu? (Örn: https://.../?s=4458&idx=50 veya ?sync=HZL-4458)
   if (trimmed.includes('?') || trimmed.includes('&') || trimmed.includes('://') || trimmed.includes('/')) {
@@ -272,6 +283,15 @@ export function parseSyncInput(raw: string | null | undefined): ParsedSyncResult
       const ch = url.searchParams.get('chunk') || url.searchParams.get('c')
       const t = url.searchParams.get('theme') || url.searchParams.get('t')
       const f = url.searchParams.get('font') || url.searchParams.get('f')
+      const did = url.searchParams.get('did') || url.searchParams.get('d')
+      const dn = url.searchParams.get('dn')
+      const dt = url.searchParams.get('dt')
+
+      if (did) remoteDeviceId = did
+      if (dn) remoteDeviceName = dn
+      if (dt === 'mobile' || dt === 'tablet' || dt === 'desktop') {
+        remoteDeviceType = dt
+      }
 
       if (s) extractedVaultId = sanitizeVaultId(s)
       if (idx) {
@@ -322,6 +342,9 @@ export function parseSyncInput(raw: string | null | undefined): ParsedSyncResult
     chunkSize,
     theme,
     fontFace,
+    remoteDeviceId,
+    remoteDeviceName,
+    remoteDeviceType,
   }
 }
 
@@ -355,6 +378,12 @@ export function generateSyncUrl(vaultId: string, extra?: SyncUrlParams): string 
     const fCode = extra.fontFace === 'theme' ? 't' : extra.fontFace === 'sans' ? 's' : extra.fontFace === 'serif' ? 'r' : 'm'
     params.set('f', fCode)
   }
+
+  // Cihaz kimliği ve adı (Karekod okunduğunda anında eşleşen cihazı listelemek için)
+  params.set('did', getDeviceId())
+  params.set('dn', getDeviceName())
+  params.set('dt', getDeviceType())
+
   return `${origin}${pathname}?${params.toString()}`
 }
 
@@ -404,9 +433,11 @@ export class SyncChannelManager {
       es.onmessage = (e) => {
         try {
           const raw = JSON.parse(e.data)
-          if (raw.event === 'message' && raw.message) {
-            const payload = JSON.parse(raw.message) as SyncPayload
-            this.handleIncoming(payload)
+          if (raw && (raw.event === 'message' || !raw.event) && raw.message) {
+            const payload = typeof raw.message === 'string' ? JSON.parse(raw.message) : raw.message
+            if (payload && typeof payload === 'object') {
+              this.handleIncoming(payload)
+            }
           }
         } catch {}
       }

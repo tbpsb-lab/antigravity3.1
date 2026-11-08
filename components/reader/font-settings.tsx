@@ -208,8 +208,8 @@ export const FontSettings = memo(function FontSettings({
         aria-label="Görünüm ve okuma ayarları"
         inert={!open}
         className={cn(
-          'panel panel-solid absolute -right-12 top-full z-50 mt-2 w-[min(22rem,calc(100vw-1.5rem))] origin-top-right p-2 sm:p-2.5 sm:right-0 transition-all duration-200 ease-out shadow-2xl flex flex-col gap-1',
-          'max-h-[calc(100dvh-5.5rem)] overflow-y-auto overscroll-contain touch-pan-y landscape-short:max-h-[calc(100dvh-3.75rem)] landscape-short:w-[min(24rem,calc(100vw-1.5rem))] landscape-short:p-2.5',
+          'panel panel-solid absolute -right-12 top-full z-50 mt-2 w-[min(20.5rem,calc(100vw-1.5rem))] origin-top-right p-2 sm:p-2.5 sm:right-0 transition-all duration-200 ease-out shadow-2xl flex flex-col gap-1',
+          'max-h-[calc(100dvh-5.5rem)] overflow-y-auto overscroll-contain touch-pan-y landscape-short:max-h-[calc(100dvh-3.75rem)] landscape-short:w-[min(22rem,calc(100vw-1.5rem))] landscape-short:p-2.5',
           open ? 'scale-100 opacity-100' : 'pointer-events-none scale-95 opacity-0',
         )}
       >
@@ -335,7 +335,7 @@ export const FontSettings = memo(function FontSettings({
               </div>
             </div>
 
-            {/* 3. Kelime Öbeği (1 kelime, 2 kelime, 3 kelime) */}
+            {/* 3. Kelime Öbeği (1 kelime, 2 kelime, 3 kelime - Rakamlar altı çizili kısayol vurgulu) */}
             {onChunkSizeChange && (
               <div className="pt-1">
                 <div role="radiogroup" aria-label="Kelime öbeği boyutu" className="grid grid-cols-3 gap-1">
@@ -350,22 +350,25 @@ export const FontSettings = memo(function FontSettings({
                       onClick={() => onChunkSizeChange(size)}
                       data-wheel="chunk-size"
                       className={cn(
-                        'relative flex items-center justify-center py-1 px-1 rounded-lg transition-all cursor-pointer select-none text-center text-xs font-semibold',
+                        'flex items-center justify-center py-1 px-1 rounded-lg transition-all cursor-pointer select-none text-center text-xs font-semibold',
                         active
                           ? 'bg-primary text-primary-foreground shadow-xs ring-1 ring-primary/40'
                           : 'border border-border/60 hover:bg-muted/50 text-foreground/80 hover:text-foreground',
                       )}
                       title={`${size} kelime (Kısayol: ${size})`}
                     >
-                      <span>{size} kelime</span>
-                      <span
-                        aria-hidden="true"
-                        className={cn(
-                          'desktop-shortcut-badge hidden md:block absolute bottom-0.5 right-1 text-[8px] font-mono font-bold leading-none select-none transition-colors',
-                          active ? 'text-primary-foreground/80' : 'text-muted-foreground/50',
-                        )}
-                      >
-                        {size}
+                      <span className="inline-flex items-center justify-center leading-none">
+                        <span
+                          className={cn(
+                            'font-bold underline underline-offset-[2px] decoration-[1.5px] transition-colors',
+                            active
+                              ? 'text-primary-foreground decoration-primary-foreground/80'
+                              : 'desktop-shortcut-key text-primary decoration-primary',
+                          )}
+                        >
+                          {size}
+                        </span>
+                        <span className="ml-1 font-semibold">kelime</span>
                       </span>
                     </button>
                   )

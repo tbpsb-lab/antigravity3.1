@@ -1,36 +1,20 @@
 <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <style>
-    :root {
-      --reticle-bracket: #18181b;
-      --reticle-laser: #dc2626;
-    }
-    @media (prefers-color-scheme: dark) {
-      :root {
-        --reticle-bracket: #f4f4f5;
-        --reticle-laser: #ef4444;
-      }
-    }
-    .bracket {
-      stroke: var(--reticle-bracket);
-    }
-    .laser {
-      stroke: var(--reticle-laser);
-      fill: var(--reticle-laser);
-    }
-  </style>
+  <!-- Beyaz Yuvarlatılmış Köşeli Kare Fon (Squircle) -->
+  <rect x="1" y="1" width="30" height="30" rx="7" fill="#ffffff" stroke="#e4e4e7" stroke-width="0.8"/>
 
-  <!-- 4 Köşe Nişangah Braketi -->
-  <!-- Sol Üst -->
-  <path class="bracket" d="M 6 13.5 V 8.5 A 3 3 0 0 1 9 5.5 H 14" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-  <!-- Sağ Üst -->
-  <path class="bracket" d="M 18 5.5 H 23 A 3 3 0 0 1 26 8.5 V 13.5" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-  <!-- Sol Alt -->
-  <path class="bracket" d="M 6 18.5 V 23.5 A 3 3 0 0 0 9 26.5 H 14" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-  <!-- Sağ Alt -->
-  <path class="bracket" d="M 18 26.5 H 23 A 3 3 0 0 0 26 23.5 V 18.5" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Vektörel Odak Parantezleri (Yanlardan kapalı, yukarıdan ve aşağıdan lazer için açık) -->
+  <!-- Sol Parantez -->
+  <path d="M 12.5 7.5 H 9.5 A 3 3 0 0 0 6.5 10.5 V 21.5 A 3 3 0 0 0 9.5 24.5 H 12.5" 
+        stroke="#18181b" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+        
+  <!-- Sağ Parantez -->
+  <path d="M 19.5 7.5 H 22.5 A 3 3 0 0 1 25.5 10.5 V 21.5 A 3 3 0 0 1 22.5 24.5 H 19.5" 
+        stroke="#18181b" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
 
-  <!-- Kırmızı Dikey Lazer Nirengi Çizgisi -->
-  <line class="laser" x1="16" y1="2.5" x2="16" y2="10" stroke-width="2.5" stroke-linecap="round"/>
-  <line class="laser" x1="16" y1="22" x2="16" y2="29.5" stroke-width="2.5" stroke-linecap="round"/>
-  <circle class="laser" cx="16" cy="16" r="2.1"/>
+  <!-- Kırmızı Dikey Lazer Nirengi Çizgileri -->
+  <line x1="16" y1="4.5" x2="16" y2="10.5" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="16" y1="21.5" x2="16" y2="27.5" stroke-width="2.5" stroke-linecap="round"/>
+  
+  <!-- Merkez Odak Noktası (Pivot Pip) -->
+  <circle cx="16" cy="16" r="2.1" fill="#ef4444"/>
 </svg>

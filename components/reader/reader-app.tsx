@@ -917,8 +917,8 @@ export function ReaderApp() {
       const isUp = e.deltaY < 0
       const isFinePointer = typeof window !== 'undefined' && window.matchMedia('(pointer: fine)').matches
 
-      // Zen modunda veya masaüstü ince işaretçi yoksa sadece okuma hızı değişimi
-      if (zen || !isFinePointer) {
+      // Zen modunda sadece okuma hızı (WPM) değişimi
+      if (zen) {
         if (now - lastWpmTime < 60) return
         lastWpmTime = now
         if (e.cancelable) e.preventDefault()
@@ -926,21 +926,22 @@ export function ReaderApp() {
         return
       }
 
-      // 1. Masaüstü: Sf: X/Y butonu veya Sayfa Kıvrımı üzerindeyse sayfa numarasını değiştir
+      // 1. Sf: X/Y butonu veya Sayfa Kıvrımı üzerindeyse sayfa numarasını değiştir
+      // Farenin tekerleğiyle aşağı kaydırınca sayfa artar, yukarı kaydırınca sayfa azalır
       const pageTarget = target?.closest?.('[data-wheel="page-nav"]')
       if (pageTarget) {
         if (now - lastPageTime < 240) return
         lastPageTime = now
         if (e.cancelable) e.preventDefault()
         if (isUp) {
-          handleNextBookPage()
+          handlePrevBookPage() // Yukarı: Sayfa Azalır
         } else {
-          handlePrevBookPage()
+          handleNextBookPage() // Aşağı: Sayfa Artar
         }
         return
       }
 
-      // 2. Masaüstü: Aa butonu üzerindeyse yazı boyutunu (font scale) değiştir
+      // 2. Aa butonu üzerindeyse yazı boyutunu (font scale) değiştir
       const fontTarget = target?.closest?.('[data-wheel="font-scale"]')
       if (fontTarget) {
         if (now - lastFontTime < 140) return
@@ -950,7 +951,7 @@ export function ReaderApp() {
         return
       }
 
-      // 3. Masaüstü: 1k / 2k / 3k chunk butonu üzerindeyse kelime öbeğini değiştir
+      // 3. 1k / 2k / 3k chunk butonu üzerindeyse kelime öbeğini değiştir
       const chunkTarget = target?.closest?.('[data-wheel="chunk-size"]')
       if (chunkTarget) {
         if (now - lastChunkTime < 200) return
@@ -960,16 +961,17 @@ export function ReaderApp() {
         return
       }
 
-      // 4. Masaüstü: Bağlam penceresi (context peek) üzerindeyse sonraki / önceki bağlama geç
+      // 4. Bağlam penceresi (context peek) üzerindeyse sonraki / önceki bağlama geç
+      // Farenin tekerleğiyle aşağı kaydırınca sonraki bağlam sayfasına ilerler, yukarı kaydırınca önceki bağlama döner
       const contextTarget = target?.closest?.('[data-wheel="context-peek"]')
       if (contextTarget) {
         if (now - lastContextTime < 200) return
         lastContextTime = now
         if (e.cancelable) e.preventDefault()
         if (isUp) {
-          handleStepNext()
+          handleStepPrev() // Yukarı: Önceki bağlama dön
         } else {
-          handleStepPrev()
+          handleStepNext() // Aşağı: Sonraki bağlama ilerle
         }
         return
       }

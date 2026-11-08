@@ -43,7 +43,7 @@ import { SyncModal } from './sync-modal'
 import { FONT_FACES, FONT_SCALE_MAX, FONT_SCALE_MIN, FontSettings, type FontFace } from './font-settings'
 import { triggerHaptic, primeHaptics } from '@/lib/haptics'
 import { NeuroAudioEngine } from '@/lib/neuro-audio'
-import { getSyncVaultId, SyncChannelManager } from '@/lib/device-sync'
+import { getSyncVaultId, SyncChannelManager, upsertPairedDevice } from '@/lib/device-sync'
 import { useElementHeight } from '@/lib/use-element-height'
 import { useWakeLock } from '@/lib/use-wake-lock'
 import { EyeTracker, type AttentionLossReason } from '@/components/EyeTracker'
@@ -1305,6 +1305,17 @@ export function ReaderApp() {
         const urlChunk = params.get('chunk') || params.get('c')
         const urlTheme = params.get('theme') || params.get('t')
         const urlFont = params.get('font') || params.get('f')
+        const urlDid = params.get('did') || params.get('d')
+        const urlDn = params.get('dn')
+        const urlDt = (params.get('dt') as 'desktop' | 'mobile' | 'tablet') || 'desktop'
+
+        if (urlDid && urlDn) {
+          upsertPairedDevice({
+            id: urlDid,
+            name: urlDn,
+            type: urlDt,
+          })
+        }
 
         if (urlSync && urlSync.trim()) {
           const cleanSync = urlSync.trim().toUpperCase()
@@ -1645,7 +1656,14 @@ export function ReaderApp() {
     })
 
     syncManagerRef.current = manager
+    // İlk açılışta diğer bağlı cihazlara hemen varlığımızı duyur
+    const initialPresenceTimer = setTimeout(() => {
+      manager.broadcastPresence()
+      broadcastSyncState()
+    }, 400)
+
     return () => {
+      clearTimeout(initialPresenceTimer)
       manager.destroy()
       syncManagerRef.current = null
       if (kindleSyncTimerRef.current) {
@@ -2112,6 +2130,11 @@ export function ReaderApp() {
             typeof params.index === 'number' ? `${params.index + 1}. Öbek` : null,
           ].filter(Boolean).join(' • ')
           showAudioToast(`Eşitlendi (${details || 'Kaldığınız yer'})`)
+
+          setTimeout(() => {
+            syncManagerRef.current?.broadcastPresence()
+            broadcastSyncState()
+          }, 300)
         }}
       />
 

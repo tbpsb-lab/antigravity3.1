@@ -21,6 +21,7 @@ import {
   setSyncVaultId,
   getPairedDevices,
   removePairedDevice,
+  upsertPairedDevice,
   generateSyncUrl,
   parseSyncInput,
   type SyncedDevice,

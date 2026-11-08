@@ -63,7 +63,7 @@ export function isDeviceUnpaired(deviceId: string): boolean {
     const set: Record<string, number> = JSON.parse(raw)
     const timestamp = set[deviceId]
     if (!timestamp) return false
-    if (Date.now() - timestamp > 7 * 86400000) return false
+    if (Date.now() - timestamp > 15000) return false
     return true
   } catch {
     return false
@@ -195,6 +195,8 @@ export function setSyncVaultId(newVaultId: string): void {
   if (clean) {
     try {
       localStorage.setItem(VAULT_KEY, clean)
+      // Yeni bir eşleşme kodu girildiğinde veya karekod okunduğunda engelleri kaldır
+      clearUnpairedTombstone()
     } catch {}
   }
 }
@@ -500,14 +502,15 @@ export class SyncChannelManager {
     }
   }
 
-  private connectCloudStream() {
+  private connectCloudStream(serverIdx = 0) {
     if (typeof window === 'undefined' || typeof EventSource === 'undefined') return
     if (this.isDestroyed || !this.vaultId) return
 
     try {
+      const server = CLOUD_SYNC_SERVERS[serverIdx % CLOUD_SYNC_SERVERS.length]
       const topic = `hizlioku_sync_${this.vaultId.toLowerCase().replace(/[^a-z0-9_-]/g, '_')}`
       // ?since=24h geçmiş paketlerin de bağlantı kurulur kurulmaz akmasını sağlar
-      const sseUrl = `https://ntfy.sh/${topic}/sse?since=24h`
+      const sseUrl = `${server}/${topic}/sse?since=24h`
       const es = new EventSource(sseUrl)
 
       es.onmessage = (e) => {
@@ -523,7 +526,13 @@ export class SyncChannelManager {
       }
 
       es.onerror = () => {
-        // Otomatik yeniden bağlanma tarayıcı EventSource motoru tarafından yönetilir
+        // İlk sunucu bağlantısı hata verirse yedek sunucuya otomatik geçiş yap
+        if (serverIdx === 0 && !this.isDestroyed) {
+          try {
+            es.close()
+          } catch {}
+          this.connectCloudStream(1)
+        }
       }
 
       this.eventSource = es
@@ -532,69 +541,71 @@ export class SyncChannelManager {
 
   public async fetchLatestCloudState(): Promise<void> {
     if (!this.vaultId || typeof window === 'undefined' || this.isDestroyed) return
-    try {
-      const topic = `hizlioku_sync_${this.vaultId.toLowerCase().replace(/[^a-z0-9_-]/g, '_')}`
-      // poll=1: ntfy sunucusundaki mevcut birikmiş mesajları bekletmeden anında tek HTTP yanıtı olarak döndürür
-      const res = await fetch(`https://ntfy.sh/${topic}/json?poll=1`, {
-        cache: 'no-store',
-      })
-      if (!res.ok) return
-      const text = await res.text()
-      if (!text || this.isDestroyed) return
-      const lines = text.trim().split('\n')
+    const topic = `hizlioku_sync_${this.vaultId.toLowerCase().replace(/[^a-z0-9_-]/g, '_')}`
 
-      let newestProgress: SyncPayload | null = null
-      let newestTimestamp = this.lastIncomingProgressTimestamp
+    for (const server of CLOUD_SYNC_SERVERS) {
+      if (this.isDestroyed) break
+      try {
+        const res = await fetch(`${server}/${topic}/json?poll=1`, {
+          cache: 'no-store',
+        })
+        if (!res.ok) continue
+        const text = await res.text()
+        if (!text || this.isDestroyed) continue
+        const fileLines = text.trim().split('\n')
 
-      for (const line of lines) {
-        if (!line.trim()) continue
-        try {
-          const raw = JSON.parse(line)
-          if (raw && (raw.event === 'message' || !raw.event) && raw.message) {
-            const payload = typeof raw.message === 'string' ? JSON.parse(raw.message) : raw.message
-            if (payload && typeof payload === 'object' && payload.senderDeviceId !== getDeviceId()) {
-              if (payload.type === 'unpair') {
-                this.handleIncoming(payload)
-                continue
-              }
+        let newestProgress: SyncPayload | null = null
+        let newestTimestamp = this.lastIncomingProgressTimestamp
 
-              if (isDeviceUnpaired(payload.senderDeviceId)) {
-                continue
-              }
+        for (const line of fileLines) {
+          if (!line.trim()) continue
+          try {
+            const raw = JSON.parse(line)
+            if (raw && (raw.event === 'message' || !raw.event) && raw.message) {
+              const payload = typeof raw.message === 'string' ? JSON.parse(raw.message) : raw.message
+              if (payload && typeof payload === 'object' && payload.senderDeviceId !== getDeviceId()) {
+                if (payload.type === 'unpair') {
+                  this.handleIncoming(payload)
+                  continue
+                }
 
-              if (payload.senderDeviceId && payload.senderDeviceName) {
-                upsertPairedDevice({
-                  id: payload.senderDeviceId,
-                  name: payload.senderDeviceName,
-                  type: payload.senderDeviceType || 'desktop',
-                })
-              }
+                // Kar???? cihaz varl??????n?? listeye ekle
+                if (payload.senderDeviceId && payload.senderDeviceName) {
+                  upsertPairedDevice({
+                    id: payload.senderDeviceId,
+                    name: payload.senderDeviceName,
+                    type: payload.senderDeviceType || 'desktop',
+                  })
+                }
 
-              if (payload.type === 'progress' || !payload.type) {
-                const ts = payload.timestamp || (raw.time ? raw.time * 1000 : 0)
-                if (ts >= newestTimestamp) {
-                  newestTimestamp = ts
-                  newestProgress = payload
+                if (payload.type === 'progress' || !payload.type) {
+                  if (isDeviceUnpaired(payload.senderDeviceId)) continue
+                  const ts = payload.timestamp || (raw.time ? raw.time * 1000 : 0)
+                  if (ts >= newestTimestamp) {
+                    newestTimestamp = ts
+                    newestProgress = payload
+                  }
                 }
               }
             }
-          }
-        } catch {}
-      }
+          } catch {}
+        }
 
-      if (newestProgress && !this.isDestroyed) {
-        this.lastIncomingProgressTimestamp = newestTimestamp
-        this.handleIncoming(newestProgress)
-      }
-    } catch {}
+        if (newestProgress && !this.isDestroyed) {
+          this.lastIncomingProgressTimestamp = newestTimestamp
+          this.handleIncoming(newestProgress)
+        }
+        break
+      } catch {}
+    }
   }
 
   private handleIncoming(payload: SyncPayload) {
     if (!payload || typeof payload !== 'object') return
-    // Kendi cihazımızın gönderdiği paketleri atla
+    // Kendi cihaz??m??z??n g??nderdi??i paketleri atla
     if (payload.senderDeviceId === getDeviceId()) return
 
-    // Unpair (Eşleşmeyi Sonlandırma) paketi geldiyse:
+    // Unpair (E??le??meyi Sonland??rma) paketi geldiyse:
     if (payload.type === 'unpair') {
       const myId = getDeviceId()
       const targetId = payload.targetDeviceId
@@ -609,7 +620,7 @@ export class SyncChannelManager {
         this.updateVaultId(newVaultId)
 
         // Bildirimi ilet
-        const senderName = payload.senderDeviceName || 'Diğer cihaz'
+        const senderName = payload.senderDeviceName || 'Di??er cihaz'
         if (typeof window !== 'undefined') {
           window.dispatchEvent(
             new CustomEvent('device-unpaired-notify', {
@@ -626,8 +637,8 @@ export class SyncChannelManager {
       return
     }
 
-    // Eğer bu cihaz silinmişler listesindeyse ve yeni eşleşme yapılmadıysa atla
-    if (isDeviceUnpaired(payload.senderDeviceId)) return
+    // Karşı cihazdan bildirim geldiyse eşleşme aktiftir
+    clearUnpairedTombstone(payload.senderDeviceId)
 
     // Karşı cihazın varlığını cihaz listesine işle
     if (payload.senderDeviceId && payload.senderDeviceName) {
@@ -641,6 +652,11 @@ export class SyncChannelManager {
     // Karşı cihaz ilk bağlantıda kimler var diye sorduysa (presence_query), kendi varlığımızı ona ilet
     if (payload.type === 'presence_query') {
       this.sendDirectPresence('presence')
+    }
+
+    // Silinmiş cihazın eski uçuşan progress paketlerini süz
+    if (payload.type === 'progress' && isDeviceUnpaired(payload.senderDeviceId)) {
+      return
     }
 
     this.onMessageCallback?.(payload)
@@ -723,46 +739,54 @@ export class SyncChannelManager {
 
   private postToCloud(payload: SyncPayload) {
     if (!this.vaultId || typeof window === 'undefined') return
-    try {
-      const topic = `hizlioku_sync_${this.vaultId.toLowerCase().replace(/[^a-z0-9_-]/g, '_')}`
-      fetch(`https://ntfy.sh/${topic}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Title': 'HizliOku Sync',
-        },
-        body: JSON.stringify(payload),
-        keepalive: true,
-      }).catch(() => {})
-    } catch {}
+    const topic = `hizlioku_sync_${this.vaultId.toLowerCase().replace(/[^a-z0-9_-]/g, '_')}`
+    const bodyStr = JSON.stringify(payload)
+    for (const server of CLOUD_SYNC_SERVERS) {
+      try {
+        fetch(`${server}/${topic}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Title': 'HizliOku Sync',
+          },
+          body: bodyStr,
+          keepalive: true,
+        }).catch(() => {})
+      } catch {}
+    }
   }
 
   public updateVaultId(newVaultId: string) {
-    if (!newVaultId || this.vaultId === newVaultId) return
+    if (!newVaultId) return
+    const isSame = this.vaultId === newVaultId
     this.vaultId = newVaultId
+    clearUnpairedTombstone()
 
-    if (this.eventSource) {
-      this.eventSource.close()
-      this.eventSource = null
-    }
-    if (this.channel) {
-      this.channel.close()
-      this.channel = null
-    }
+    if (!isSame) {
+      if (this.eventSource) {
+        this.eventSource.close()
+        this.eventSource = null
+      }
+      if (this.channel) {
+        this.channel.close()
+        this.channel = null
+      }
 
-    if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
-      try {
-        const chanName = `${CHANNEL_NAME}_${this.vaultId.replace(/[^A-Za-z0-9_-]/g, '_')}`
-        this.channel = new BroadcastChannel(chanName)
-        this.channel.onmessage = (event) => {
-          if (event.data && typeof event.data === 'object') {
-            this.handleIncoming(event.data as SyncPayload)
+      if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+        try {
+          const chanName = `${CHANNEL_NAME}_${this.vaultId.replace(/[^A-Za-z0-9_-]/g, '_')}`
+          this.channel = new BroadcastChannel(chanName)
+          this.channel.onmessage = (event) => {
+            if (event.data && typeof event.data === 'object') {
+              this.handleIncoming(event.data as SyncPayload)
+            }
           }
-        }
-      } catch {}
+        } catch {}
+      }
+
+      this.connectCloudStream()
     }
 
-    this.connectCloudStream()
     this.fetchLatestCloudState()
     this.broadcastPresence()
   }

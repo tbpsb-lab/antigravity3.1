@@ -544,21 +544,32 @@ export function ReaderApp() {
 
   const handleBlinkOrLookAway = useCallback(
     (reason: AttentionLossReason) => {
-      if (!playing) return
+      if (!playingRef.current) return
       pausedByEyeTrackerRef.current = true
       setPlaying(false)
+      playingRef.current = false
       const startIdx = findCurrentSentenceStartIndex(chunksRef.current, indexRef.current)
       rampStepRef.current = 0
       expectedTimestampRef.current = null
       setIndex(startIdx)
       triggerPulse()
-      showAudioToast(
-        reason === 'no-face'
-          ? 'Ekrandan uzaklaşıldı — Okuma duraklatıldı'
-          : 'Göz kapandı — Okuma duraklatıldı',
-      )
+
+      let message = 'Dikkat dağıldı — Okuma duraklatıldı'
+      if (reason === 'head-turned') {
+        message = 'Baş çevrildi — Okuma duraklatıldı'
+      } else if (reason === 'looking-away') {
+        message = 'Ekrandan uzaklaşıldı — Okuma duraklatıldı'
+      } else if (reason === 'eyes-squinted') {
+        message = 'Gözler kısıldı (Yorgunluk) — Okuma duraklatıldı'
+      } else if (reason === 'eyes-closed') {
+        message = 'Gözler kapandı — Okuma duraklatıldı'
+      } else if (reason === 'no-face') {
+        message = 'Yüz algılanamadı — Okuma duraklatıldı'
+      }
+
+      showAudioToast(message)
     },
-    [playing, triggerPulse, showAudioToast],
+    [triggerPulse, showAudioToast],
   )
 
   const handleAttentionRestored = useCallback(() => {
@@ -569,7 +580,8 @@ export function ReaderApp() {
     expectedTimestampRef.current = null
     triggerPulse()
     setPlaying(true)
-    showAudioToast('Dikkat geri geldi — Cümle başından devam ediliyor')
+    playingRef.current = true
+    showAudioToast('Ekrana odaklanıldı — Devam ediliyor')
   }, [anyModalOpen, sheetOpen, triggerPulse, showAudioToast])
 
   const handleMicroBlink = useCallback(() => {
@@ -2265,6 +2277,9 @@ export function ReaderApp() {
             {(audioToast.includes('Göz') ||
               audioToast.includes('Dikkat') ||
               audioToast.includes('Ekrandan') ||
+              audioToast.includes('Baş') ||
+              audioToast.includes('Ekrana') ||
+              audioToast.includes('Yorgunluk') ||
               audioToast.includes('Kamera')) &&
               (eyeTrackingEnabled ? (
                 <Eye className="size-3.5 text-emerald-500" />
@@ -2288,7 +2303,6 @@ export function ReaderApp() {
       {/* Görünmez Web Kamerası Tabanlı Göz Kırpma & Dikkat İzleme Motoru */}
       <EyeTracker
         enabled={eyeTrackingEnabled}
-        earThreshold={0.18}
         onBlinkOrLookAway={handleBlinkOrLookAway}
         onAttentionRestored={handleAttentionRestored}
         onMicroBlink={handleMicroBlink}

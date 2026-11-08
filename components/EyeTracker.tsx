@@ -8,79 +8,212 @@ export type Landmark3D = {
   z: number
 }
 
-export type AttentionLossReason = 'eyes-closed' | 'no-face'
+export type AttentionLossReason =
+  | 'head-turned'
+  | 'looking-away'
+  | 'eyes-closed'
+  | 'eyes-squinted'
+  | 'no-face'
 
 export type EyeTrackerProps = {
   /** Özellik aktif mi? Kapalıyken kamera ve MediaPipe hiç çalıştırılmaz. */
   enabled: boolean
-  /** Göz açıklık oranı (EAR) eşik değeri (Varsayılan: 0.18) */
-  earThreshold?: number
-  /** Doğal anlık göz kırpmalarını (100-200ms) filtrelemek için dikkat kaybı tolerans süresi (ms) */
-  attentionLossDelayMs?: number
-  /** Göz kapandığında (EAR < eşik) veya kamera önünde yüz algılanamadığında tetiklenir */
+  /** Doğal göz kırpmalarını (100-350ms) filtreleyen, uzun göz kapatma eşiği (ms, varsayılan: 450) */
+  blinkGracePeriodMs?: number
+  /** Gözlerin kısılması / yorgunluk algılama süre eşiği (ms, varsayılan: 750) */
+  squintDurationMs?: number
+  /** Başın sağa/sola çevrilmesi durumunda duraklatma gecikmesi (ms, varsayılan: 300) */
+  headTurnDurationMs?: number
+  /** Yüzün kadrajdan çıkması durumunda duraklatma gecikmesi (ms, varsayılan: 350) */
+  noFaceDurationMs?: number
+  /** Dikkat kaybı tetiklendiğinde çağrılır */
   onBlinkOrLookAway: (reason: AttentionLossReason) => void
-  /** Dikkat tekrar ekrana döndüğünde (yüz algılandı ve EAR >= eşik) tetiklenir */
+  /** Dikkat doğrudan ekrana döndüğünde çağrılır */
   onAttentionRestored: () => void
-  /** Kısa doğal göz kırpmasında (< attentionLossDelayMs) mikro telafi için isteğe bağlı callback */
+  /** Kısa doğal göz kırpmalarında (< blinkGracePeriodMs) mikro telafi bildirimi */
   onMicroBlink?: () => void
   /** Kamera izni verilmediğinde veya kamera bulunamadığında tetiklenir */
   onPermissionDenied?: (errorMessage: string) => void
-  /** Kamera ve model başarıyla hazır olduğunda tetiklenir */
-  onTrackingStatusChange?: (status: 'inactive' | 'initializing' | 'active' | 'attention-lost' | 'error') => void
+  /** Kamera ve model çalışma durumu değiştiğinde tetiklenir */
+  onTrackingStatusChange?: (
+    status: 'inactive' | 'initializing' | 'active' | 'attention-lost' | 'error',
+  ) => void
 }
 
-// MediaPipe FaceMesh Sol Göz 3D Landmark İndeksleri
-// 33: Sol dış köşe, 133: Sol iç köşe
-// (160, 144) ve (158, 153): Dikey üst ve alt göz kapağı çiftleri
-const LEFT_EYE_INDICES = {
-  outerCorner: 33,
-  innerCorner: 133,
-  upper1: 160,
-  lower1: 144,
-  upper2: 158,
-  lower2: 153,
-} as const
-
 /**
- * İki 3D nokta arasındaki Öklid (Euclidean) mesafesini hesaplar.
+ * İki 2D nokta arasındaki Öklid mesafesi.
+ * Göz kapağı açıklığı (EAR) hesaplamasında derinlik (z) gürültüsünü önlemek için 2D kullanılır.
  */
-function euclideanDistance3D(p1: Landmark3D, p2: Landmark3D): number {
+function distance2D(p1: Landmark3D, p2: Landmark3D): number {
   const dx = p1.x - p2.x
   const dy = p1.y - p2.y
-  const dz = (p1.z || 0) - (p2.z || 0)
-  return Math.sqrt(dx * dx + dy * dy + dz * dz)
+  return Math.sqrt(dx * dx + dy * dy)
 }
 
 /**
- * Sol gözün dikey ve yatay 3D landmark koordinatlarını kullanarak
- * EAR (Eye Aspect Ratio - Göz Açıklık Oranı) değerini hesaplar.
- *
- * EAR = (||p2 - p6|| + ||p3 - p5||) / (2 * ||p1 - p4||)
+ * 6-noktalı standart EAR (Eye Aspect Ratio) hesaplaması.
+ * EAR = (||pTop1 - pBot1|| + ||pTop2 - pBot2||) / (2 * ||pOuter - pInner||)
+ */
+function calculateSingleEyeEAR(
+  landmarks: Landmark3D[],
+  outerIdx: number,
+  innerIdx: number,
+  top1Idx: number,
+  bot1Idx: number,
+  top2Idx: number,
+  bot2Idx: number,
+): number {
+  const pOuter = landmarks[outerIdx]
+  const pInner = landmarks[innerIdx]
+  const pTop1 = landmarks[top1Idx]
+  const pBot1 = landmarks[bot1Idx]
+  const pTop2 = landmarks[top2Idx]
+  const pBot2 = landmarks[bot2Idx]
+
+  if (!pOuter || !pInner || !pTop1 || !pBot1 || !pTop2 || !pBot2) return 0.25
+
+  const v1 = distance2D(pTop1, pBot1)
+  const v2 = distance2D(pTop2, pBot2)
+  const h = distance2D(pOuter, pInner)
+
+  if (h <= 0.0001) return 0.25
+  return (v1 + v2) / (2.0 * h)
+}
+
+/**
+ * Göz açıklık oranını (EAR) iki göz için ayrı ayrı ve ortalama olarak hesaplar.
+ * Sağ göz (anatomik sağ, kamerada sol): 33, 133, 160, 144, 158, 153
+ * Sol göz (anatomik sol, kamerada sağ): 263, 362, 387, 373, 385, 380
+ */
+export function calculateEyeMetrics(landmarks: Landmark3D[]) {
+  const rightEar = calculateSingleEyeEAR(landmarks, 33, 133, 160, 144, 158, 153)
+  const leftEar = calculateSingleEyeEAR(landmarks, 263, 362, 387, 373, 385, 380)
+  const avgEar = (rightEar + leftEar) / 2.0
+
+  return { rightEar, leftEar, avgEar }
+}
+
+/**
+ * Geriye dönük uyumluluk için sol göz EAR fonksiyonu.
  */
 export function calculateLeftEyeEAR(landmarks: Landmark3D[]): number {
-  const p1 = landmarks[LEFT_EYE_INDICES.outerCorner]
-  const p2 = landmarks[LEFT_EYE_INDICES.upper1]
-  const p3 = landmarks[LEFT_EYE_INDICES.upper2]
-  const p4 = landmarks[LEFT_EYE_INDICES.innerCorner]
-  const p5 = landmarks[LEFT_EYE_INDICES.lower2]
-  const p6 = landmarks[LEFT_EYE_INDICES.lower1]
+  return calculateSingleEyeEAR(landmarks, 263, 362, 387, 373, 385, 380)
+}
 
-  if (!p1 || !p2 || !p3 || !p4 || !p5 || !p6) {
-    return 1.0
+/**
+ * Baş duruşunu (Pose: Yaw, Pitch ve Simetri) MediaPipe yüz koordinatlarından hesaplar.
+ * Burun ucu (1), yüz kenarları (234, 454), göz uçları (33, 263), alın (10), çene (152).
+ */
+export function calculateHeadPose(landmarks: Landmark3D[]) {
+  const nose = landmarks[1]
+  const leftFaceEdge = landmarks[454]
+  const rightFaceEdge = landmarks[234]
+  const rightEyeOuter = landmarks[33]
+  const leftEyeOuter = landmarks[263]
+  const forehead = landmarks[10]
+  const chin = landmarks[152]
+
+  if (!nose || !leftFaceEdge || !rightFaceEdge || !rightEyeOuter || !leftEyeOuter) {
+    return {
+      yawRatio: 0,
+      symmetryRatio: 0.5,
+      yawAngleDeg: 0,
+      pitchRatio: 0.35,
+      isHeadTurned: false,
+      isHeadFacingScreen: true,
+    }
   }
 
-  const verticalDist1 = euclideanDistance3D(p2, p6)
-  const verticalDist2 = euclideanDistance3D(p3, p5)
-  const horizontalDist = euclideanDistance3D(p1, p4)
+  // 1. Burun ucunun iki gözün orta noktasına göre yatay sapması
+  const eyeMidX = (rightEyeOuter.x + leftEyeOuter.x) / 2.0
+  const eyeDist = Math.abs(leftEyeOuter.x - rightEyeOuter.x)
+  const yawRatio = eyeDist > 0.001 ? (nose.x - eyeMidX) / eyeDist : 0
 
-  if (horizontalDist === 0) return 1.0
-  return (verticalDist1 + verticalDist2) / (2.0 * horizontalDist)
+  // 2. Yanak - burun simetri oranı (Doğrudan karşıya bakışta ~0.50)
+  const faceWidth = Math.abs(leftFaceEdge.x - rightFaceEdge.x)
+  const distRightCheekToNose = Math.abs(nose.x - rightFaceEdge.x)
+  const symmetryRatio = faceWidth > 0.001 ? distRightCheekToNose / faceWidth : 0.5
+
+  // 3. Yüz kenarları derinlik (Z) farkı üzerinden 3D Yaw açısı
+  const dx = leftFaceEdge.x - rightFaceEdge.x
+  const dz = (leftFaceEdge.z || 0) - (rightFaceEdge.z || 0)
+  const yawAngleDeg = Math.atan2(dz, dx) * (180.0 / Math.PI)
+
+  // 4. Dikey kafa eğimi (Pitch)
+  let pitchRatio = 0.35
+  if (forehead && chin) {
+    const faceHeight = Math.abs(chin.y - forehead.y)
+    const midEyeY = (rightEyeOuter.y + leftEyeOuter.y) / 2.0
+    pitchRatio = faceHeight > 0.001 ? (nose.y - midEyeY) / faceHeight : 0.35
+  }
+
+  // Baş sağa veya sola çevrilmiş mi?
+  const isYawTurned =
+    Math.abs(yawRatio) > 0.22 ||
+    symmetryRatio < 0.32 ||
+    symmetryRatio > 0.68 ||
+    Math.abs(yawAngleDeg) > 17.0
+
+  // Aşırı yukarı veya aşağı bakış
+  const isPitchTurned = pitchRatio < 0.16 || pitchRatio > 0.56
+
+  const isHeadTurned = isYawTurned || isPitchTurned
+
+  // Baş doğrudan ekrana bakıyor mu?
+  const isHeadFacingScreen =
+    Math.abs(yawRatio) <= 0.15 &&
+    symmetryRatio >= 0.38 &&
+    symmetryRatio <= 0.62 &&
+    Math.abs(yawAngleDeg) <= 13.0 &&
+    pitchRatio >= 0.22 &&
+    pitchRatio <= 0.48
+
+  return {
+    yawRatio,
+    symmetryRatio,
+    yawAngleDeg,
+    pitchRatio,
+    isHeadTurned,
+    isHeadFacingScreen,
+  }
+}
+
+/**
+ * İris merkezleri (468, 473) yardımıyla bakış yönünü (Gaze) doğrular.
+ */
+export function calculateGazeDirection(landmarks: Landmark3D[]) {
+  const rightIris = landmarks[468]
+  const leftIris = landmarks[473]
+  const rOuter = landmarks[33]
+  const rInner = landmarks[133]
+  const lOuter = landmarks[263]
+  const lInner = landmarks[362]
+
+  if (!rightIris || !leftIris || !rOuter || !rInner || !lOuter || !lInner) {
+    return { isGazeAverted: false, avgGaze: 0.5 }
+  }
+
+  const rWidth = rInner.x - rOuter.x
+  const lWidth = lOuter.x - lInner.x
+
+  if (Math.abs(rWidth) < 0.008 || Math.abs(lWidth) < 0.008) {
+    return { isGazeAverted: false, avgGaze: 0.5 }
+  }
+
+  const rPos = (rightIris.x - rOuter.x) / rWidth
+  const lPos = (leftIris.x - lInner.x) / lWidth
+  const avgGaze = (rPos + lPos) / 2.0
+
+  // Bakışlar aşırı sola (<0.22) veya aşırı sağa (>0.78) kaymış mı?
+  const isGazeAverted = avgGaze < 0.22 || avgGaze > 0.78
+
+  return { isGazeAverted, avgGaze }
 }
 
 function loadScriptOnce(src: string): Promise<void> {
   return new Promise((resolve, reject) => {
     if (typeof document === 'undefined') {
-      reject(new Error(' Tarayıcı ortamı bulunamadı.'))
+      reject(new Error('Tarayıcı ortamı bulunamadı.'))
       return
     }
     const existing = document.querySelector(`script[src="${src}"]`) as HTMLScriptElement | null
@@ -149,8 +282,10 @@ async function resolveMediaPipeModules(): Promise<{ FaceMesh: any; Camera: any }
 
 export function EyeTracker({
   enabled,
-  earThreshold = 0.18,
-  attentionLossDelayMs = 380,
+  blinkGracePeriodMs = 450,
+  squintDurationMs = 750,
+  headTurnDurationMs = 300,
+  noFaceDurationMs = 350,
   onBlinkOrLookAway,
   onAttentionRestored,
   onMicroBlink,
@@ -159,7 +294,7 @@ export function EyeTracker({
 }: EyeTrackerProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null)
 
-  // Callback referanslarını güncel tut (gereksiz kamera yeniden başlatmalarını önler)
+  // Callback referanslarını güncel tut
   const onBlinkOrLookAwayRef = useRef(onBlinkOrLookAway)
   onBlinkOrLookAwayRef.current = onBlinkOrLookAway
 
@@ -192,11 +327,18 @@ export function EyeTracker({
     let cameraInstance: any = null
     let activeStream: MediaStream | null = null
 
-    // Dikkat ve göz kırpma zamanlayıcı durumları
-    let anomalyStartTime: number | null = null
+    // İzleme ve dikkat durumu referansları
     let isAttentionLost = false
-    let wasBlinkingInCurrentBout = false
     let restoreConsecutiveFrames = 0
+
+    // Zaman sayıcıları
+    let noFaceStartTime: number | null = null
+    let eyeClosedStartTime: number | null = null
+    let squintStartTime: number | null = null
+    let headTurnStartTime: number | null = null
+
+    // Adaptif göz açıklık referans değeri (kullanıcının doğal göz yapısına otomatik uyum sağlar)
+    let baselineOpenEAR = 0.25
 
     const stopAllResources = () => {
       try {
@@ -233,14 +375,14 @@ export function EyeTracker({
     async function initEyeTracker() {
       onTrackingStatusChangeRef.current?.('initializing')
 
-      // 1. Önce kamera iznini doğrula (izin verilmezse özellik derhal inactive olur)
+      // 1. Önce kamera iznini doğrula
       try {
         activeStream = await navigator.mediaDevices.getUserMedia({
           video: {
             width: { ideal: 320 },
             height: { ideal: 240 },
             facingMode: 'user',
-            frameRate: { ideal: 15, max: 24 },
+            frameRate: { ideal: 20, max: 24 },
           },
           audio: false,
         })
@@ -261,7 +403,7 @@ export function EyeTracker({
         return
       }
 
-      // Başlangıç izin kontrolü stream'ini kapatıp MediaPipe Camera'ya devret
+      // Stream'i kapatıp MediaPipe Camera'ya devret
       activeStream.getTracks().forEach((t) => t.stop())
       activeStream = null
 
@@ -291,12 +433,16 @@ export function EyeTracker({
           const faces: Landmark3D[][] | undefined = results?.multiFaceLandmarks
           const hasFace = Array.isArray(faces) && faces.length > 0
 
+          // DURUM 1: Kamera önünde yüz algılanamadı
           if (!hasFace) {
-            // Kamera önünde yüz algılanamadı (ekrandan uzaklaşma / baş çevirme)
             restoreConsecutiveFrames = 0
-            if (anomalyStartTime === null) {
-              anomalyStartTime = now
-            } else if (!isAttentionLost && now - anomalyStartTime >= attentionLossDelayMs) {
+            eyeClosedStartTime = null
+            squintStartTime = null
+            headTurnStartTime = null
+
+            if (noFaceStartTime === null) {
+              noFaceStartTime = now
+            } else if (!isAttentionLost && now - noFaceStartTime >= noFaceDurationMs) {
               isAttentionLost = true
               onTrackingStatusChangeRef.current?.('attention-lost')
               onBlinkOrLookAwayRef.current('no-face')
@@ -304,56 +450,125 @@ export function EyeTracker({
             return
           }
 
+          noFaceStartTime = null
           const landmarks = faces[0]
-          const leftEar = calculateLeftEyeEAR(landmarks)
 
-          if (leftEar < earThreshold) {
-            // Sol göz EAR değeri eşiğin (örn. 0.18) altında
+          // Her iki gözün EAR oranları ve ortalaması
+          const { avgEar } = calculateEyeMetrics(landmarks)
+          const headPose = calculateHeadPose(landmarks)
+          const gaze = calculateGazeDirection(landmarks)
+
+          // Kullanıcı ekrana doğru bakarken adaptif açık göz EAR değerini dinamik olarak güncelle
+          if (headPose.isHeadFacingScreen && !gaze.isGazeAverted && avgEar >= 0.18) {
+            baselineOpenEAR = baselineOpenEAR * 0.98 + avgEar * 0.02
+            baselineOpenEAR = Math.max(0.21, Math.min(0.33, baselineOpenEAR))
+          }
+
+          // Adaptif eşik değerleri
+          const closedThreshold = Math.min(0.13, baselineOpenEAR * 0.52)
+          const squintThreshold = Math.min(0.185, baselineOpenEAR * 0.70)
+          const openThreshold = Math.max(0.165, baselineOpenEAR * 0.76)
+
+          const isLookingAway = headPose.isHeadTurned || gaze.isGazeAverted
+          const isEyesClosed = avgEar < closedThreshold
+          const isEyesSquinted = !isEyesClosed && avgEar < squintThreshold
+
+          // DURUM 2: Baş sağa/sola çevrildi veya bakışlar ekrandan uzaklaştı
+          if (isLookingAway) {
+            eyeClosedStartTime = null
+            squintStartTime = null
             restoreConsecutiveFrames = 0
-            wasBlinkingInCurrentBout = true
-            if (anomalyStartTime === null) {
-              anomalyStartTime = now
-            } else if (!isAttentionLost && now - anomalyStartTime >= attentionLossDelayMs) {
+
+            if (headTurnStartTime === null) {
+              headTurnStartTime = now
+            } else if (!isAttentionLost && now - headTurnStartTime >= headTurnDurationMs) {
+              isAttentionLost = true
+              onTrackingStatusChangeRef.current?.('attention-lost')
+              onBlinkOrLookAwayRef.current(headPose.isHeadTurned ? 'head-turned' : 'looking-away')
+            }
+            return
+          }
+
+          headTurnStartTime = null
+
+          // DURUM 3: Gözler tamamen kapandı (Doğal kısa kırpma mı yoksa uzun kapanma mı?)
+          if (isEyesClosed) {
+            squintStartTime = null
+            restoreConsecutiveFrames = 0
+
+            if (eyeClosedStartTime === null) {
+              eyeClosedStartTime = now
+            } else if (!isAttentionLost && now - eyeClosedStartTime >= blinkGracePeriodMs) {
               isAttentionLost = true
               onTrackingStatusChangeRef.current?.('attention-lost')
               onBlinkOrLookAwayRef.current('eyes-closed')
             }
-          } else {
-            // Göz açık (EAR >= earThreshold) ve yüz kamerada
-            if (
-              anomalyStartTime !== null &&
-              !isAttentionLost &&
-              wasBlinkingInCurrentBout &&
-              now - anomalyStartTime >= 60 &&
-              now - anomalyStartTime < attentionLossDelayMs
-            ) {
-              // Kısa doğal göz kırpma (< 380ms): akışı durdurmadan mikro telafi bildir
+            return
+          }
+
+          // Gözler açık: önceki durum doğal bir kısa göz kırpması mıydı?
+          if (eyeClosedStartTime !== null) {
+            const closedDuration = now - eyeClosedStartTime
+            if (!isAttentionLost && closedDuration >= 70 && closedDuration < blinkGracePeriodMs) {
+              // Kısa göz kırpması (< 450ms): akış duraklatılmaz, mikro telafi iletilir
               onMicroBlinkRef.current?.()
             }
+            eyeClosedStartTime = null
+          }
 
-            anomalyStartTime = null
-            wasBlinkingInCurrentBout = false
+          // DURUM 4: Gözler kısıldı (Yorgunluk / uyuklama tespiti)
+          if (isEyesSquinted) {
+            restoreConsecutiveFrames = 0
 
-            if (isAttentionLost) {
+            if (squintStartTime === null) {
+              squintStartTime = now
+            } else if (!isAttentionLost && now - squintStartTime >= squintDurationMs) {
+              isAttentionLost = true
+              onTrackingStatusChangeRef.current?.('attention-lost')
+              onBlinkOrLookAwayRef.current('eyes-squinted')
+            }
+            return
+          }
+
+          squintStartTime = null
+
+          // DURUM 5: Dikkat tekrar doğrudan ekrana döndüğünde otomatik devam et
+          if (isAttentionLost) {
+            const isFullyFocused =
+              headPose.isHeadFacingScreen &&
+              !gaze.isGazeAverted &&
+              avgEar >= openThreshold
+
+            if (isFullyFocused) {
               restoreConsecutiveFrames += 1
-              // Kararlı geri dönüş için ardışık 2 kare boyunca gözün açık ve ekranda olmasını bekle
+              // Kararlı geri dönüş için ardışık 2 kare (~100-120ms) doğrudan ekrana bakılmasını bekle
               if (restoreConsecutiveFrames >= 2) {
                 isAttentionLost = false
                 restoreConsecutiveFrames = 0
+                eyeClosedStartTime = null
+                squintStartTime = null
+                headTurnStartTime = null
+                noFaceStartTime = null
                 onTrackingStatusChangeRef.current?.('active')
                 onAttentionRestoredRef.current()
               }
+            } else {
+              restoreConsecutiveFrames = 0
             }
           }
         })
 
+        let isProcessingFrame = false
         cameraInstance = new Camera(videoRef.current, {
           onFrame: async () => {
-            if (isCancelled || !faceMeshInstance || !videoRef.current) return
+            if (isCancelled || !faceMeshInstance || !videoRef.current || isProcessingFrame) return
+            isProcessingFrame = true
             try {
               await faceMeshInstance.send({ image: videoRef.current })
             } catch {
-              // Tekil kare hatalarını sessizce yut
+              // Kare iletim hatalarını sessizce yut
+            } finally {
+              isProcessingFrame = false
             }
           },
           width: 320,
@@ -378,7 +593,13 @@ export function EyeTracker({
       isCancelled = true
       stopAllResources()
     }
-  }, [enabled, earThreshold, attentionLossDelayMs])
+  }, [
+    enabled,
+    blinkGracePeriodMs,
+    squintDurationMs,
+    headTurnDurationMs,
+    noFaceDurationMs,
+  ])
 
   return (
     <video

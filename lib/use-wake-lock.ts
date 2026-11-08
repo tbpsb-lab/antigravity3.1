@@ -39,13 +39,24 @@ export function useWakeLock(enabled: boolean) {
           return
         }
         wakeLockRef.current = lock
-        lock.addEventListener?.('release', () => {
+
+        const handleRelease = () => {
           if (wakeLockRef.current === lock) {
             wakeLockRef.current = null
           }
-        })
+        }
+
+        if (typeof lock.addEventListener === 'function') {
+          try {
+            lock.addEventListener('release', handleRelease)
+          } catch {
+            (lock as any).onrelease = handleRelease
+          }
+        } else {
+          (lock as any).onrelease = handleRelease
+        }
       } catch {
-        // Pil tasarruf modu veya sekmenin arka planda olması durumunda güvenle yutulur
+        // iOS pil tasarruf modu veya PWA arka plan durumunda güvenle yutulur
       }
     }
 

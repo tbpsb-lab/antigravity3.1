@@ -91,6 +91,14 @@ export const SyncModal = memo(function SyncModal({
     } catch {}
 
     // 2. Tam Ekran modu ile tüm ekranı parlak beyaz ışığa dönüştür (Fullscreen API - Çapraz Tarayıcı & Webkit)
+    // iPhone ve Standalone PWA modunda native Fullscreen çağrısı WebKit crash ürettiğinden yalnızca iPad ve masaüstünde çalıştırılır
+    const isIPhone = typeof navigator !== 'undefined' && /iPhone|iPod/i.test(navigator.userAgent)
+    const isStandalone = typeof window !== 'undefined' && (
+      Boolean((navigator as any).standalone) ||
+      window.matchMedia('(display-mode: standalone)').matches
+    )
+    if (isIPhone || isStandalone) return
+
     try {
       const doc = typeof document !== 'undefined' ? (document as any) : null
       if (doc && !doc.fullscreenElement && !doc.webkitFullscreenElement) {

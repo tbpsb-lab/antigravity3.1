@@ -610,33 +610,19 @@ export function ReaderApp() {
     }
 
     const resetViewportScroll = () => {
-      window.scrollTo(0, 0)
-      if (document.body) {
-        document.body.scrollLeft = 0
-        document.body.scrollTop = 0
-        document.body.style.width = '100vw'
-        document.body.style.maxWidth = '100vw'
-        document.body.style.height = '100dvh'
-      }
-      if (document.documentElement) {
-        document.documentElement.scrollLeft = 0
-        document.documentElement.scrollTop = 0
-        document.documentElement.style.width = '100vw'
-        document.documentElement.style.maxWidth = '100vw'
-        document.documentElement.style.height = '100dvh'
+      if (typeof window !== 'undefined') {
+        window.scrollTo(0, 0)
       }
     }
 
     const scheduleViewportResets = () => {
       clearScheduledTimers()
       resetViewportScroll()
-      for (const delay of [60, 200, 450]) {
-        const id = setTimeout(() => {
-          timers.delete(id)
-          resetViewportScroll()
-        }, delay)
-        timers.add(id)
-      }
+      const id = setTimeout(() => {
+        timers.delete(id)
+        resetViewportScroll()
+      }, 100)
+      timers.add(id)
     }
 
     const handleFullscreenChange = () => {
@@ -653,7 +639,6 @@ export function ReaderApp() {
     document.addEventListener('webkitfullscreenchange', handleFullscreenChange)
     window.addEventListener('orientationchange', handleOrientationChange)
     window.addEventListener('resize', resetViewportScroll)
-    window.visualViewport?.addEventListener('resize', resetViewportScroll)
 
     return () => {
       clearScheduledTimers()
@@ -661,11 +646,27 @@ export function ReaderApp() {
       document.removeEventListener('webkitfullscreenchange', handleFullscreenChange)
       window.removeEventListener('orientationchange', handleOrientationChange)
       window.removeEventListener('resize', resetViewportScroll)
-      window.visualViewport?.removeEventListener('resize', resetViewportScroll)
     }
   }, [])
 
   const toggleFullscreen = useCallback(async () => {
+    // 1. iPhone ve PWA Standalone Kontrolü:
+    // iPhone WebKit motorunda arbitrary HTML elementlerine (documentElement vb.) native webkitRequestFullscreen çağrısı
+    // Apple tarafından desteklenmez ve iOS WebProcess'inin doğrudan çökmesine (crash / beyaz ekran) yol açar.
+    // (iPadOS'ta ise Apple tarafından desteklendiği için iPad'de sorunsuz çalışır).
+    // Ayrıca "Ana Ekrana Ekle" (PWA Standalone) modunda uygulama zaten tarayıcı çubuğu olmaksızın tam ekrandır.
+    const isIPhone = typeof navigator !== 'undefined' && /iPhone|iPod/i.test(navigator.userAgent)
+    const isStandalone = typeof window !== 'undefined' && (
+      Boolean((navigator as any).standalone) ||
+      window.matchMedia('(display-mode: standalone)').matches
+    )
+
+    if (isIPhone || isStandalone) {
+      // iPhone veya Ana Ekrana Eklenen PWA modunda çökme yapmadan sanal tam ekran (zen modu) durumunu değiştir
+      setIsFullscreen((prev) => !prev)
+      return
+    }
+
     try {
       const doc = document as any
       const isFs = Boolean(doc.fullscreenElement || doc.webkitFullscreenElement)
@@ -685,6 +686,7 @@ export function ReaderApp() {
       }
     } catch (err) {
       console.warn('Tam ekran geçiş hatası:', err)
+      setIsFullscreen((prev) => !prev)
     }
   }, [])
 

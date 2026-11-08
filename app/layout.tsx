@@ -30,6 +30,12 @@ export const metadata: Metadata = {
   description:
     'Tek kelimelik odak penceresiyle hızlı okuma. Cam, Neon ve Kağıt temaları; başparmak dostu kontroller ve Zen odak modu.',
   generator: 'v0.app',
+  manifest: `${BASE_PATH}/manifest.json`,
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'odak',
+  },
   icons: {
     icon: [
       {
@@ -88,7 +94,18 @@ export default function RootLayout({
         <link rel="icon" href={`${BASE_PATH}/favicon.ico?v=5`} sizes="any" />
         <link rel="icon" type="image/svg+xml" href={`${BASE_PATH}/icon.svg?v=5`} />
         <link rel="apple-touch-icon" href={`${BASE_PATH}/apple-icon.png?v=5`} />
+        <link rel="manifest" href={`${BASE_PATH}/manifest.json`} />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-title" content="odak" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="format-detection" content="telephone=no" />
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('${BASE_PATH}/sw.js').catch(function(){});});}`,
+          }}
+        />
       </head>
       <body suppressHydrationWarning className="antialiased">
         {children}

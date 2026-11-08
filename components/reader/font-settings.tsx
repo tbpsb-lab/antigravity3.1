@@ -208,171 +208,183 @@ export const FontSettings = memo(function FontSettings({
         aria-label="Görünüm ve okuma ayarları"
         inert={!open}
         className={cn(
-          'panel panel-solid absolute -right-12 top-full z-50 mt-2 w-[min(18.5rem,calc(100vw-1.5rem))] origin-top-right p-2 sm:right-0 transition-all duration-200 ease-out shadow-2xl flex flex-col gap-1',
-          'max-h-[calc(100dvh-5.5rem)] overflow-y-auto overscroll-contain touch-pan-y landscape-short:max-h-[calc(100dvh-3.75rem)] landscape-short:w-[min(20rem,calc(100vw-1.5rem))] landscape-short:p-2',
+          'panel panel-solid absolute -right-12 top-full z-50 mt-2 w-[min(17.5rem,calc(100vw-1.5rem))] origin-top-right p-2 sm:right-0 transition-all duration-200 ease-out shadow-2xl flex flex-col gap-1',
+          'max-h-[calc(100dvh-5.5rem)] overflow-y-auto overscroll-contain touch-pan-y landscape-short:max-h-[calc(100dvh-3.75rem)] landscape-short:w-[min(19rem,calc(100vw-1.5rem))] landscape-short:p-2',
           open ? 'scale-100 opacity-100' : 'pointer-events-none scale-95 opacity-0',
         )}
       >
         {/* Üst Alan: Sol Kolon (Temalar + Yazı Ailesi + Kelime Öbeği) & Sağ Kolon (En Üstten En Alta Uzanan Dikey Kadran) */}
         <div className="grid grid-cols-[1fr_auto] gap-1.5 items-stretch">
-          {/* Sol Kolon: Temalar (Satır 1), Yazı Ailesi (Satır 2), Kelime Öbekleri (Satır 3) - Aralarında İnce Ayırıcı Çizgiler */}
+          {/* Sol Kolon: Temalar (Satır 1), Yazı Ailesi (Satır 2), Kelime Öbekleri (Satır 3) - Dinamik Esnek (Accordion) Satırlar */}
           <div className="flex flex-col divide-y divide-border/25 min-w-0">
-            {/* 1. Tema Seçimi (Sola doğru kompakt haplar - Kadrana yer açar) */}
+            {/* 1. Tema Seçimi (Sadece aktif temada yazı görünür, pasif temalarda sadece ikonlar görünür) */}
             {onThemeChange && (
               <div className="pb-1">
-                <div role="radiogroup" aria-label="Tasarım teması" className="grid grid-cols-3 gap-1">
-                <button
-                  type="button"
-                  role="radio"
-                  aria-checked={theme === 'ios'}
-                  onClick={() => onThemeChange('ios')}
-                  className={cn(
-                    'relative flex items-center justify-center gap-1 py-1 px-1 rounded-lg border transition-all cursor-pointer select-none text-center',
-                    theme === 'ios'
-                      ? 'border-primary bg-primary/10 text-foreground ring-1 ring-primary/40 shadow-xs'
-                      : 'border-border/60 hover:border-border hover:bg-muted/40 text-muted-foreground',
-                  )}
-                  title="Cam Teması (Kısayol: T)"
-                >
-                  <CamShape />
-                  <span className="text-[11px] sm:text-xs font-semibold">Cam</span>
-                  <span
-                    aria-hidden="true"
-                    className={cn(
-                      'desktop-shortcut-badge hidden md:block absolute bottom-0.5 right-1 text-[8px] font-mono font-bold leading-none select-none transition-colors',
-                      theme === 'ios' ? 'text-primary' : 'text-muted-foreground/40',
-                    )}
-                  >
-                    t
-                  </span>
-                </button>
-
-                <button
-                  type="button"
-                  role="radio"
-                  aria-checked={theme === 'linear'}
-                  onClick={() => onThemeChange('linear')}
-                  className={cn(
-                    'relative flex items-center justify-center gap-1 py-1 px-1 rounded-lg border transition-all cursor-pointer select-none text-center',
-                    theme === 'linear'
-                      ? 'border-purple-400 bg-purple-500/10 text-foreground ring-1 ring-purple-400/40 shadow-xs'
-                      : 'border-border/60 hover:border-border hover:bg-muted/40 text-muted-foreground',
-                  )}
-                  title="Neon Teması (Kısayol: T)"
-                >
-                  <NeonShape />
-                  <span className="text-[11px] sm:text-xs font-semibold">Neon</span>
-                  <span
-                    aria-hidden="true"
-                    className={cn(
-                      'desktop-shortcut-badge hidden md:block absolute bottom-0.5 right-1 text-[8px] font-mono font-bold leading-none select-none transition-colors',
-                      theme === 'linear' ? 'text-purple-400' : 'text-muted-foreground/40',
-                    )}
-                  >
-                    t
-                  </span>
-                </button>
-
-                <button
-                  type="button"
-                  role="radio"
-                  aria-checked={theme === 'kindle'}
-                  onClick={() => onThemeChange('kindle')}
-                  className={cn(
-                    'relative flex items-center justify-center gap-1 py-1 px-1 rounded-lg border transition-all cursor-pointer select-none text-center',
-                    theme === 'kindle'
-                      ? 'border-amber-600/70 bg-amber-500/10 text-foreground ring-1 ring-amber-600/40 shadow-xs'
-                      : 'border-border/60 hover:border-border hover:bg-muted/40 text-muted-foreground',
-                  )}
-                  title="Kağıt Teması (Kısayol: T)"
-                >
-                  <KagitShape />
-                  <span className="text-[11px] sm:text-xs font-semibold">Kağıt</span>
-                  <span
-                    aria-hidden="true"
-                    className={cn(
-                      'desktop-shortcut-badge hidden md:block absolute bottom-0.5 right-1 text-[8px] font-mono font-bold leading-none select-none transition-colors',
-                      theme === 'kindle' ? 'text-amber-600 dark:text-amber-400' : 'text-muted-foreground/40',
-                    )}
-                  >
-                    t
-                  </span>
-                </button>
-              </div>
-            </div>
-            )}
-
-            {/* 2. Yazı Tipi Ailesi (Aa Tema, Aa Mono, Aa Sans, Aa Serif) */}
-            <div className="py-1">
-              <div role="radiogroup" aria-label="Yazı tipi ailesi" className="grid grid-cols-4 gap-1">
-              {FONT_FACES.map((f) => {
-                const active = f.id === face
-                return (
+                <div role="radiogroup" aria-label="Tasarım teması" className="flex items-center gap-1 w-full">
+                  {/* Cam Teması */}
                   <button
-                    key={f.id}
                     type="button"
                     role="radio"
-                    aria-checked={active}
-                    onClick={() => onFaceChange(f.id)}
+                    aria-checked={theme === 'ios'}
+                    onClick={() => onThemeChange('ios')}
                     className={cn(
-                      'flex flex-col items-center justify-center py-0.5 px-0.5 rounded-lg transition-all cursor-pointer select-none text-center',
-                      active
-                        ? 'bg-primary text-primary-foreground shadow-xs ring-1 ring-primary/40 font-semibold'
-                        : 'border border-border/60 hover:bg-muted/50 text-foreground/80 hover:text-foreground',
+                      'relative flex items-center justify-center gap-1.5 py-1 rounded-lg border transition-all duration-200 cursor-pointer select-none text-center',
+                      theme === 'ios'
+                        ? 'flex-1 px-2 border-primary bg-primary/10 text-foreground ring-1 ring-primary/40 shadow-xs'
+                        : 'px-2 border-border/60 hover:border-border hover:bg-muted/40 text-muted-foreground shrink-0',
                     )}
-                    title={f.label}
+                    title="Cam Teması (Kısayol: T)"
                   >
-                    <span
-                      className="text-xs sm:text-sm leading-none font-bold"
-                      style={{ fontFamily: f.family ?? 'var(--reader-font)' }}
-                    >
-                      {f.sample}
-                    </span>
-                    <span className="text-[9.5px] font-medium mt-0.5 opacity-90">{f.label}</span>
+                    <CamShape />
+                    {theme === 'ios' && (
+                      <span className="text-[11px] font-semibold whitespace-nowrap animate-in fade-in duration-200">Cam</span>
+                    )}
+                    {theme === 'ios' && (
+                      <span
+                        aria-hidden="true"
+                        className="desktop-shortcut-badge hidden md:block absolute bottom-0.5 right-1 text-[7.5px] font-mono font-bold leading-none select-none text-primary"
+                      >
+                        t
+                      </span>
+                    )}
                   </button>
-                )
-              })}
-              </div>
-            </div>
 
-            {/* 3. Kelime Öbeği (1 kelime, 2 kelime, 3 kelime - Rakamlar altı çizili kısayol vurgulu) */}
-            {onChunkSizeChange && (
-              <div className="pt-1">
-                <div role="radiogroup" aria-label="Kelime öbeği boyutu" className="grid grid-cols-3 gap-1">
-                {[1, 2, 3].map((size) => {
-                  const active = chunkSize === size
+                  {/* Neon Teması */}
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={theme === 'linear'}
+                    onClick={() => onThemeChange('linear')}
+                    className={cn(
+                      'relative flex items-center justify-center gap-1.5 py-1 rounded-lg border transition-all duration-200 cursor-pointer select-none text-center',
+                      theme === 'linear'
+                        ? 'flex-1 px-2 border-purple-400 bg-purple-500/10 text-foreground ring-1 ring-purple-400/40 shadow-xs'
+                        : 'px-2 border-border/60 hover:border-border hover:bg-muted/40 text-muted-foreground shrink-0',
+                    )}
+                    title="Neon Teması (Kısayol: T)"
+                  >
+                    <NeonShape />
+                    {theme === 'linear' && (
+                      <span className="text-[11px] font-semibold whitespace-nowrap animate-in fade-in duration-200">Neon</span>
+                    )}
+                    {theme === 'linear' && (
+                      <span
+                        aria-hidden="true"
+                        className="desktop-shortcut-badge hidden md:block absolute bottom-0.5 right-1 text-[7.5px] font-mono font-bold leading-none select-none text-purple-400"
+                      >
+                        t
+                      </span>
+                    )}
+                  </button>
+
+                  {/* Kağıt Teması */}
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={theme === 'kindle'}
+                    onClick={() => onThemeChange('kindle')}
+                    className={cn(
+                      'relative flex items-center justify-center gap-1.5 py-1 rounded-lg border transition-all duration-200 cursor-pointer select-none text-center',
+                      theme === 'kindle'
+                        ? 'flex-1 px-2 border-amber-600/70 bg-amber-500/10 text-foreground ring-1 ring-amber-600/40 shadow-xs'
+                        : 'px-2 border-border/60 hover:border-border hover:bg-muted/40 text-muted-foreground shrink-0',
+                    )}
+                    title="Kağıt Teması (Kısayol: T)"
+                  >
+                    <KagitShape />
+                    {theme === 'kindle' && (
+                      <span className="text-[11px] font-semibold whitespace-nowrap animate-in fade-in duration-200">Kağıt</span>
+                    )}
+                    {theme === 'kindle' && (
+                      <span
+                        aria-hidden="true"
+                        className="desktop-shortcut-badge hidden md:block absolute bottom-0.5 right-1 text-[7.5px] font-mono font-bold leading-none select-none text-amber-600 dark:text-amber-400"
+                      >
+                        t
+                      </span>
+                    )}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* 2. Yazı Tipi Ailesi (Sadece aktif olan yazı tipi tam adıyla esner; diğerleri sadece kendi fontundaki 'Aa' simgesiyle görünür) */}
+            <div className="py-1">
+              <div role="radiogroup" aria-label="Yazı tipi ailesi" className="flex items-center gap-1 w-full">
+                {FONT_FACES.map((f) => {
+                  const active = f.id === face
                   return (
                     <button
-                      key={size}
+                      key={f.id}
                       type="button"
                       role="radio"
                       aria-checked={active}
-                      onClick={() => onChunkSizeChange(size)}
-                      data-wheel="chunk-size"
+                      onClick={() => onFaceChange(f.id)}
                       className={cn(
-                        'flex items-center justify-center py-1 px-1 rounded-lg transition-all cursor-pointer select-none text-center text-xs font-semibold',
+                        'flex items-center justify-center py-1 rounded-lg transition-all duration-200 cursor-pointer select-none text-center',
                         active
-                          ? 'bg-primary text-primary-foreground shadow-xs ring-1 ring-primary/40'
-                          : 'border border-border/60 hover:bg-muted/50 text-foreground/80 hover:text-foreground',
+                          ? 'flex-1 px-1.5 gap-1 bg-primary text-primary-foreground shadow-xs ring-1 ring-primary/40 font-semibold'
+                          : 'px-2 border border-border/60 hover:bg-muted/50 text-foreground/80 hover:text-foreground shrink-0',
                       )}
-                      title={`${size} kelime (Kısayol: ${size})`}
+                      title={f.label}
                     >
-                      <span className="inline-flex items-center justify-center leading-none">
-                        <span
-                          className={cn(
-                            'font-bold underline underline-offset-[2px] decoration-[1.5px] transition-colors',
-                            active
-                              ? 'text-primary-foreground decoration-primary-foreground/80'
-                              : 'desktop-shortcut-key text-primary decoration-primary',
-                          )}
-                        >
-                          {size}
-                        </span>
-                        <span className="ml-1 font-semibold">kelime</span>
+                      <span
+                        className="text-xs font-bold leading-none"
+                        style={{ fontFamily: f.family ?? 'var(--reader-font)' }}
+                      >
+                        {f.sample}
                       </span>
+                      {active && (
+                        <span className="text-[10px] font-semibold leading-none whitespace-nowrap animate-in fade-in duration-200">
+                          {f.label}
+                        </span>
+                      )}
                     </button>
                   )
                 })}
+              </div>
+            </div>
+
+            {/* 3. Kelime Öbeği (Sadece aktif olan butonda 'kelime' kelimesiyle esner; diğerlerinde sadece altı çizili rakamlar görünür) */}
+            {onChunkSizeChange && (
+              <div className="pt-1">
+                <div role="radiogroup" aria-label="Kelime öbeği boyutu" className="flex items-center gap-1 w-full">
+                  {[1, 2, 3].map((size) => {
+                    const active = chunkSize === size
+                    return (
+                      <button
+                        key={size}
+                        type="button"
+                        role="radio"
+                        aria-checked={active}
+                        onClick={() => onChunkSizeChange(size)}
+                        data-wheel="chunk-size"
+                        className={cn(
+                          'flex items-center justify-center py-1 rounded-lg transition-all duration-200 cursor-pointer select-none text-center text-xs font-semibold',
+                          active
+                            ? 'flex-1 px-2 bg-primary text-primary-foreground shadow-xs ring-1 ring-primary/40'
+                            : 'px-2.5 border border-border/60 hover:bg-muted/50 text-foreground/80 hover:text-foreground shrink-0',
+                        )}
+                        title={`${size} kelime (Kısayol: ${size})`}
+                      >
+                        <span className="inline-flex items-center justify-center leading-none">
+                          <span
+                            className={cn(
+                              'font-bold underline underline-offset-[2px] decoration-[1.5px] transition-colors',
+                              active
+                                ? 'text-primary-foreground decoration-primary-foreground/80'
+                                : 'desktop-shortcut-key text-primary decoration-primary',
+                            )}
+                          >
+                            {size}
+                          </span>
+                          {active && (
+                            <span className="ml-1 font-semibold whitespace-nowrap animate-in fade-in duration-200">kelime</span>
+                          )}
+                        </span>
+                      </button>
+                    )
+                  })}
                 </div>
               </div>
             )}

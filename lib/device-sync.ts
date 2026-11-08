@@ -37,7 +37,6 @@ export type SyncPayload = {
 const VAULT_KEY = 'hizlioku_sync_vault_id'
 const DEVICE_ID_KEY = 'hizlioku_device_id'
 const DEVICES_LIST_KEY = 'hizlioku_paired_devices'
-const UNPAIRED_TOMBSTONES_KEY = 'hizlioku_unpaired_tombstones'
 const CHANNEL_NAME = 'hizlioku_realtime_sync'
 
 export function generateNewVaultCode(): string {
@@ -45,46 +44,16 @@ export function generateNewVaultCode(): string {
   return `HZL-${randomCode}`
 }
 
-export function markDeviceUnpaired(deviceId: string): void {
-  if (typeof window === 'undefined') return
+// Eski tombstone / blokaj kalıntılarını temizle (Kullanıcı kuralı: Blokaj yok)
+if (typeof window !== 'undefined') {
   try {
-    const raw = localStorage.getItem(UNPAIRED_TOMBSTONES_KEY)
-    const set: Record<string, number> = raw ? JSON.parse(raw) : {}
-    set[deviceId] = Date.now()
-    localStorage.setItem(UNPAIRED_TOMBSTONES_KEY, JSON.stringify(set))
+    localStorage.removeItem('hizlioku_unpaired_tombstones')
   } catch {}
 }
 
-export function isDeviceUnpaired(deviceId: string): boolean {
-  if (typeof window === 'undefined') return false
-  try {
-    const raw = localStorage.getItem(UNPAIRED_TOMBSTONES_KEY)
-    if (!raw) return false
-    const set: Record<string, number> = JSON.parse(raw)
-    const timestamp = set[deviceId]
-    if (!timestamp) return false
-    if (Date.now() - timestamp > 15000) return false
-    return true
-  } catch {
-    return false
-  }
-}
-
-export function clearUnpairedTombstone(deviceId?: string): void {
-  if (typeof window === 'undefined') return
-  try {
-    if (deviceId) {
-      const raw = localStorage.getItem(UNPAIRED_TOMBSTONES_KEY)
-      if (raw) {
-        const set: Record<string, number> = JSON.parse(raw)
-        delete set[deviceId]
-        localStorage.setItem(UNPAIRED_TOMBSTONES_KEY, JSON.stringify(set))
-      }
-    } else {
-      localStorage.removeItem(UNPAIRED_TOMBSTONES_KEY)
-    }
-  } catch {}
-}
+export function markDeviceUnpaired(_deviceId?: string): void {}
+export function isDeviceUnpaired(_deviceId?: string): boolean { return false }
+export function clearUnpairedTombstone(_deviceId?: string): void {}
 
 export function getDeviceType(): 'desktop' | 'mobile' | 'tablet' {
   if (typeof window === 'undefined') return 'desktop'
@@ -195,8 +164,6 @@ export function setSyncVaultId(newVaultId: string): void {
   if (clean) {
     try {
       localStorage.setItem(VAULT_KEY, clean)
-      // Yeni bir eşleşme kodu girildiğinde veya karekod okunduğunda engelleri kaldır
-      clearUnpairedTombstone()
     } catch {}
   }
 }
@@ -241,7 +208,6 @@ export function getPairedDevices(): SyncedDevice[] {
 
 export function upsertPairedDevice(dev: { id: string; name: string; type: 'desktop' | 'mobile' | 'tablet' }): SyncedDevice[] {
   if (typeof window === 'undefined') return []
-  clearUnpairedTombstone(dev.id)
   const currentId = getDeviceId()
   let list = getPairedDevices()
 
@@ -278,7 +244,6 @@ export function upsertPairedDevice(dev: { id: string; name: string; type: 'deskt
 
 export function removePairedDevice(deviceId: string): SyncedDevice[] {
   if (typeof window === 'undefined') return []
-  markDeviceUnpaired(deviceId)
   const currentList = getPairedDevices()
   const targetDevice = currentList.find((d) => d.id === deviceId)
   const deviceName = targetDevice?.name?.replace(' (Bu Cihaz)', '') || 'Cihaz'
@@ -605,7 +570,6 @@ export class SyncChannelManager {
                 }
 
                 if (payload.type === 'progress' || !payload.type) {
-                  if (isDeviceUnpaired(payload.senderDeviceId)) continue
                   const ts = payload.timestamp || (raw.time ? raw.time * 1000 : 0)
                   if (ts >= highestTimestamp) {
                     highestTimestamp = ts
@@ -662,9 +626,6 @@ export class SyncChannelManager {
       return
     }
 
-    // Karşı cihazdan bildirim geldiyse eşleşme aktiftir
-    clearUnpairedTombstone(payload.senderDeviceId)
-
     // Karşı cihazın varlığını cihaz listesine işle
     if (payload.senderDeviceId && payload.senderDeviceName) {
       upsertPairedDevice({
@@ -677,11 +638,6 @@ export class SyncChannelManager {
     // Karşı cihaz ilk bağlantıda kimler var diye sorduysa (presence_query), kendi varlığımızı ona ilet
     if (payload.type === 'presence_query') {
       this.sendDirectPresence('presence')
-    }
-
-    // Silinmiş cihazın eski uçuşan progress paketlerini süz
-    if (payload.type === 'progress' && isDeviceUnpaired(payload.senderDeviceId)) {
-      return
     }
 
     this.onMessageCallback?.(payload)
@@ -785,7 +741,6 @@ export class SyncChannelManager {
     if (!newVaultId) return
     const isSame = this.vaultId === newVaultId
     this.vaultId = newVaultId
-    clearUnpairedTombstone()
 
     if (!isSame) {
       if (this.eventSource) {

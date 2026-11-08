@@ -459,6 +459,7 @@ export class SyncChannelManager {
   private isDestroyed = false
   private visibilityHandler: (() => void) | null = null
   private focusHandler: (() => void) | null = null
+  private pollTimer: any = null
   private lastIncomingProgressTimestamp = 0
 
   constructor(onMessage: (payload: SyncPayload) => void, initialVaultId?: string) {
@@ -491,14 +492,30 @@ export class SyncChannelManager {
     if (typeof window !== 'undefined') {
       this.visibilityHandler = () => {
         if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+          if (!this.eventSource || this.eventSource.readyState === EventSource.CLOSED) {
+            this.connectCloudStream()
+          }
           this.fetchLatestCloudState()
         }
       }
       this.focusHandler = () => {
+        if (!this.eventSource || this.eventSource.readyState === EventSource.CLOSED) {
+          this.connectCloudStream()
+        }
         this.fetchLatestCloudState()
       }
       window.addEventListener('visibilitychange', this.visibilityHandler)
       window.addEventListener('focus', this.focusHandler)
+
+      // 6. Mobil / arka plan senkronizasyon garantisi: Her 3 saniyede bir buluttan son durumu sessizce kontrol et
+      this.pollTimer = setInterval(() => {
+        if (!this.isDestroyed && typeof document !== 'undefined' && document.visibilityState === 'visible') {
+          if (!this.eventSource || this.eventSource.readyState === EventSource.CLOSED) {
+            this.connectCloudStream()
+          }
+          this.fetchLatestCloudState()
+        }
+      }, 3000)
     }
   }
 
@@ -555,7 +572,7 @@ export class SyncChannelManager {
         const fileLines = text.trim().split('\n')
 
         let newestProgress: SyncPayload | null = null
-        let newestTimestamp = this.lastIncomingProgressTimestamp
+        let highestTimestamp = 0
 
         for (const line of fileLines) {
           if (!line.trim()) continue
@@ -581,8 +598,8 @@ export class SyncChannelManager {
                 if (payload.type === 'progress' || !payload.type) {
                   if (isDeviceUnpaired(payload.senderDeviceId)) continue
                   const ts = payload.timestamp || (raw.time ? raw.time * 1000 : 0)
-                  if (ts >= newestTimestamp) {
-                    newestTimestamp = ts
+                  if (ts >= highestTimestamp) {
+                    highestTimestamp = ts
                     newestProgress = payload
                   }
                 }
@@ -592,7 +609,6 @@ export class SyncChannelManager {
         }
 
         if (newestProgress && !this.isDestroyed) {
-          this.lastIncomingProgressTimestamp = newestTimestamp
           this.handleIncoming(newestProgress)
         }
         break
@@ -798,6 +814,10 @@ export class SyncChannelManager {
       if (this.focusHandler) window.removeEventListener('focus', this.focusHandler)
       this.visibilityHandler = null
       this.focusHandler = null
+    }
+    if (this.pollTimer) {
+      clearInterval(this.pollTimer)
+      this.pollTimer = null
     }
     if (this.channel) {
       this.channel.close()

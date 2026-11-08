@@ -43,7 +43,7 @@ import { SyncModal } from './sync-modal'
 import { FONT_FACES, FONT_SCALE_MAX, FONT_SCALE_MIN, FontSettings, type FontFace } from './font-settings'
 import { triggerHaptic, primeHaptics } from '@/lib/haptics'
 import { NeuroAudioEngine } from '@/lib/neuro-audio'
-import { getSyncVaultId, SyncChannelManager, upsertPairedDevice } from '@/lib/device-sync'
+import { getSyncVaultId, SyncChannelManager, upsertPairedDevice, sanitizeVaultId } from '@/lib/device-sync'
 import { useElementHeight } from '@/lib/use-element-height'
 import { useWakeLock } from '@/lib/use-wake-lock'
 import { EyeTracker, type AttentionLossReason } from '@/components/EyeTracker'
@@ -91,14 +91,22 @@ export function ReaderApp() {
     timestamp: number
   } | null>(null)
   const kindleSyncTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const dismissedIndexRef = useRef<number | null>(null)
+  const playingRef = useRef(playing)
+  useEffect(() => {
+    playingRef.current = playing
+  }, [playing])
 
   const dismissKindleSync = useCallback(() => {
+    if (kindleSyncPrompt) {
+      dismissedIndexRef.current = kindleSyncPrompt.wordIndex
+    }
     if (kindleSyncTimerRef.current) {
       clearTimeout(kindleSyncTimerRef.current)
       kindleSyncTimerRef.current = null
     }
     setKindleSyncPrompt(null)
-  }, [])
+  }, [kindleSyncPrompt])
   const [showSpeedTestBanner, setShowSpeedTestBanner] = useState(false)
 
   const anyModalOpen = speedTestOpen || completionOpen || aboutOpen || syncModalOpen
@@ -578,22 +586,10 @@ export function ReaderApp() {
         // Telefon ekranı kilitlendiği veya sekme gizlendiği an son pozisyonu buluta anında ilet
         broadcastSyncState()
       } else if (document.visibilityState === 'visible') {
+        if (unlockTimer) clearTimeout(unlockTimer)
+        wasPlayingBeforeLockRef.current = false
         // Ekran açıldığında diğer cihazlardan gelen yeni pozisyon var mı diye hemen kontrol et
         syncManagerRef.current?.fetchLatestCloudState()
-
-        if (wasPlayingBeforeLockRef.current) {
-          wasPlayingBeforeLockRef.current = false
-          const startIdx = findCurrentSentenceStartIndex(chunksRef.current, lockedIndexRef.current)
-          rampStepRef.current = 0
-          expectedTimestampRef.current = null
-          setIndex(startIdx)
-          triggerPulse()
-
-          if (unlockTimer) clearTimeout(unlockTimer)
-          unlockTimer = setTimeout(() => {
-            setPlaying(true)
-          }, 500)
-        }
       }
     }
 
@@ -1585,6 +1581,7 @@ export function ReaderApp() {
   // Kindle Bildirimine tıklandığında yumuşak ve zarif geçişle kalınan yere atla
   const handleApplyKindleSync = useCallback(() => {
     if (!kindleSyncPrompt) return
+    dismissedIndexRef.current = kindleSyncPrompt.wordIndex
     triggerHaptic('jump')
     triggerPulse()
 
@@ -1628,13 +1625,20 @@ export function ReaderApp() {
   useEffect(() => {
     const manager = new SyncChannelManager((payload) => {
       const myVault = getSyncVaultId()
-      if (payload.vaultId !== myVault) return
+      if (sanitizeVaultId(payload.vaultId) !== sanitizeVaultId(myVault)) return
 
       // İlerleme paketi geldiyse: Ekranı aniden zıplatmak yerine Kindle tarzı zarif bildirim göster
       if (payload.type === 'progress' || !payload.type) {
+        if (playingRef.current) return // Okuma devam ederken dikkat dağıtma
+
         const targetIdx = typeof payload.wordIndex === 'number' ? payload.wordIndex : -1
         const curIdx = indexRef.current
-        if (targetIdx >= 0 && targetIdx !== curIdx) {
+
+        // KULLANICI MANTIĞI: Yalnızca karşı cihaz mevcut cihazdan DAHA İLERİDEYSE uyar (Kindle Whispersync)
+        if (targetIdx > curIdx) {
+          if (dismissedIndexRef.current === targetIdx) return
+
+          triggerHaptic('tap')
           setKindleSyncPrompt({
             deviceName: payload.senderDeviceName || 'Diğer Cihazınız',
             deviceType: payload.senderDeviceType || 'desktop',
@@ -1798,19 +1802,19 @@ export function ReaderApp() {
 
       {/* Kindle Tarzı Kesintisiz ve Zarif Cihazlar Arası Eşitleme Bildirimi (8 sn sonra kendiliğinden kaybolur) */}
       {kindleSyncPrompt && !zen && (
-        <div className="fixed top-12 sm:top-14 inset-x-0 z-40 flex justify-center px-3 pointer-events-none animate-in fade-in slide-in-from-top-2 duration-300">
+        <div className="fixed top-[max(4.25rem,calc(env(safe-area-inset-top,0px)+3.75rem))] sm:top-16 inset-x-0 z-[70] flex justify-center px-3 pointer-events-none animate-in fade-in slide-in-from-top-3 duration-300">
           <div
             onClick={handleApplyKindleSync}
-            className="pointer-events-auto flex items-center justify-between gap-2.5 px-3.5 py-2.5 rounded-2xl border border-primary/40 bg-background/95 shadow-2xl backdrop-blur-md cursor-pointer hover:border-primary/80 hover:scale-[1.01] active:scale-[0.99] transition-all max-w-sm sm:max-w-md w-full text-foreground ring-1 ring-primary/20"
+            className="pointer-events-auto flex items-center justify-between gap-3 px-3.5 py-2.5 rounded-2xl border border-primary/50 bg-background/98 shadow-2xl backdrop-blur-xl cursor-pointer hover:border-primary hover:scale-[1.01] active:scale-[0.99] transition-all max-w-sm sm:max-w-md w-full text-foreground ring-2 ring-primary/25"
           >
             <div className="flex items-center gap-2.5 min-w-0">
-              <div className="size-8 rounded-xl bg-primary/15 text-primary flex items-center justify-center shrink-0">
+              <div className="size-8.5 rounded-xl bg-primary/15 text-primary flex items-center justify-center shrink-0 shadow-inner">
                 {kindleSyncPrompt.deviceType === 'mobile' ? (
-                  <Smartphone className="size-4.5 text-sky-500" />
+                  <Smartphone className="size-5 text-sky-500" />
                 ) : kindleSyncPrompt.deviceType === 'tablet' ? (
-                  <Tablet className="size-4.5 text-purple-500" />
+                  <Tablet className="size-5 text-purple-500" />
                 ) : (
-                  <Laptop className="size-4.5 text-emerald-500" />
+                  <Laptop className="size-5 text-emerald-500" />
                 )}
               </div>
               <div className="min-w-0 text-left">
@@ -1828,7 +1832,7 @@ export function ReaderApp() {
             <div className="flex items-center gap-2 shrink-0">
               <button
                 type="button"
-                className="px-2.5 py-1 rounded-xl bg-primary text-primary-foreground text-xs font-bold shadow-xs flex items-center gap-1 hover:bg-primary/90 transition-colors cursor-pointer"
+                className="px-3 py-1.5 rounded-xl bg-primary text-primary-foreground text-xs font-bold shadow-md flex items-center gap-1 hover:bg-primary/90 transition-all cursor-pointer active:scale-95"
               >
                 Oraya Git →
               </button>
@@ -1838,11 +1842,11 @@ export function ReaderApp() {
                   e.stopPropagation()
                   dismissKindleSync()
                 }}
-                className="ctl size-6 rounded-full hover:bg-muted text-muted-foreground hover:text-foreground flex items-center justify-center cursor-pointer"
+                className="ctl size-7 rounded-full hover:bg-muted text-muted-foreground hover:text-foreground flex items-center justify-center cursor-pointer"
                 title="Kapat"
                 aria-label="Kapat"
               >
-                <X className="size-3.5" />
+                <X className="size-4" />
               </button>
             </div>
           </div>

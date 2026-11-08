@@ -15,7 +15,7 @@ import { calculateTurkishORP, formatBionicChunk, WPM_STEP, type ChunkItem } from
 import { triggerHaptic } from '@/lib/haptics'
 import { useElementSize } from '@/lib/use-element-size'
 import { TapGuide } from './tap-guide'
-import { Layers } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Layers } from 'lucide-react'
 
 type RsvpDisplayProps = {
   word: string
@@ -72,6 +72,7 @@ export const RsvpDisplay = memo(function RsvpDisplay({
   const isScrubbingRef = useRef(false)
   const progressBarRef = useRef<HTMLDivElement | null>(null)
   const lastScrubIndexRef = useRef<number>(-1)
+  const pointerDownPosRef = useRef<{ x: number; y: number } | null>(null)
 
   // İlk Ziyaret İçin 1K / 2K / 3K / 4K Kelime Öbeği Tanıtım Penceresi (Onboarding Callout)
   const [showChunkCallout, setShowChunkCallout] = useState(false)
@@ -241,7 +242,7 @@ export const RsvpDisplay = memo(function RsvpDisplay({
     barActiveTimerRef.current = setTimeout(() => {
       setIsBarActive(false)
       isBarActiveRef.current = false
-    }, 4000)
+    }, 6000)
   }, [])
 
   useEffect(() => {
@@ -255,6 +256,7 @@ export const RsvpDisplay = memo(function RsvpDisplay({
   useEffect(() => {
     if (!isBarActive) return
     const handleOutsidePointer = (e: MouseEvent | TouchEvent | Event) => {
+      if (isScrubbingRef.current) return
       if (progressBarRef.current && !progressBarRef.current.contains(e.target as Node)) {
         setIsBarActive(false)
         isBarActiveRef.current = false
@@ -296,42 +298,65 @@ export const RsvpDisplay = memo(function RsvpDisplay({
 
   const handleProgressPointerDown = (e: PointerEvent<HTMLDivElement>) => {
     e.stopPropagation()
+    pointerDownPosRef.current = { x: e.clientX, y: e.clientY }
 
-    // 1. AŞAMA: Bar pasifken ilk dokunuşta sadece barı bir miktar büyüt ve aktif et (Kazara konumu atlatmaz!)
-    if (!isBarActiveRef.current) {
-      isBarActiveRef.current = true
-      setIsBarActive(true)
-      triggerHaptic('tap')
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId)
+    } catch {}
+
+    // Bar zaten aktifse: İkinci dokunuşta hemen konumu güncelle ve sürüklemeyi başlat
+    if (isBarActiveRef.current) {
+      isScrubbingRef.current = true
+      setIsScrubbing(true)
+      resetBarActiveTimer()
+      seekFromPointerEvent(e.clientX)
+      return
+    }
+
+    // Bar pasifken: İlk dokunuşta barı aktif et ve büyüt (kazara konum atlatmaz!)
+    // Ancak parmak yatay kaydırılırsa (drag) move handler'da sürüklemeye yumuşakça geçecek
+    isBarActiveRef.current = true
+    setIsBarActive(true)
+    triggerHaptic('tap')
+    resetBarActiveTimer()
+  }
+
+  const handleProgressPointerMove = (e: PointerEvent<HTMLDivElement>) => {
+    if (isScrubbingRef.current) {
+      e.stopPropagation()
+      resetBarActiveTimer()
+      seekFromPointerEvent(e.clientX)
+      return
+    }
+
+    // Kullanıcı ilk dokunuşta parmağını yatayda kaydırmaya başladıysa (drag) kasıtlıdır -> Sürüklemeyi başlat
+    if (pointerDownPosRef.current) {
+      const dx = Math.abs(e.clientX - pointerDownPosRef.current.x)
+      if (dx > 6) {
+        e.stopPropagation()
+        isScrubbingRef.current = true
+        setIsScrubbing(true)
+        resetBarActiveTimer()
+        seekFromPointerEvent(e.clientX)
+      }
+    }
+  }
+
+  const handleProgressPointerUp = (e: PointerEvent<HTMLDivElement>) => {
+    pointerDownPosRef.current = null
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId)
+    } catch {}
+
+    if (!isScrubbingRef.current) {
       resetBarActiveTimer()
       return
     }
 
-    // 2. AŞAMA: Bar aktifken ikinci dokunuşta veya sürüklemede konumu seç
-    isScrubbingRef.current = true
-    setIsScrubbing(true)
-    resetBarActiveTimer()
-    try {
-      e.currentTarget.setPointerCapture(e.pointerId)
-    } catch {}
-    seekFromPointerEvent(e.clientX)
-  }
-
-  const handleProgressPointerMove = (e: PointerEvent<HTMLDivElement>) => {
-    if (!isScrubbingRef.current) return
-    e.stopPropagation()
-    resetBarActiveTimer()
-    seekFromPointerEvent(e.clientX)
-  }
-
-  const handleProgressPointerUp = (e: PointerEvent<HTMLDivElement>) => {
-    if (!isScrubbingRef.current) return
     e.stopPropagation()
     isScrubbingRef.current = false
     setIsScrubbing(false)
     lastScrubIndexRef.current = -1
-    try {
-      e.currentTarget.releasePointerCapture(e.pointerId)
-    } catch {}
     triggerHaptic('jump')
     resetBarActiveTimer()
   }
@@ -560,32 +585,70 @@ export const RsvpDisplay = memo(function RsvpDisplay({
             className={cn(
               'group absolute inset-x-0 bottom-0 flex flex-col justify-end select-none touch-none z-30 transition-all duration-200 cursor-pointer',
               isBarActive
-                ? 'h-8 sm:h-9 pb-1 px-1.5'
-                : 'h-3 sm:h-3.5 pb-0 px-0',
+                ? 'h-12 sm:h-14 pb-2 px-2.5 sm:px-3 bg-gradient-to-t from-background/50 via-background/25 to-transparent'
+                : 'h-10 sm:h-12 pb-1.5 px-2.5 sm:px-3 hover:bg-foreground/[0.02]',
             )}
           >
-            {/* Aktif olduğunda beliren mikro yüzde ve sayfa/öbek rozeti */}
+            {/* Aktif olduğunda beliren mikro yüzde, kılavuz ve hızlı adım düğmeleri */}
             {isBarActive && (
-              <div className="flex items-center justify-between px-2 mb-1 pointer-events-none animate-in fade-in zoom-in-95 duration-150">
-                <span className="text-[10px] font-bold text-primary tracking-wide">
-                  %{Math.round(progressPct)}
-                </span>
-                <span className="text-[9.5px] font-medium text-muted-foreground/80">
-                  Konumu değiştirmek için dokunun veya kaydırın
-                </span>
-                <span className="text-[10px] tabular-nums font-semibold text-muted-foreground">
-                  {index + 1} / {total}
-                </span>
+              <div className="flex items-center justify-between px-1 mb-1.5 pointer-events-auto animate-in fade-in zoom-in-95 duration-150 select-none">
+                {onPrev ? (
+                  <button
+                    type="button"
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onPrev()
+                      triggerHaptic('step')
+                      resetBarActiveTimer()
+                    }}
+                    className="flex items-center gap-0.5 px-2 py-0.5 rounded-md bg-foreground/10 hover:bg-foreground/15 text-[10px] font-medium text-foreground transition-all cursor-pointer active:scale-95 shadow-2xs"
+                    title="Önceki cümle başına sar"
+                  >
+                    <ChevronLeft className="size-3" />
+                    <span className="hidden xs:inline">Cümle</span>
+                  </button>
+                ) : <div />}
+
+                <div className="flex items-center gap-2 pointer-events-none">
+                  <span className="text-[11px] font-bold text-primary tracking-wide tabular-nums">
+                    %{Math.round(progressPct)}
+                  </span>
+                  <span className="text-[10px] font-medium text-muted-foreground/80 hidden sm:inline">
+                    Kaydırın veya dokunun
+                  </span>
+                  <span className="text-[10px] tabular-nums font-semibold text-muted-foreground">
+                    {index + 1} / {total}
+                  </span>
+                </div>
+
+                {onNext ? (
+                  <button
+                    type="button"
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onNext()
+                      triggerHaptic('step')
+                      resetBarActiveTimer()
+                    }}
+                    className="flex items-center gap-0.5 px-2 py-0.5 rounded-md bg-foreground/10 hover:bg-foreground/15 text-[10px] font-medium text-foreground transition-all cursor-pointer active:scale-95 shadow-2xs"
+                    title="Sonraki cümle başına sar"
+                  >
+                    <span className="hidden xs:inline">Cümle</span>
+                    <ChevronRight className="size-3" />
+                  </button>
+                ) : <div />}
               </div>
             )}
 
             {/* Arka plan izi (Track) */}
             <div
               className={cn(
-                'relative w-full overflow-hidden transition-all duration-200 rounded-b-2xl sm:rounded-b-3xl',
+                'relative w-full overflow-hidden transition-all duration-200 rounded-full',
                 isBarActive
-                  ? 'h-2 sm:h-2.5 bg-foreground/20 ring-1 ring-primary/40 shadow-inner'
-                  : 'h-1 bg-foreground/15 group-hover:h-1.5',
+                  ? 'h-2.5 sm:h-3 bg-foreground/20 ring-1 ring-primary/40 shadow-inner'
+                  : 'h-1.5 sm:h-2 bg-foreground/15 group-hover:h-2 group-hover:bg-foreground/20',
               )}
             >
               {/* Doluluk göstergesi */}
@@ -593,8 +656,8 @@ export const RsvpDisplay = memo(function RsvpDisplay({
                 className={cn(
                   'h-full transition-[width] duration-75 ease-out rounded-full',
                   isBarActive
-                    ? 'bg-primary shadow-[0_0_8px_rgba(59,130,246,0.6)]'
-                    : 'bg-primary/85',
+                    ? 'bg-primary shadow-[0_0_10px_rgba(59,130,246,0.7)]'
+                    : 'bg-primary/90',
                 )}
                 style={{
                   width: `${progressPct}%`,
@@ -602,18 +665,20 @@ export const RsvpDisplay = memo(function RsvpDisplay({
               />
             </div>
 
-            {/* Aktif olduğunda veya sürükleme sırasında parmak altında beliren odak noktası (Thumb Indicator) */}
-            {(isBarActive || isScrubbing) && (
-              <div
-                className={cn(
-                  'pointer-events-none absolute bottom-1 -translate-x-1/2 rounded-full bg-primary border-2 border-background shadow-[0_0_12px_rgba(59,130,246,0.8)] transition-transform duration-100',
-                  isScrubbing ? 'size-4 sm:size-4.5 scale-110' : 'size-3 sm:size-3.5',
-                )}
-                style={{
-                  left: `${progressPct}%`,
-                }}
-              />
-            )}
+            {/* Parmak altındaki veya mevcut konumdaki odak noktası (Thumb Indicator) - Hem pasif hem aktifte her an görünür */}
+            <div
+              className={cn(
+                'pointer-events-none absolute -translate-x-1/2 rounded-full bg-primary border-2 border-background shadow-md transition-all duration-100',
+                isBarActive
+                  ? isScrubbing
+                    ? 'bottom-1.5 size-5 sm:size-5.5 scale-110 shadow-[0_0_12px_rgba(59,130,246,0.9)] ring-2 ring-primary/30'
+                    : 'bottom-1.5 size-4.5 sm:size-5 shadow-[0_0_10px_rgba(59,130,246,0.7)]'
+                  : 'bottom-1 size-3 sm:size-3.5 shadow-xs opacity-90 group-hover:scale-110',
+              )}
+              style={{
+                left: `${progressPct}%`,
+              }}
+            />
           </div>
         )}
       </div>

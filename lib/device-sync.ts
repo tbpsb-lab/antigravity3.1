@@ -279,12 +279,15 @@ export function upsertPairedDevice(dev: { id: string; name: string; type: 'deskt
 export function removePairedDevice(deviceId: string): SyncedDevice[] {
   if (typeof window === 'undefined') return []
   markDeviceUnpaired(deviceId)
-  let list = getPairedDevices().filter((d) => d.id !== deviceId)
+  const currentList = getPairedDevices()
+  const targetDevice = currentList.find((d) => d.id === deviceId)
+  const deviceName = targetDevice?.name?.replace(' (Bu Cihaz)', '') || 'Cihaz'
+  let list = currentList.filter((d) => d.id !== deviceId)
   try {
     localStorage.setItem(DEVICES_LIST_KEY, JSON.stringify(list))
     window.dispatchEvent(
       new CustomEvent('paired-devices-updated', {
-        detail: { deviceId, isRemoved: true },
+        detail: { deviceId, deviceName, isRemoved: true },
       })
     )
   } catch {}
@@ -508,12 +511,18 @@ export class SyncChannelManager {
       window.addEventListener('focus', this.focusHandler)
 
       // 6. Mobil / arka plan senkronizasyon garantisi: Her 3 saniyede bir buluttan son durumu sessizce kontrol et
+      // ve her 30 saniyede bir varlık pingi göndererek cihaz listesini daima canlı tut
+      let tickCount = 0
       this.pollTimer = setInterval(() => {
         if (!this.isDestroyed && typeof document !== 'undefined' && document.visibilityState === 'visible') {
           if (!this.eventSource || this.eventSource.readyState === EventSource.CLOSED) {
             this.connectCloudStream()
           }
           this.fetchLatestCloudState()
+          tickCount++
+          if (tickCount % 10 === 0) {
+            this.broadcastPresence()
+          }
         }
       }, 3000)
     }

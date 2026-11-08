@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from 'react'
-import { Eye, EyeOff, Gauge, Volume2, VolumeX, X, Smartphone, Tablet, Laptop } from 'lucide-react'
+import { Eye, EyeOff, Gauge, Volume2, VolumeX, X, Smartphone, Tablet, Laptop, Check, Bookmark } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
   MAX_WPM,
@@ -136,11 +136,12 @@ export function ReaderApp() {
   }, [])
 
   const showAudioToast = useCallback((message: string) => {
+    if (zenRef.current) return // Zen modu hariç
     setAudioToast(message)
     if (audioToastTimerRef.current) clearTimeout(audioToastTimerRef.current)
     audioToastTimerRef.current = setTimeout(() => {
       setAudioToast(null)
-    }, 1600)
+    }, 2200)
   }, [])
 
   // İlk giriş kontrolü: Daha önce hız testi yapılmamış veya kapatılmamışsa davet butonunu göster
@@ -194,6 +195,10 @@ export function ReaderApp() {
   const lastIndex = Math.max(0, chunks.length - 1)
   const currentChunk = chunks[index]
   const zen = playing
+  const zenRef = useRef(zen)
+  useEffect(() => {
+    zenRef.current = zen
+  }, [zen])
 
   // Ekran Kilidi / Kararmasını Önleme (Okuma sırasında ekranın uykusunu engeller)
   useWakeLock(zen)
@@ -1610,16 +1615,41 @@ export function ReaderApp() {
     dismissKindleSync()
   }, [kindleSyncPrompt, triggerPulse, seek, handleChunkSizeChange, handleThemeChange, showAudioToast, dismissKindleSync])
 
-  // Eşleşme sonlandırıldığında karşı cihazda bilgilendirme bildirimi göster
+  // Cihaz Eşleşme ve Ayrılma Canlı Bildirimleri (Zen Modu Hariç)
   useEffect(() => {
+    const handlePairedDevicesUpdated = (e: Event) => {
+      if (zenRef.current) return // Zen modu hariç
+
+      const customEvent = e as CustomEvent<{
+        deviceId?: string
+        deviceName?: string
+        isNew?: boolean
+        isRemoved?: boolean
+      }>
+
+      if (customEvent.detail?.isNew && customEvent.detail.deviceName) {
+        showAudioToast(`✓ ${customEvent.detail.deviceName} bağlandı`)
+        triggerHaptic('success')
+      } else if (customEvent.detail?.isRemoved && customEvent.detail.deviceName) {
+        showAudioToast(`${customEvent.detail.deviceName} ile eşleşme sonlandı`)
+        triggerHaptic('warning')
+      }
+    }
+
     const handleDeviceUnpaired = (e: Event) => {
+      if (zenRef.current) return // Zen modu hariç
       const customEvent = e as CustomEvent<{ senderDeviceId?: string; senderDeviceName?: string }>
       const devName = customEvent.detail?.senderDeviceName || 'Diğer cihaz'
       showAudioToast(`${devName} ile eşleşme sonlandı`)
       triggerHaptic('warning')
     }
+
+    window.addEventListener('paired-devices-updated', handlePairedDevicesUpdated)
     window.addEventListener('device-unpaired-notify', handleDeviceUnpaired)
-    return () => window.removeEventListener('device-unpaired-notify', handleDeviceUnpaired)
+    return () => {
+      window.removeEventListener('paired-devices-updated', handlePairedDevicesUpdated)
+      window.removeEventListener('device-unpaired-notify', handleDeviceUnpaired)
+    }
   }, [showAudioToast])
 
   useEffect(() => {
@@ -1975,14 +2005,14 @@ export function ReaderApp() {
         </div>
       )}
 
-      {/* Nöroakustik Odak Sesi / Kısayol Durum Bildirimi (Toast HUD) */}
-      {audioToast && (
+      {/* Nöroakustik Odak Sesi / Cihaz Senkronizasyon / Kısayol Durum Bildirimi (Toast HUD - Zen Modu Hariç) */}
+      {audioToast && !zen && (
         <div
           role="status"
           aria-live="polite"
-          className="pointer-events-none fixed top-7 left-1/2 -translate-x-1/2 z-50 animate-in fade-in slide-in-from-top-1 duration-200 select-none"
+          className="pointer-events-none fixed top-7 left-1/2 -translate-x-1/2 z-[80] animate-in fade-in slide-in-from-top-1 duration-200 select-none"
         >
-          <div className="flex items-center gap-2 rounded-full border border-border/60 bg-background/85 px-4 py-1.5 font-sans text-xs font-medium text-foreground shadow-2xl backdrop-blur-md">
+          <div className="flex items-center gap-2 rounded-full border border-border/80 bg-background/95 px-4 py-1.5 font-sans text-xs font-semibold text-foreground shadow-2xl backdrop-blur-md">
             {audioToast.includes('Nöro-Odak') &&
               (neuroAudioEnabled ? (
                 <Volume2 className="size-3.5 text-primary" />
@@ -1998,6 +2028,15 @@ export function ReaderApp() {
               ) : (
                 <EyeOff className="size-3.5 text-muted-foreground" />
               ))}
+            {(audioToast.includes('bağlandı') || audioToast.includes('eşleşti') || audioToast.includes('Eşleşti')) && (
+              <Check className="size-3.5 text-emerald-500" />
+            )}
+            {(audioToast.includes('sonlandı') || audioToast.includes('kaldırıldı')) && (
+              <X className="size-3.5 text-amber-500" />
+            )}
+            {audioToast.includes('Eşitlendi') && (
+              <Bookmark className="size-3.5 text-sky-500" />
+            )}
             <span>{audioToast}</span>
           </div>
         </div>

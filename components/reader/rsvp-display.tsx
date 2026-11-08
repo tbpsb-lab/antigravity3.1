@@ -432,13 +432,20 @@ export const RsvpDisplay = memo(function RsvpDisplay({
     <section aria-label="Okuma penceresi" className="relative w-full">
       <div
         ref={containerRef}
+        onClick={(e) => {
+          if (playing) return
+          // İlerleme çubuğuna veya tanıtım penceresine tıklandıysa okumayı başlatma
+          if (progressBarRef.current && progressBarRef.current.contains(e.target as Node)) return
+          if (chunkCalloutRef.current && chunkCalloutRef.current.contains(e.target as Node)) return
+          onToggle?.()
+        }}
         className={cn(
           'rsvp-stage group relative flex flex-col justify-center min-h-[102px] sm:min-h-[114px] md:min-h-[144px] lg:min-h-[140px] w-full px-4 py-3.5 text-left outline-none transition-[border-color,background-color,box-shadow] duration-300 sm:px-8 sm:py-5 md:px-10 md:py-6 [@media(max-height:640px)]:py-2.5 landscape-short:py-1.5 select-none touch-none overscroll-none',
           showChunkCallout ? 'overflow-visible' : 'overflow-hidden',
           isPulsing && 'pulse-jump',
           playing
             ? 'border-transparent bg-transparent shadow-none'
-            : 'panel focus-visible:ring-2 focus-visible:ring-ring',
+            : 'panel focus-visible:ring-2 focus-visible:ring-ring cursor-pointer',
         )}
       >
         {/* Dokunma jestleri ve hız kontrolü ReaderApp ana katmanından tam ekran / orta %50 olarak yönetilir */}

@@ -2145,8 +2145,14 @@ export function ReaderApp() {
         }}
       >
         <div className="relative flex h-full w-full max-w-4xl lg:max-w-5xl xl:max-w-6xl flex-col items-center justify-between py-1 sm:py-2 landscape-short:py-0.5 transition-[max-width] duration-300 min-h-0 pointer-events-none">
-          {/* Üst Dengeleyici */}
-          <div className="flex-1 w-full min-h-0 pointer-events-none select-none" />
+          {/* Üst Dengeleyici - Boş alana tıklandığında duraklatılmış okumayı başlat */}
+          <div
+            onClick={() => !playing && togglePlay()}
+            className={cn(
+              'flex-1 w-full min-h-0 select-none',
+              !playing ? 'pointer-events-auto cursor-pointer' : 'pointer-events-none',
+            )}
+          />
 
           {/* Okuma Penceresi */}
           <div className="w-full shrink-0 flex flex-col items-center pointer-events-auto">
@@ -2230,8 +2236,14 @@ export function ReaderApp() {
             />
           </div>
 
-          {/* Alt Dengeleyici */}
-          <div className="flex-1 w-full min-h-0 pointer-events-none select-none" />
+          {/* Alt Dengeleyici - Boş alana tıklandığında duraklatılmış okumayı başlat */}
+          <div
+            onClick={() => !playing && togglePlay()}
+            className={cn(
+              'flex-1 w-full min-h-0 select-none',
+              !playing ? 'pointer-events-auto cursor-pointer' : 'pointer-events-none',
+            )}
+          />
         </div>
       </main>
 
@@ -2319,7 +2331,8 @@ export function ReaderApp() {
             bottom: zen ? 0 : 'calc(min(115px, 18vh) + env(safe-area-inset-bottom, 0px))',
           }}
           className={cn(
-            'fixed inset-x-0 z-20 flex select-none pointer-events-auto touch-none overscroll-none',
+            'fixed inset-x-0 z-20 flex select-none touch-none overscroll-none transition-opacity duration-200',
+            (playing || zen) ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0',
             zen && 'inset-0',
           )}
         >

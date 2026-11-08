@@ -670,7 +670,8 @@ export function ReaderApp() {
   )
 
   // Esnek Bağlam Penceresi ve Sayfalama
-  const [contextPageSize, setContextPageSize] = useState(27)
+  // Esnek Bağlam Penceresi ve Sayfalama (6'nın katı: 1, 2, 3 öbeklerle tam uyumlu)
+  const [contextPageSize, setContextPageSize] = useState(30)
 
   const handleStepPrev = useCallback(() => {
     rampStepRef.current = 0

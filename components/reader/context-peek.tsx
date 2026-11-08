@@ -57,10 +57,15 @@ export const ContextPeek = memo(function ContextPeek({
   }, [])
 
   // Konteyner boyutuna göre ekranda dikey ve yatay eksende ne kadar kelime alabileceğini dinamik hesapla.
-  // Mobil telefonda dikeyde 3 satır, yatayda 2 satır; masaüstü ve tablette 3-4 satır doldurur.
+  // 1, 2 ve 3 kelimelik öbeklerle (chunkSize) %100 tam ve ardışık sayfalama için
+  // kapasite değerleri 6'nın katı (EKOK) olarak belirlenir:
+  // - Mobil telefon yatay (max-height 520px): 12 kelime (tam 2 satır)
+  // - Mobil telefon dikey: 18 kelime (tam 3 satır)
+  // - Tablet / orta ekran (600px - 767px): 24 kelime (3 - 4 satır)
+  // - iPad Pro 12.9" ve Masaüstü (>= 768px): 30 kelime (tam 3 - 4 satır, WebKit çökmesi ve kelime kaybı yok)
   const capacity = useMemo(() => {
     if (!containerSize.width) {
-      return 36 // İlk yükleme / SSR için dengeli varsayılan
+      return 30 // Dengeli varsayılan
     }
 
     // Mobil telefon yatay tutuş (landscape phone, max-height 520px) kontrolü -> 2 satır
@@ -70,33 +75,21 @@ export const ContextPeek = memo(function ContextPeek({
       window.matchMedia?.('(orientation: landscape)').matches
 
     if (isLandscapeShort) {
-      const buttonSpace = 64
-      const availableWidth = Math.max(120, containerSize.width - buttonSpace)
-      const wordsPerLine = Math.max(6, Math.floor(availableWidth / 48))
-      return Math.max(12, 2 * wordsPerLine)
+      return 12 // 2 satır
     }
 
-    // Masaüstü ve Geniş Tablet (width >= 768px): 3 - 4 satır
+    // Masaüstü ve Geniş Tablet (iPad Pro 12.9 inç, iPad, masaüstü, width >= 768px): 3 - 4 satır
     if (containerSize.width >= 768) {
-      const buttonSpace = 96
-      const availableWidth = Math.min(containerSize.width - buttonSpace, 768 - buttonSpace)
-      const wordsPerLine = Math.max(10, Math.floor(availableWidth / 50))
-      return Math.max(38, Math.floor(3.6 * wordsPerLine))
+      return 30 // 3 - 4 satır
     }
 
     // Tablet / Orta Ekran (600px - 767px): 3 - 4 satır
     if (containerSize.width >= 600) {
-      const buttonSpace = 80
-      const availableWidth = containerSize.width - buttonSpace
-      const wordsPerLine = Math.max(8, Math.floor(availableWidth / 52))
-      return Math.max(28, Math.floor(3.5 * wordsPerLine))
+      return 24 // 3 - 4 satır
     }
 
     // Mobil Telefon Dikey (width < 600px): Tam 3 satır
-    const buttonSpace = 72
-    const availableWidth = Math.max(120, containerSize.width - buttonSpace)
-    const wordsPerLine = Math.max(5, Math.floor(availableWidth / 54))
-    return Math.max(15, 3 * wordsPerLine)
+    return 18 // 3 satır
   }, [containerSize.width])
 
   // Kapasite değiştikçe ana bileşene bildir
@@ -231,14 +224,14 @@ export const ContextPeek = memo(function ContextPeek({
       </div>
 
       {/* Ana Gövde: Solda minik < butonu, Ortada kesinlikle scrollbarsız esnek metin alanı, Sağda minik > butonu */}
-      <div className="relative flex flex-1 min-h-0 items-center gap-1.5 sm:gap-2.5 w-full">
+      <div className="relative flex flex-1 min-h-0 items-center gap-1.5 sm:gap-2.5 w-full my-auto">
         {/* Sol Sayfa Geri Atla Butonu: Minik ve şeffaf */}
         <button
           type="button"
           onClick={handlePrev}
           disabled={!canGoPrev}
           className={cn(
-            'ctl relative z-10 size-7 sm:size-8 md:size-10 shrink-0 rounded-full border border-border/40 bg-foreground/5 hover:bg-foreground/15 text-muted-foreground hover:text-foreground backdrop-blur-xs transition-all flex items-center justify-center cursor-pointer shadow-2xs',
+            'ctl relative z-10 size-7 sm:size-8 md:size-10 shrink-0 self-center rounded-full border border-border/40 bg-foreground/5 hover:bg-foreground/15 text-muted-foreground hover:text-foreground backdrop-blur-xs transition-all flex items-center justify-center cursor-pointer shadow-2xs',
             !canGoPrev && 'opacity-20 pointer-events-none',
           )}
           aria-label="Önceki bağlam sayfası"
@@ -247,9 +240,9 @@ export const ContextPeek = memo(function ContextPeek({
           <ChevronLeft className="size-4 md:size-5" />
         </button>
 
-        {/* Ortadaki Metin Alanı: Scrollbar kesinlikle görünmez (scrollbar-none), tüm ekranlarda (mobil, tablet, masaüstü) KESİNLİKLE 3 SATIR */}
-        <div className="flex-1 min-h-0 h-full overflow-hidden [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden flex items-start">
-          <p className="text-pretty text-xs sm:text-[13.5px] md:text-[15px] leading-[1.4] sm:leading-[1.45] md:leading-[1.48] text-muted-foreground w-full select-none m-0 p-0 line-clamp-3 sm:line-clamp-4">
+        {/* Ortadaki Metin Alanı: WebKit tek satır çökmesini önleyen garantili blok kapsayıcı, tablet ve masaüstünde 3-4 satır */}
+        <div className="flex-1 min-w-0 min-h-[52px] sm:min-h-[70px] md:min-h-[88px] max-h-[76px] sm:max-h-[102px] md:max-h-[126px] overflow-hidden [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden flex flex-col justify-center">
+          <p className="text-pretty text-xs sm:text-[13.5px] md:text-[15px] leading-[1.42] sm:leading-[1.46] md:leading-[1.48] text-muted-foreground w-full select-none m-0 p-0 text-left">
             {slice.map((w, i) => {
               const absolute = start + i
               const current = absolute >= index && absolute < index + chunkSize
@@ -278,7 +271,7 @@ export const ContextPeek = memo(function ContextPeek({
           onClick={handleNext}
           disabled={!canGoNext}
           className={cn(
-            'ctl relative z-10 size-7 sm:size-8 md:size-10 shrink-0 rounded-full border border-border/40 bg-foreground/5 hover:bg-foreground/15 text-muted-foreground hover:text-foreground backdrop-blur-xs transition-all flex items-center justify-center cursor-pointer shadow-2xs',
+            'ctl relative z-10 size-7 sm:size-8 md:size-10 shrink-0 self-center rounded-full border border-border/40 bg-foreground/5 hover:bg-foreground/15 text-muted-foreground hover:text-foreground backdrop-blur-xs transition-all flex items-center justify-center cursor-pointer shadow-2xs',
             !canGoNext && 'opacity-20 pointer-events-none',
           )}
           aria-label="Sonraki bağlam sayfası"

@@ -234,7 +234,7 @@ export const FontSettings = memo(function FontSettings({
               <span
                 aria-hidden="true"
                 className={cn(
-                  'absolute bottom-1 right-1.5 text-[8.5px] font-mono font-bold leading-none select-none transition-colors',
+                  'desktop-shortcut-badge hidden md:block absolute bottom-1 right-1.5 text-[8.5px] font-mono font-bold leading-none select-none transition-colors',
                   theme === 'ios' ? 'text-primary' : 'text-muted-foreground/40',
                 )}
               >
@@ -260,7 +260,7 @@ export const FontSettings = memo(function FontSettings({
               <span
                 aria-hidden="true"
                 className={cn(
-                  'absolute bottom-1 right-1.5 text-[8.5px] font-mono font-bold leading-none select-none transition-colors',
+                  'desktop-shortcut-badge hidden md:block absolute bottom-1 right-1.5 text-[8.5px] font-mono font-bold leading-none select-none transition-colors',
                   theme === 'linear' ? 'text-purple-400' : 'text-muted-foreground/40',
                 )}
               >
@@ -286,7 +286,7 @@ export const FontSettings = memo(function FontSettings({
               <span
                 aria-hidden="true"
                 className={cn(
-                  'absolute bottom-1 right-1.5 text-[8.5px] font-mono font-bold leading-none select-none transition-colors',
+                  'desktop-shortcut-badge hidden md:block absolute bottom-1 right-1.5 text-[8.5px] font-mono font-bold leading-none select-none transition-colors',
                   theme === 'kindle' ? 'text-amber-600 dark:text-amber-400' : 'text-muted-foreground/40',
                 )}
               >
@@ -356,7 +356,7 @@ export const FontSettings = memo(function FontSettings({
                       <span
                         aria-hidden="true"
                         className={cn(
-                          'absolute bottom-0.5 right-1 text-[8.5px] font-mono font-bold leading-none select-none transition-colors',
+                          'desktop-shortcut-badge hidden md:block absolute bottom-0.5 right-1 text-[8.5px] font-mono font-bold leading-none select-none transition-colors',
                           active ? 'text-primary-foreground/80' : 'text-muted-foreground/50',
                         )}
                       >
@@ -454,7 +454,7 @@ export const FontSettings = memo(function FontSettings({
                 />
                 <div className="min-w-0">
                   <p className="text-xs font-semibold text-foreground truncate leading-tight">
-                    Akıllı <span className="font-bold text-primary underline underline-offset-2 decoration-2 decoration-primary/70">B</span>ionic Öbekleme
+                    Akıllı <span className="desktop-shortcut-key font-semibold md:font-bold md:text-primary md:underline md:underline-offset-2 md:decoration-2 md:decoration-primary/70">B</span>ionic Öbekleme
                   </p>
                   <p className="text-[10px] text-muted-foreground truncate leading-tight mt-0.5">
                     2K-3K modlarında kökleri vurgular
@@ -493,7 +493,7 @@ export const FontSettings = memo(function FontSettings({
                 )}
                 <div className="min-w-0">
                   <p className="text-xs font-semibold text-foreground truncate leading-tight">
-                    <span className="font-bold text-primary underline underline-offset-2 decoration-2 decoration-primary/70">N</span>öroakustik Odak Sesi
+                    <span className="desktop-shortcut-key font-semibold md:font-bold md:text-primary md:underline md:underline-offset-2 md:decoration-2 md:decoration-primary/70">N</span>öroakustik Odak Sesi
                   </p>
                   <p className="text-[10px] text-muted-foreground truncate leading-tight mt-0.5">
                     Pembe gürültü & 40Hz Gama
@@ -532,7 +532,7 @@ export const FontSettings = memo(function FontSettings({
                 )}
                 <div className="min-w-0">
                   <p className="text-xs font-semibold text-foreground truncate leading-tight">
-                    <span className="font-bold text-emerald-500 underline underline-offset-2 decoration-2 decoration-emerald-500/70">G</span>öz & Dikkat İzleme
+                    <span className="desktop-shortcut-key font-semibold md:font-bold md:text-emerald-500 md:underline md:underline-offset-2 md:decoration-2 md:decoration-emerald-500/70">G</span>öz & Dikkat İzleme
                   </p>
                   <p className="text-[10px] text-muted-foreground truncate leading-tight mt-0.5">
                     Ekrandan kopunca otomatik duraklatır
@@ -566,7 +566,7 @@ export const FontSettings = memo(function FontSettings({
               <QrCode className="size-4 text-primary shrink-0 transition-colors" />
               <div className="min-w-0">
                 <p className="text-xs font-semibold text-foreground truncate leading-tight">
-                  Cihaz <span className="font-bold text-primary underline underline-offset-2 decoration-2 decoration-primary/70">E</span>şleştir
+                  Cihaz <span className="desktop-shortcut-key font-semibold md:font-bold md:text-primary md:underline md:underline-offset-2 md:decoration-2 md:decoration-primary/70">E</span>şleştir
                 </p>
                 <p className="text-[10px] text-muted-foreground truncate leading-tight mt-0.5">
                   Ekranlar arası senkronizasyon

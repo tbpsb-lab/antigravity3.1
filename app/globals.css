@@ -670,3 +670,15 @@ html[data-theme='kindle']::-webkit-scrollbar-track {
     height: 0.625rem !important;
   }
 }
+
+/* Dokunmatik cihazlarda (telefon ve tablet) klavye kısayol rozetlerini ve harf vurgularını tamamen gizle */
+@media (hover: none), (pointer: coarse) {
+  .desktop-shortcut-badge {
+    display: none !important;
+  }
+  .desktop-shortcut-key {
+    font-weight: inherit !important;
+    color: inherit !important;
+    text-decoration: none !important;
+  }
+}

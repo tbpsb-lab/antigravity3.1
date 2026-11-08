@@ -661,9 +661,15 @@ export function ReaderApp() {
       window.matchMedia('(display-mode: standalone)').matches
     )
 
-    if (isIPhone || isStandalone) {
-      // iPhone veya Ana Ekrana Eklenen PWA modunda çökme yapmadan sanal tam ekran (zen modu) durumunu değiştir
-      setIsFullscreen((prev) => !prev)
+    if (isStandalone) {
+      showAudioToast('Uygulama zaten Ana Ekranda tam ekran çalışıyor')
+      triggerHaptic('tap')
+      return
+    }
+
+    if (isIPhone) {
+      showAudioToast('Apple iPhone Safari tam ekranı kısıtlar. Tam ekran için: Paylaş ➔ Ana Ekrana Ekle')
+      triggerHaptic('tap')
       return
     }
 
@@ -688,7 +694,7 @@ export function ReaderApp() {
       console.warn('Tam ekran geçiş hatası:', err)
       setIsFullscreen((prev) => !prev)
     }
-  }, [])
+  }, [showAudioToast])
 
   // Mobil Ekran Kilidi (Screen Lock / Sleep) ve Sekme Değişimi Algılama
   const wasPlayingBeforeLockRef = useRef(false)

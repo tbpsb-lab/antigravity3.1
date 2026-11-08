@@ -27,6 +27,26 @@ type SearchMatch = {
   pageNumber?: number
 }
 
+function HighlightSnippet({ text, query }: { text: string; query: string }) {
+  if (!query.trim()) return <span>{text}</span>
+  const trimmed = query.trim()
+  const escaped = trimmed.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const parts = text.split(new RegExp(`(${escaped})`, 'gi'))
+  return (
+    <span>
+      {parts.map((part, i) =>
+        toTurkishLower(part) === toTurkishLower(trimmed) ? (
+          <mark key={i} className="bg-primary/25 text-primary font-bold px-0.5 rounded not-italic">
+            {part}
+          </mark>
+        ) : (
+          part
+        ),
+      )}
+    </span>
+  )
+}
+
 export function PageSearchPopover({
   open,
   onClose,
@@ -168,26 +188,33 @@ export function PageSearchPopover({
       }
     }
 
-    // 2. Kelime ve Çoklu Kelime / Öbek (2, 3+ kelime) Bazlı Metin Araması
+    // 2. Metin İçi Kelime, Sayı ve Çoklu Kelime / Öbek Bazlı Arama
+    // Rakam aramalarında (1 basamaklı olsa dahi örn. 7, 32) veya en az 2 harfli kelimelerde metin içi arama yapılır
     const lowerQuery = toTurkishLower(trimmed)
     const queryTokens = lowerQuery.split(/\s+/).filter(Boolean)
     const isMultiWord = queryTokens.length > 1
     const normalizedQuery = queryTokens.join(' ')
+    const shouldSearchText = isNumeric ? lowerQuery.length >= 1 : (lowerQuery.length >= 2 || isMultiWord)
 
-    if (lowerQuery.length >= 2 || !isNumeric || isMultiWord) {
+    if (shouldSearchText) {
       const tokenCount = queryTokens.length
       const cleanRegex = /[.,;:!?"'“”‘’()[\]\-]/g
+      const exactMatches: SearchMatch[] = []
+      const partialMatches: SearchMatch[] = []
 
       for (let i = 0; i <= words.length - tokenCount; i++) {
-        let isMatch = false
+        let isExactMatch = false
+        let isPartialMatch = false
 
         if (!isMultiWord) {
-          // Tek kelime araması
+          // Tek kelime / tek sayı araması
           const rawWord = words[i]
           const cleanWord = toTurkishLower(rawWord.replace(cleanRegex, ''))
           const fullLower = toTurkishLower(rawWord)
-          if (cleanWord.includes(lowerQuery) || fullLower.includes(lowerQuery)) {
-            isMatch = true
+          if (cleanWord === lowerQuery || fullLower === lowerQuery) {
+            isExactMatch = true
+          } else if (cleanWord.includes(lowerQuery) || fullLower.includes(lowerQuery)) {
+            isPartialMatch = true
           }
         } else {
           // Öbek (2, 3+ kelime) araması: İlk kelime ön filtresi ile yüksek performans
@@ -202,45 +229,59 @@ export function PageSearchPopover({
               .map((w) => toTurkishLower(w))
               .join(' ')
 
-            if (
+            if (cleanPhrase === normalizedQuery || rawPhrase === normalizedQuery) {
+              isExactMatch = true
+            } else if (
               cleanPhrase.includes(normalizedQuery) ||
               rawPhrase.includes(normalizedQuery) ||
               cleanPhrase.includes(lowerQuery) ||
               rawPhrase.includes(lowerQuery)
             ) {
-              isMatch = true
+              isPartialMatch = true
             }
           }
         }
 
-        if (isMatch) {
-          if (results.length < 15) {
-            const sStart = Math.max(0, i - 3)
-            const sEnd = Math.min(words.length, i + tokenCount + 4)
-            const snippetWords = words.slice(sStart, sEnd)
-            const snippet = snippetWords.join(' ')
+        if (isExactMatch || isPartialMatch) {
+          const sStart = Math.max(0, i - 3)
+          const sEnd = Math.min(words.length, i + tokenCount + 4)
+          const snippetWords = words.slice(sStart, sEnd)
+          const snippet = snippetWords.join(' ')
 
-            let wordPage: number | undefined
-            if (chunks && chunks.length > 0) {
-              const ch = chunks.find((c) => i >= c.startIndex && i < c.startIndex + c.words.length)
-              if (ch) wordPage = ch.pageNumber
-            }
+          let wordPage: number | undefined
+          if (chunks && chunks.length > 0) {
+            const ch = chunks.find((c) => i >= c.startIndex && i < c.startIndex + c.words.length)
+            if (ch) wordPage = ch.pageNumber
+          }
 
-            const matchedTitle = isMultiWord
-              ? words.slice(i, i + tokenCount).join(' ')
-              : words[i]
+          const matchedTitle = isMultiWord
+            ? words.slice(i, i + tokenCount).join(' ')
+            : words[i]
 
-            results.push({
-              id: `word-${i}`,
-              type: 'word',
-              wordIndex: i,
-              pageNumber: wordPage,
-              title: matchedTitle,
-              snippet,
-            })
+          const matchItem: SearchMatch = {
+            id: `word-${i}`,
+            type: 'word',
+            wordIndex: i,
+            pageNumber: wordPage,
+            title: matchedTitle,
+            snippet,
+          }
+
+          if (isExactMatch) {
+            exactMatches.push(matchItem)
+          } else {
+            partialMatches.push(matchItem)
+          }
+
+          if (exactMatches.length + partialMatches.length >= 30) {
+            break
           }
         }
       }
+
+      // Tam eşleşmeler önce, kısmi eşleşmeler sonra ikinci/üçüncü seçenek olarak sunulur
+      const combinedWordMatches = [...exactMatches, ...partialMatches].slice(0, 15)
+      results.push(...combinedWordMatches)
     }
 
     return results
@@ -374,14 +415,21 @@ export function PageSearchPopover({
                         {m.type === 'page' ? (
                           <strong className="text-foreground">{m.title}</strong>
                         ) : (
-                          m.snippet
+                          <HighlightSnippet text={m.snippet} query={query} />
                         )}
                       </span>
                     </div>
 
                     {m.pageNumber && (
-                      <span className="shrink-0 font-mono text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-foreground/10 text-muted-foreground">
-                        sf: {m.pageNumber}
+                      <span
+                        className={cn(
+                          'shrink-0 font-mono text-[9px] font-bold px-1.5 py-0.5 rounded-md',
+                          m.type === 'page'
+                            ? 'bg-sky-500/15 text-sky-600 dark:text-sky-400 font-semibold'
+                            : 'bg-foreground/10 text-muted-foreground',
+                        )}
+                      >
+                        {m.type === 'page' ? `Sayfa ${m.pageNumber}` : `sf: ${m.pageNumber}`}
                       </span>
                     )}
                   </button>

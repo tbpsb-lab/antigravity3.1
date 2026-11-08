@@ -208,25 +208,25 @@ export const FontSettings = memo(function FontSettings({
         aria-label="Görünüm ve okuma ayarları"
         inert={!open}
         className={cn(
-          'panel panel-solid absolute -right-12 top-full z-50 mt-2 w-[min(22rem,calc(100vw-1.5rem))] origin-top-right p-2.5 sm:p-3 sm:right-0 transition-all duration-200 ease-out shadow-2xl flex flex-col gap-2',
+          'panel panel-solid absolute -right-12 top-full z-50 mt-2 w-[min(22rem,calc(100vw-1.5rem))] origin-top-right p-2 sm:p-2.5 sm:right-0 transition-all duration-200 ease-out shadow-2xl flex flex-col gap-1',
           'max-h-[calc(100dvh-5.5rem)] overflow-y-auto overscroll-contain touch-pan-y landscape-short:max-h-[calc(100dvh-3.75rem)] landscape-short:w-[min(24rem,calc(100vw-1.5rem))] landscape-short:p-2.5',
           open ? 'scale-100 opacity-100' : 'pointer-events-none scale-95 opacity-0',
         )}
       >
         {/* Üst Alan: Sol Kolon (Temalar + Yazı Ailesi + Kelime Öbeği) & Sağ Kolon (En Üstten En Alta Uzanan Dikey Kadran) */}
-        <div className="grid grid-cols-[1fr_auto] gap-2 items-stretch">
+        <div className="grid grid-cols-[1fr_auto] gap-1.5 items-stretch">
           {/* Sol Kolon: Temalar (Satır 1), Yazı Ailesi (Satır 2), Kelime Öbekleri (Satır 3) */}
-          <div className="flex flex-col gap-1.5 min-w-0 justify-between">
+          <div className="flex flex-col gap-1 min-w-0">
             {/* 1. Tema Seçimi (Sola doğru kompakt haplar - Kadrana yer açar) */}
             {onThemeChange && (
-              <div role="radiogroup" aria-label="Tasarım teması" className="grid grid-cols-3 gap-1.5">
+              <div role="radiogroup" aria-label="Tasarım teması" className="grid grid-cols-3 gap-1">
                 <button
                   type="button"
                   role="radio"
                   aria-checked={theme === 'ios'}
                   onClick={() => onThemeChange('ios')}
                   className={cn(
-                    'relative flex items-center justify-center gap-1.5 py-1.5 px-1.5 rounded-xl border transition-all cursor-pointer select-none text-center',
+                    'relative flex items-center justify-center gap-1 py-1 px-1 rounded-lg border transition-all cursor-pointer select-none text-center',
                     theme === 'ios'
                       ? 'border-primary bg-primary/10 text-foreground ring-1 ring-primary/40 shadow-xs'
                       : 'border-border/60 hover:border-border hover:bg-muted/40 text-muted-foreground',
@@ -252,7 +252,7 @@ export const FontSettings = memo(function FontSettings({
                   aria-checked={theme === 'linear'}
                   onClick={() => onThemeChange('linear')}
                   className={cn(
-                    'relative flex items-center justify-center gap-1.5 py-1.5 px-1.5 rounded-xl border transition-all cursor-pointer select-none text-center',
+                    'relative flex items-center justify-center gap-1 py-1 px-1 rounded-lg border transition-all cursor-pointer select-none text-center',
                     theme === 'linear'
                       ? 'border-purple-400 bg-purple-500/10 text-foreground ring-1 ring-purple-400/40 shadow-xs'
                       : 'border-border/60 hover:border-border hover:bg-muted/40 text-muted-foreground',
@@ -278,7 +278,7 @@ export const FontSettings = memo(function FontSettings({
                   aria-checked={theme === 'kindle'}
                   onClick={() => onThemeChange('kindle')}
                   className={cn(
-                    'relative flex items-center justify-center gap-1.5 py-1.5 px-1.5 rounded-xl border transition-all cursor-pointer select-none text-center',
+                    'relative flex items-center justify-center gap-1 py-1 px-1 rounded-lg border transition-all cursor-pointer select-none text-center',
                     theme === 'kindle'
                       ? 'border-amber-600/70 bg-amber-500/10 text-foreground ring-1 ring-amber-600/40 shadow-xs'
                       : 'border-border/60 hover:border-border hover:bg-muted/40 text-muted-foreground',
@@ -301,7 +301,7 @@ export const FontSettings = memo(function FontSettings({
             )}
 
             {/* 2. Yazı Tipi Ailesi (Aa Tema, Aa Mono, Aa Sans, Aa Serif) */}
-            <div role="radiogroup" aria-label="Yazı tipi ailesi" className="grid grid-cols-4 gap-1.5">
+            <div role="radiogroup" aria-label="Yazı tipi ailesi" className="grid grid-cols-4 gap-1">
               {FONT_FACES.map((f) => {
                 const active = f.id === face
                 return (
@@ -312,7 +312,7 @@ export const FontSettings = memo(function FontSettings({
                     aria-checked={active}
                     onClick={() => onFaceChange(f.id)}
                     className={cn(
-                      'flex flex-col items-center justify-center py-1 px-1 rounded-xl transition-all cursor-pointer select-none text-center',
+                      'flex flex-col items-center justify-center py-0.5 px-0.5 rounded-lg transition-all cursor-pointer select-none text-center',
                       active
                         ? 'bg-primary text-primary-foreground shadow-xs ring-1 ring-primary/40 font-semibold'
                         : 'border border-border/60 hover:bg-muted/50 text-foreground/80 hover:text-foreground',
@@ -333,7 +333,7 @@ export const FontSettings = memo(function FontSettings({
 
             {/* 3. Kelime Öbeği (1 kelime, 2 kelime, 3 kelime) */}
             {onChunkSizeChange && (
-              <div role="radiogroup" aria-label="Kelime öbeği boyutu" className="grid grid-cols-3 gap-1.5">
+              <div role="radiogroup" aria-label="Kelime öbeği boyutu" className="grid grid-cols-3 gap-1">
                 {[1, 2, 3].map((size) => {
                   const active = chunkSize === size
                   return (
@@ -345,7 +345,7 @@ export const FontSettings = memo(function FontSettings({
                       onClick={() => onChunkSizeChange(size)}
                       data-wheel="chunk-size"
                       className={cn(
-                        'relative flex items-center justify-center py-1.5 px-1 rounded-xl transition-all cursor-pointer select-none text-center text-xs font-semibold',
+                        'relative flex items-center justify-center py-1 px-1 rounded-lg transition-all cursor-pointer select-none text-center text-xs font-semibold',
                         active
                           ? 'bg-primary text-primary-foreground shadow-xs ring-1 ring-primary/40'
                           : 'border border-border/60 hover:bg-muted/50 text-foreground/80 hover:text-foreground',
@@ -377,7 +377,7 @@ export const FontSettings = memo(function FontSettings({
               e.stopPropagation()
               step(e.deltaY < 0 ? FONT_SCALE_STEP : -FONT_SCALE_STEP)
             }}
-            className="w-11 sm:w-12 h-full flex flex-col items-center justify-between py-1.5 px-1 rounded-2xl bg-muted/30 hover:bg-muted/60 border border-border/60 hover:border-primary/50 transition-all select-none shadow-xs group cursor-ns-resize shrink-0"
+            className="w-11 sm:w-11.5 h-full flex flex-col items-center justify-between py-1 px-0.5 rounded-xl bg-muted/30 hover:bg-muted/60 border border-border/60 hover:border-primary/50 transition-all select-none shadow-xs group cursor-ns-resize shrink-0"
             title={`Yazı Boyutu: %${Math.round(scale * 100)} (Tıkla veya Farenin Tekerleğiyle Kaydır)`}
             role="group"
             aria-label="Dikey Yazı Boyutu Kadranı"
@@ -387,7 +387,7 @@ export const FontSettings = memo(function FontSettings({
               type="button"
               onClick={() => step(FONT_SCALE_STEP)}
               disabled={scale >= FONT_SCALE_MAX}
-              className="w-full flex flex-col items-center justify-center py-1 text-foreground hover:text-primary transition-colors disabled:opacity-30 disabled:pointer-events-none cursor-pointer"
+              className="w-full flex flex-col items-center justify-center py-0.5 text-foreground hover:text-primary transition-colors disabled:opacity-30 disabled:pointer-events-none cursor-pointer"
               aria-label="Yazı Boyutunu Büyüt"
               title="Büyüt"
             >
@@ -399,7 +399,7 @@ export const FontSettings = memo(function FontSettings({
             </button>
 
             {/* Dikey Seviye Göstergesi (Estetik Çizgiler & Yüzde) */}
-            <div className="flex flex-col items-center justify-center gap-1.5 my-1 w-full px-1 flex-1" aria-hidden="true">
+            <div className="flex flex-col items-center justify-center gap-1 my-0.5 w-full px-1 flex-1" aria-hidden="true">
               {[1.5, 1.3, 1.1, 0.9, 0.7].map((lvl) => {
                 const isReached = scale >= lvl - 0.05
                 const isCurrent = Math.abs(scale - lvl) < 0.1
@@ -427,7 +427,7 @@ export const FontSettings = memo(function FontSettings({
               type="button"
               onClick={() => step(-FONT_SCALE_STEP)}
               disabled={scale <= FONT_SCALE_MIN}
-              className="w-full flex flex-col items-center justify-center py-1 text-foreground hover:text-primary transition-colors disabled:opacity-30 disabled:pointer-events-none cursor-pointer"
+              className="w-full flex flex-col items-center justify-center py-0.5 text-foreground hover:text-primary transition-colors disabled:opacity-30 disabled:pointer-events-none cursor-pointer"
               aria-label="Yazı Boyutunu Küçült"
               title="Küçült"
             >
@@ -444,7 +444,7 @@ export const FontSettings = memo(function FontSettings({
         <div className="flex flex-col border-t border-border/40 divide-y divide-border/25 pt-0.5">
           {/* Akıllı Bionic Öbekleme */}
           {onBionicChange && (
-            <div className="flex items-center justify-between gap-2 py-1.25 px-1">
+            <div className="flex items-center justify-between gap-2 py-1 px-1">
               <div className="flex items-center gap-2 min-w-0">
                 <BrainIcon
                   className={cn(
@@ -484,7 +484,7 @@ export const FontSettings = memo(function FontSettings({
 
           {/* Nöroakustik Odak Sesi */}
           {onNeuroAudioChange && (
-            <div className="flex items-center justify-between gap-2 py-1.25 px-1">
+            <div className="flex items-center justify-between gap-2 py-1 px-1">
               <div className="flex items-center gap-2 min-w-0">
                 {neuroAudioEnabled ? (
                   <Volume2 className="size-3.5 text-primary shrink-0 transition-colors animate-pulse" />
@@ -523,7 +523,7 @@ export const FontSettings = memo(function FontSettings({
 
           {/* Göz & Dikkat İzleme (G harfi ve ikon diğerleriyle uyumlu tema renginde) */}
           {onEyeTrackingChange && (
-            <div className="flex items-center justify-between gap-2 py-1.25 px-1">
+            <div className="flex items-center justify-between gap-2 py-1 px-1">
               <div className="flex items-center gap-2 min-w-0">
                 {eyeTrackingEnabled ? (
                   <Eye className="size-3.5 text-primary shrink-0 transition-colors animate-pulse" />
@@ -561,7 +561,7 @@ export const FontSettings = memo(function FontSettings({
           )}
 
           {/* Cihaz Eşleştir */}
-          <div className="flex items-center justify-between gap-2 py-1.25 px-1">
+          <div className="flex items-center justify-between gap-2 py-1 px-1">
             <div className="flex items-center gap-2 min-w-0">
               <QrCode className="size-3.5 text-primary shrink-0 transition-colors" />
               <div className="min-w-0">
@@ -591,14 +591,14 @@ export const FontSettings = memo(function FontSettings({
 
         {/* 5. Okuma Hızı Testi (Her zaman aktif renkte, kompakt buton) */}
         {onOpenSpeedTest && (
-          <div className="pt-1.5 border-t border-border/40">
+          <div className="pt-0.5 border-t border-border/30">
             <button
               type="button"
               onClick={() => {
                 setOpen(false)
                 onOpenSpeedTest()
               }}
-              className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl border border-primary/40 bg-primary/10 hover:bg-primary/20 text-primary transition-all text-xs font-semibold shadow-xs cursor-pointer group"
+              className="w-full flex items-center justify-between px-2.5 py-1 rounded-lg border border-primary/40 bg-primary/10 hover:bg-primary/20 text-primary transition-all text-xs font-semibold shadow-xs cursor-pointer group"
             >
               <span className="group-hover:translate-x-0.5 transition-transform">Okuma Hızı Testi</span>
               <Zap className="size-3 text-primary fill-primary/30 shrink-0 group-hover:scale-110 transition-transform" />

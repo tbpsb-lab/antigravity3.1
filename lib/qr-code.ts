@@ -48,7 +48,7 @@ function rsEncode(data: Uint8Array, nsym: number): Uint8Array {
     remainder.copyWithin(0, 1)
     remainder[nsym - 1] = 0
     for (let j = 0; j < nsym; j++) {
-      remainder[j] ^= gmult(gen[j], m)
+      remainder[j] ^= gmult(gen[j + 1], m)
     }
   }
   return remainder
@@ -184,16 +184,36 @@ export function generateQRMatrix(text: string): boolean[][] {
     dataBytes[i] = b
   }
 
-  // Reed-Solomon Hata Düzeltme Kodları
-  const ec = rsEncode(dataBytes, ecBytes)
+  // Reed-Solomon Hata Düzeltme Kodları ve Blok Birleştirme (Interleaving)
+  const finalCodewords: number[] = []
+  if (version === 4) {
+    // Version 4-M ISO/IEC 18004 standardı: 2 bağımsız blok (her biri 32 veri baytı, 18 EC baytı)
+    const b1Data = dataBytes.slice(0, 32)
+    const b2Data = dataBytes.slice(32, 64)
+    const b1Ec = rsEncode(b1Data, 18)
+    const b2Ec = rsEncode(b2Data, 18)
 
-  // Nihai bayt dizisi: Veri + Hata Düzeltme
-  const finalBits: number[] = []
-  for (let i = 0; i < dataBytes.length; i++) {
-    for (let b = 7; b >= 0; b--) finalBits.push((dataBytes[i] >> b) & 1)
+    // Veri baytlarını ardışık çapraz yerleştir (Interleave data)
+    for (let i = 0; i < 32; i++) {
+      finalCodewords.push(b1Data[i])
+      finalCodewords.push(b2Data[i])
+    }
+    // Hata düzeltme baytlarını ardışık çapraz yerleştir (Interleave EC)
+    for (let i = 0; i < 18; i++) {
+      finalCodewords.push(b1Ec[i])
+      finalCodewords.push(b2Ec[i])
+    }
+  } else {
+    // Version 2-M ve 3-M: Tek blok
+    const ec = rsEncode(dataBytes, ecBytes)
+    for (let i = 0; i < dataBytes.length; i++) finalCodewords.push(dataBytes[i])
+    for (let i = 0; i < ec.length; i++) finalCodewords.push(ec[i])
   }
-  for (let i = 0; i < ec.length; i++) {
-    for (let b = 7; b >= 0; b--) finalBits.push((ec[i] >> b) & 1)
+
+  // Nihai bit akışı
+  const finalBits: number[] = []
+  for (let i = 0; i < finalCodewords.length; i++) {
+    for (let b = 7; b >= 0; b--) finalBits.push((finalCodewords[i] >> b) & 1)
   }
 
   // 5. Matrise Yerleştirme (Zig-zag sağdan sola)

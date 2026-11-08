@@ -124,11 +124,11 @@ export const SyncModal = memo(function SyncModal({
 
         {/* Karekod Alanı */}
         <div className="flex flex-col items-center justify-center gap-3 py-1">
-          <div className="relative p-3.5 bg-white rounded-2xl shadow-md border border-neutral-200 flex items-center justify-center">
+          <div className="relative p-4 sm:p-5 bg-white rounded-2xl shadow-md border border-neutral-200 flex items-center justify-center">
             {qrPath ? (
               <svg
-                viewBox={`-2 -2 ${qrSize + 4} ${qrSize + 4}`}
-                className="size-44 sm:size-48 shape-rendering-crispEdges text-neutral-900 fill-current"
+                viewBox={`-4 -4 ${qrSize + 8} ${qrSize + 8}`}
+                className="size-48 sm:size-52 shape-rendering-crispEdges text-neutral-900 fill-current"
                 aria-label="Senkronizasyon Karekodu"
               >
                 <path d={qrPath} />

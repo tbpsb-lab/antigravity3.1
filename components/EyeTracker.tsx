@@ -18,13 +18,13 @@ export type AttentionLossReason =
 export type EyeTrackerProps = {
   /** Özellik aktif mi? Kapalıyken kamera ve MediaPipe hiç çalıştırılmaz. */
   enabled: boolean
-  /** Doğal göz kırpmalarını (100-350ms) filtreleyen, uzun göz kapatma eşiği (ms, varsayılan: 450) */
+  /** Doğal göz kırpmalarını (100-350ms) filtreleyen, uzun göz kapatma eşiği (ms, varsayılan: 420) */
   blinkGracePeriodMs?: number
-  /** Gözlerin kısılması / yorgunluk algılama süre eşiği (ms, varsayılan: 750) */
+  /** Gözlerin kısılması / yorgunluk algılama süre eşiği (ms, varsayılan: 800) */
   squintDurationMs?: number
-  /** Başın sağa/sola çevrilmesi durumunda duraklatma gecikmesi (ms, varsayılan: 300) */
+  /** Başın sağa/sola çevrilmesi durumunda hızlı duraklatma gecikmesi (ms, varsayılan: 150) */
   headTurnDurationMs?: number
-  /** Yüzün kadrajdan çıkması durumunda duraklatma gecikmesi (ms, varsayılan: 350) */
+  /** Yüzün kadrajdan çıkması durumunda duraklatma gecikmesi (ms, varsayılan: 200) */
   noFaceDurationMs?: number
   /** Dikkat kaybı tetiklendiğinde çağrılır */
   onBlinkOrLookAway: (reason: AttentionLossReason) => void
@@ -70,13 +70,13 @@ function calculateSingleEyeEAR(
   const pTop2 = landmarks[top2Idx]
   const pBot2 = landmarks[bot2Idx]
 
-  if (!pOuter || !pInner || !pTop1 || !pBot1 || !pTop2 || !pBot2) return 0.25
+  if (!pOuter || !pInner || !pTop1 || !pBot1 || !pTop2 || !pBot2) return 0.22
 
   const v1 = distance2D(pTop1, pBot1)
   const v2 = distance2D(pTop2, pBot2)
   const h = distance2D(pOuter, pInner)
 
-  if (h <= 0.0001) return 0.25
+  if (h <= 0.0001) return 0.22
   return (v1 + v2) / (2.0 * h)
 }
 
@@ -101,8 +101,9 @@ export function calculateLeftEyeEAR(landmarks: Landmark3D[]): number {
 }
 
 /**
- * Baş duruşunu (Pose: Yaw, Pitch ve Simetri) MediaPipe yüz koordinatlarından hesaplar.
- * Burun ucu (1), yüz kenarları (234, 454), göz uçları (33, 263), alın (10), çene (152).
+ * Başın yatay eksende (Yaw) sağa veya sola çevrilip çevrilmediğini
+ * MediaPipe yüz landmark koordinatlarından hassas şekilde hesaplar.
+ * Burun ucu (1), yüz kenarları (234, 454), göz dış uçları (33, 263).
  */
 export function calculateHeadPose(landmarks: Landmark3D[]) {
   const nose = landmarks[1]
@@ -110,21 +111,18 @@ export function calculateHeadPose(landmarks: Landmark3D[]) {
   const rightFaceEdge = landmarks[234]
   const rightEyeOuter = landmarks[33]
   const leftEyeOuter = landmarks[263]
-  const forehead = landmarks[10]
-  const chin = landmarks[152]
 
   if (!nose || !leftFaceEdge || !rightFaceEdge || !rightEyeOuter || !leftEyeOuter) {
     return {
       yawRatio: 0,
       symmetryRatio: 0.5,
       yawAngleDeg: 0,
-      pitchRatio: 0.35,
       isHeadTurned: false,
       isHeadFacingScreen: true,
     }
   }
 
-  // 1. Burun ucunun iki gözün orta noktasına göre yatay sapması
+  // 1. Burun ucunun iki gözün orta noktasına göre yatay sapması (Normal ekranda: -0.05 ~ +0.05)
   const eyeMidX = (rightEyeOuter.x + leftEyeOuter.x) / 2.0
   const eyeDist = Math.abs(leftEyeOuter.x - rightEyeOuter.x)
   const yawRatio = eyeDist > 0.001 ? (nose.x - eyeMidX) / eyeDist : 0
@@ -139,75 +137,27 @@ export function calculateHeadPose(landmarks: Landmark3D[]) {
   const dz = (leftFaceEdge.z || 0) - (rightFaceEdge.z || 0)
   const yawAngleDeg = Math.atan2(dz, dx) * (180.0 / Math.PI)
 
-  // 4. Dikey kafa eğimi (Pitch)
-  let pitchRatio = 0.35
-  if (forehead && chin) {
-    const faceHeight = Math.abs(chin.y - forehead.y)
-    const midEyeY = (rightEyeOuter.y + leftEyeOuter.y) / 2.0
-    pitchRatio = faceHeight > 0.001 ? (nose.y - midEyeY) / faceHeight : 0.35
-  }
+  // Baş sağa veya sola çevrilmiş mi? (~12-14 derecelik belirgin dönüşte anında tetiklenir)
+  const isHeadTurned =
+    Math.abs(yawRatio) > 0.10 ||
+    symmetryRatio < 0.40 ||
+    symmetryRatio > 0.60 ||
+    Math.abs(yawAngleDeg) > 11.0
 
-  // Baş sağa veya sola çevrilmiş mi?
-  const isYawTurned =
-    Math.abs(yawRatio) > 0.22 ||
-    symmetryRatio < 0.32 ||
-    symmetryRatio > 0.68 ||
-    Math.abs(yawAngleDeg) > 17.0
-
-  // Aşırı yukarı veya aşağı bakış
-  const isPitchTurned = pitchRatio < 0.16 || pitchRatio > 0.56
-
-  const isHeadTurned = isYawTurned || isPitchTurned
-
-  // Baş doğrudan ekrana bakıyor mu?
+  // Baş doğrudan ekrana / kameraya bakıyor mu?
   const isHeadFacingScreen =
-    Math.abs(yawRatio) <= 0.15 &&
-    symmetryRatio >= 0.38 &&
-    symmetryRatio <= 0.62 &&
-    Math.abs(yawAngleDeg) <= 13.0 &&
-    pitchRatio >= 0.22 &&
-    pitchRatio <= 0.48
+    Math.abs(yawRatio) <= 0.08 &&
+    symmetryRatio >= 0.42 &&
+    symmetryRatio <= 0.58 &&
+    Math.abs(yawAngleDeg) <= 8.5
 
   return {
     yawRatio,
     symmetryRatio,
     yawAngleDeg,
-    pitchRatio,
     isHeadTurned,
     isHeadFacingScreen,
   }
-}
-
-/**
- * İris merkezleri (468, 473) yardımıyla bakış yönünü (Gaze) doğrular.
- */
-export function calculateGazeDirection(landmarks: Landmark3D[]) {
-  const rightIris = landmarks[468]
-  const leftIris = landmarks[473]
-  const rOuter = landmarks[33]
-  const rInner = landmarks[133]
-  const lOuter = landmarks[263]
-  const lInner = landmarks[362]
-
-  if (!rightIris || !leftIris || !rOuter || !rInner || !lOuter || !lInner) {
-    return { isGazeAverted: false, avgGaze: 0.5 }
-  }
-
-  const rWidth = rInner.x - rOuter.x
-  const lWidth = lOuter.x - lInner.x
-
-  if (Math.abs(rWidth) < 0.008 || Math.abs(lWidth) < 0.008) {
-    return { isGazeAverted: false, avgGaze: 0.5 }
-  }
-
-  const rPos = (rightIris.x - rOuter.x) / rWidth
-  const lPos = (leftIris.x - lInner.x) / lWidth
-  const avgGaze = (rPos + lPos) / 2.0
-
-  // Bakışlar aşırı sola (<0.22) veya aşırı sağa (>0.78) kaymış mı?
-  const isGazeAverted = avgGaze < 0.22 || avgGaze > 0.78
-
-  return { isGazeAverted, avgGaze }
 }
 
 function loadScriptOnce(src: string): Promise<void> {
@@ -282,10 +232,10 @@ async function resolveMediaPipeModules(): Promise<{ FaceMesh: any; Camera: any }
 
 export function EyeTracker({
   enabled,
-  blinkGracePeriodMs = 450,
-  squintDurationMs = 750,
-  headTurnDurationMs = 300,
-  noFaceDurationMs = 350,
+  blinkGracePeriodMs = 420,
+  squintDurationMs = 800,
+  headTurnDurationMs = 150,
+  noFaceDurationMs = 200,
   onBlinkOrLookAway,
   onAttentionRestored,
   onMicroBlink,
@@ -337,8 +287,13 @@ export function EyeTracker({
     let squintStartTime: number | null = null
     let headTurnStartTime: number | null = null
 
-    // Adaptif göz açıklık referans değeri (kullanıcının doğal göz yapısına otomatik uyum sağlar)
-    let baselineOpenEAR = 0.25
+    // Eşik değerleri (Normal rahat ekrana bakış EAR ~0.15-0.24 arasıdır)
+    // Göz kapalı: EAR < 0.10
+    // Göz kısıldı / yorgunluk: 0.10 <= EAR < 0.135
+    // Göz açık ve dikkatli: EAR >= 0.138
+    const CLOSED_THRESHOLD = 0.10
+    const SQUINT_THRESHOLD = 0.135
+    const OPEN_THRESHOLD = 0.138
 
     const stopAllResources = () => {
       try {
@@ -433,7 +388,7 @@ export function EyeTracker({
           const faces: Landmark3D[][] | undefined = results?.multiFaceLandmarks
           const hasFace = Array.isArray(faces) && faces.length > 0
 
-          // DURUM 1: Kamera önünde yüz algılanamadı
+          // DURUM 1: Kamera önünde yüz algılanamadı (Kullanıcı tamamen uzaklaştı)
           if (!hasFace) {
             restoreConsecutiveFrames = 0
             eyeClosedStartTime = null
@@ -456,25 +411,12 @@ export function EyeTracker({
           // Her iki gözün EAR oranları ve ortalaması
           const { avgEar } = calculateEyeMetrics(landmarks)
           const headPose = calculateHeadPose(landmarks)
-          const gaze = calculateGazeDirection(landmarks)
 
-          // Kullanıcı ekrana doğru bakarken adaptif açık göz EAR değerini dinamik olarak güncelle
-          if (headPose.isHeadFacingScreen && !gaze.isGazeAverted && avgEar >= 0.18) {
-            baselineOpenEAR = baselineOpenEAR * 0.98 + avgEar * 0.02
-            baselineOpenEAR = Math.max(0.21, Math.min(0.33, baselineOpenEAR))
-          }
+          const isEyesClosed = avgEar < CLOSED_THRESHOLD
+          const isEyesSquinted = !isEyesClosed && avgEar < SQUINT_THRESHOLD
 
-          // Adaptif eşik değerleri
-          const closedThreshold = Math.min(0.13, baselineOpenEAR * 0.52)
-          const squintThreshold = Math.min(0.185, baselineOpenEAR * 0.70)
-          const openThreshold = Math.max(0.165, baselineOpenEAR * 0.76)
-
-          const isLookingAway = headPose.isHeadTurned || gaze.isGazeAverted
-          const isEyesClosed = avgEar < closedThreshold
-          const isEyesSquinted = !isEyesClosed && avgEar < squintThreshold
-
-          // DURUM 2: Baş sağa/sola çevrildi veya bakışlar ekrandan uzaklaştı
-          if (isLookingAway) {
+          // DURUM 2: Baş sağa veya sola çevrildi (Hızlı tepki: ~150ms içinde algılar)
+          if (headPose.isHeadTurned) {
             eyeClosedStartTime = null
             squintStartTime = null
             restoreConsecutiveFrames = 0
@@ -484,14 +426,14 @@ export function EyeTracker({
             } else if (!isAttentionLost && now - headTurnStartTime >= headTurnDurationMs) {
               isAttentionLost = true
               onTrackingStatusChangeRef.current?.('attention-lost')
-              onBlinkOrLookAwayRef.current(headPose.isHeadTurned ? 'head-turned' : 'looking-away')
+              onBlinkOrLookAwayRef.current('head-turned')
             }
             return
           }
 
           headTurnStartTime = null
 
-          // DURUM 3: Gözler tamamen kapandı (Doğal kısa kırpma mı yoksa uzun kapanma mı?)
+          // DURUM 3: Gözler tamamen kapandı (Doğal anlık kırpma mı yoksa uyuma/kapatma mı?)
           if (isEyesClosed) {
             squintStartTime = null
             restoreConsecutiveFrames = 0
@@ -506,11 +448,11 @@ export function EyeTracker({
             return
           }
 
-          // Gözler açık: önceki durum doğal bir kısa göz kırpması mıydı?
+          // Gözler açık: önceki durum kısa bir doğal göz kırpması mıydı?
           if (eyeClosedStartTime !== null) {
             const closedDuration = now - eyeClosedStartTime
-            if (!isAttentionLost && closedDuration >= 70 && closedDuration < blinkGracePeriodMs) {
-              // Kısa göz kırpması (< 450ms): akış duraklatılmaz, mikro telafi iletilir
+            if (!isAttentionLost && closedDuration >= 60 && closedDuration < blinkGracePeriodMs) {
+              // Kısa göz kırpması (< 420ms): akış duraklatılmaz
               onMicroBlinkRef.current?.()
             }
             eyeClosedStartTime = null
@@ -534,14 +476,12 @@ export function EyeTracker({
 
           // DURUM 5: Dikkat tekrar doğrudan ekrana döndüğünde otomatik devam et
           if (isAttentionLost) {
-            const isFullyFocused =
-              headPose.isHeadFacingScreen &&
-              !gaze.isGazeAverted &&
-              avgEar >= openThreshold
+            // Baş ekrana dönük ve gözler normal açıkken devam et
+            const isFullyFocused = headPose.isHeadFacingScreen && avgEar >= OPEN_THRESHOLD
 
             if (isFullyFocused) {
               restoreConsecutiveFrames += 1
-              // Kararlı geri dönüş için ardışık 2 kare (~100-120ms) doğrudan ekrana bakılmasını bekle
+              // Kararlı geri dönüş için ardışık 2 kare (~80-100ms) doğrudan ekrana bakılmasını bekle
               if (restoreConsecutiveFrames >= 2) {
                 isAttentionLost = false
                 restoreConsecutiveFrames = 0

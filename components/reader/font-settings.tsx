@@ -569,51 +569,48 @@ export const FontSettings = memo(function FontSettings({
             </div>
           )}
 
-          {/* Cihaz Eşleştir */}
-          <div className="flex items-center justify-between gap-2 py-1.25 px-0.5">
-            <div className="flex items-center gap-2 min-w-0">
-              <QrCode className="size-4 text-primary shrink-0 transition-colors" />
-              <div className="min-w-0 flex flex-col justify-center">
-                <p className="text-[11px] font-semibold text-foreground leading-normal whitespace-nowrap">
-                  Cihaz <span className="desktop-shortcut-key font-bold text-primary underline underline-offset-[3px] decoration-2 decoration-primary">E</span>şleştir
-                </p>
-                <p className="text-[9.5px] text-muted-foreground leading-normal mt-0.5 whitespace-nowrap">
-                  Ekranlar arası senkronizasyon
-                </p>
-              </div>
-            </div>
+        </div>
+
+        {/* 5. Alt Eylem Satırı: Cihaz Eşleştir & Okuma Hızı Testi (Tek Satır, Ortasında İnce Dikey Ayırıcı Çizgi) */}
+        <div className="pt-0.5 border-t border-border/30">
+          <div className="grid grid-cols-2 divide-x divide-primary/25 rounded-lg border border-primary/30 bg-primary/10 transition-colors">
+            {/* Cihaz Eşleştir */}
             <button
               type="button"
               onClick={() => {
                 setOpen(false)
                 onOpenSync?.()
               }}
-              className="ctl px-2 py-0.5 text-[10.5px] font-semibold rounded-lg text-primary bg-primary/10 hover:bg-primary/20 border border-primary/30 transition-all shrink-0 cursor-pointer flex items-center gap-1 shadow-xs active:scale-95"
+              className="flex items-center justify-center gap-1.5 py-1 px-1.5 text-[11px] font-semibold text-primary hover:bg-primary/15 rounded-l-[7px] transition-all cursor-pointer group select-none active:scale-[0.98]"
               aria-label="Cihaz Eşleştir (Kısayol: E)"
-              title="Karekod ve Eşleme Menüsünü Aç (E)"
+              title="Karekod ile Cihaz Eşleştir (E)"
             >
-              <span>Eşle</span>
-              <ArrowRight className="size-2.5" />
+              <QrCode className="size-3.5 text-primary shrink-0 transition-transform group-hover:scale-110" />
+              <span className="truncate">
+                Cihaz <span className="desktop-shortcut-key font-bold text-primary underline underline-offset-[2px] decoration-1.5 decoration-primary">E</span>şleştir
+              </span>
             </button>
+
+            {/* Okuma Hızı Testi */}
+            {onOpenSpeedTest ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setOpen(false)
+                  onOpenSpeedTest()
+                }}
+                className="flex items-center justify-center gap-1.5 py-1 px-1.5 text-[11px] font-semibold text-primary hover:bg-primary/15 rounded-r-[7px] transition-all cursor-pointer group select-none active:scale-[0.98]"
+                aria-label="Okuma Hızı Testi"
+                title="Okuma Hızı Testini Başlat"
+              >
+                <span className="truncate">Okuma Hızı Testi</span>
+                <Zap className="size-3 text-primary fill-primary/30 shrink-0 transition-transform group-hover:scale-110" />
+              </button>
+            ) : (
+              <div />
+            )}
           </div>
         </div>
-
-        {/* 5. Okuma Hızı Testi (Her zaman aktif renkte, kompakt buton) */}
-        {onOpenSpeedTest && (
-          <div className="pt-0.5 border-t border-border/30">
-            <button
-              type="button"
-              onClick={() => {
-                setOpen(false)
-                onOpenSpeedTest()
-              }}
-              className="w-full flex items-center justify-between px-2.5 py-1 rounded-lg border border-primary/40 bg-primary/10 hover:bg-primary/20 text-primary transition-all text-xs font-semibold shadow-xs cursor-pointer group"
-            >
-              <span className="group-hover:translate-x-0.5 transition-transform">Okuma Hızı Testi</span>
-              <Zap className="size-3 text-primary fill-primary/30 shrink-0 group-hover:scale-110 transition-transform" />
-            </button>
-          </div>
-        )}
       </div>
     </div>
   )

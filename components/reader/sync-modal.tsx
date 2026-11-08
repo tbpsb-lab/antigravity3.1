@@ -13,6 +13,7 @@ import {
   Tablet,
   Trash2,
   Loader2,
+  ZoomIn,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { generateQRMatrix, qrMatrixToSvgPath } from '@/lib/qr-code'
@@ -68,6 +69,7 @@ export const SyncModal = memo(function SyncModal({
   const [scanError, setScanError] = useState<string | null>(null)
   const [newlyConnectedDeviceId, setNewlyConnectedDeviceId] = useState<string | null>(null)
   const [connectedSuccessMsg, setConnectedSuccessMsg] = useState<string | null>(null)
+  const [isQrZoomed, setIsQrZoomed] = useState(false)
 
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
@@ -100,8 +102,22 @@ export const SyncModal = memo(function SyncModal({
     } else {
       stopCamera()
       setConnectedSuccessMsg(null)
+      setIsQrZoomed(false)
     }
   }, [open, stopCamera])
+
+  // Büyük karekod açıkken Escape ile sadece büyütmeyi kapat
+  useEffect(() => {
+    if (!isQrZoomed) return
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation()
+        setIsQrZoomed(false)
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown, true)
+    return () => window.removeEventListener('keydown', handleKeyDown, true)
+  }, [isQrZoomed])
 
   // Cihazlar arası varlık (presence) güncellemelerini anında yansıt
   useEffect(() => {
@@ -486,21 +502,40 @@ export const SyncModal = memo(function SyncModal({
                 )}
               </div>
             ) : (
-              <div className="relative p-1.5 bg-white rounded-xl shadow-xs border border-neutral-200 flex items-center justify-center">
+              <button
+                type="button"
+                onClick={() => {
+                  if (qrPath) {
+                    setIsQrZoomed(true)
+                    triggerHaptic('tap')
+                  }
+                }}
+                className="ctl relative p-1.5 bg-white rounded-xl shadow-xs border border-neutral-200 flex items-center justify-center cursor-zoom-in group/qr hover:border-primary/60 hover:shadow-md transition-all active:scale-95 focus:outline-none focus:ring-2 focus:ring-primary/40"
+                title="Karekodu Büyüt (Tıklayın)"
+                aria-label="Karekodu Büyüt"
+              >
                 {qrPath ? (
-                  <svg
-                    viewBox={`-4 -4 ${qrSize + 8} ${qrSize + 8}`}
-                    className="size-24 shape-rendering-crispEdges text-neutral-900 fill-current"
-                    aria-label="Senkronizasyon Karekodu"
-                  >
-                    <path d={qrPath} />
-                  </svg>
+                  <>
+                    <svg
+                      viewBox={`-4 -4 ${qrSize + 8} ${qrSize + 8}`}
+                      className="size-24 shape-rendering-crispEdges text-neutral-900 fill-current transition-transform group-hover/qr:scale-102"
+                      aria-label="Senkronizasyon Karekodu"
+                    >
+                      <path d={qrPath} />
+                    </svg>
+                    {/* Büyütme İpucu Rozeti */}
+                    <div className="absolute inset-0 rounded-xl bg-black/10 opacity-0 group-hover/qr:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
+                      <span className="p-1 rounded-full bg-black/75 text-white shadow-xs">
+                        <ZoomIn className="size-3.5" />
+                      </span>
+                    </div>
+                  </>
                 ) : (
                   <div className="size-24 flex items-center justify-center text-muted-foreground text-[10px]">
                     Hazırlanıyor...
                   </div>
                 )}
-              </div>
+              </button>
             )}
           </div>
 
@@ -694,6 +729,85 @@ export const SyncModal = memo(function SyncModal({
           </div>
         )}
       </div>
+
+      {/* Kocaman ve Parlak Ekran Karekod Görünümü */}
+      {isQrZoomed && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Büyük Karekod Görünümü"
+          className="fixed inset-0 z-[100] flex flex-col items-center justify-center p-3 sm:p-5 bg-black/90 backdrop-blur-xl animate-in fade-in duration-200"
+          onClick={() => setIsQrZoomed(false)}
+        >
+          <div
+            className="relative flex flex-col items-center gap-3 sm:gap-4 p-5 sm:p-7 bg-white rounded-3xl shadow-[0_0_60px_rgba(255,255,255,0.45)] text-neutral-900 animate-in zoom-in-95 duration-200 select-none max-w-[94vw] max-h-[92vh] border-2 border-white/80"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Kapat Butonu */}
+            <button
+              type="button"
+              onClick={() => {
+                setIsQrZoomed(false)
+                triggerHaptic('tap')
+              }}
+              className="ctl absolute top-3 right-3 size-9 sm:size-10 rounded-full bg-neutral-100 hover:bg-neutral-200 text-neutral-600 hover:text-neutral-950 flex items-center justify-center cursor-pointer transition-all active:scale-90 shadow-xs"
+              aria-label="Büyük Karekodu Kapat"
+            >
+              <X className="size-5" />
+            </button>
+
+            {/* Başlık ve Eşleme Kodu */}
+            <div className="flex flex-col items-center gap-1 text-center pr-6 sm:pr-8">
+              <span className="text-[10px] sm:text-xs font-bold tracking-widest uppercase text-neutral-500">
+                Eşleştirme Karekodu
+              </span>
+              <span className="font-mono text-2xl sm:text-3xl font-black tracking-widest text-neutral-950">
+                {vaultId}
+              </span>
+            </div>
+
+            {/* Kocaman, Parlak ve Net Karekod */}
+            <div
+              className="p-3 sm:p-4 bg-white rounded-2xl flex items-center justify-center shadow-inner border border-neutral-100 cursor-pointer"
+              onClick={() => setIsQrZoomed(false)}
+              title="Kapatmak için tıklayın"
+            >
+              {qrPath && (
+                <svg
+                  viewBox={`-4 -4 ${qrSize + 8} ${qrSize + 8}`}
+                  className="w-64 h-64 sm:w-80 sm:h-80 md:w-96 md:h-96 max-w-[75vw] max-h-[55vh] shape-rendering-crispEdges text-neutral-950 fill-current"
+                  aria-label="Büyük Senkronizasyon Karekodu"
+                >
+                  <path d={qrPath} />
+                </svg>
+              )}
+            </div>
+
+            {/* Konum Bilgileri */}
+            <div className="flex flex-wrap items-center justify-center gap-2 text-xs sm:text-sm font-mono text-neutral-700">
+              {pageNumber && (
+                <span className="px-2.5 py-1 rounded-lg bg-neutral-100 font-bold border border-neutral-200">
+                  Sayfa {pageNumber}
+                </span>
+              )}
+              {typeof index === 'number' && (
+                <span className="px-2.5 py-1 rounded-lg bg-neutral-100 font-semibold border border-neutral-200">
+                  {index + 1}. Öbek
+                </span>
+              )}
+              {wpm && (
+                <span className="px-2.5 py-1 rounded-lg bg-neutral-100 border border-neutral-200">
+                  {wpm} k/dk
+                </span>
+              )}
+            </div>
+
+            <p className="text-[11px] sm:text-xs text-neutral-500 font-medium text-center">
+              Kapatmak için ekrana veya herhangi bir yere dokunun
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   )
 })

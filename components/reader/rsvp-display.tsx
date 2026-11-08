@@ -73,6 +73,7 @@ export const RsvpDisplay = memo(function RsvpDisplay({
   const progressBarRef = useRef<HTMLDivElement | null>(null)
   const lastScrubIndexRef = useRef<number>(-1)
   const pointerDownPosRef = useRef<{ x: number; y: number } | null>(null)
+  const activationTimeRef = useRef<number>(0)
 
   // İlk Ziyaret İçin 1K / 2K / 3K / 4K Kelime Öbeği Tanıtım Penceresi (Onboarding Callout)
   const [showChunkCallout, setShowChunkCallout] = useState(false)
@@ -257,6 +258,8 @@ export const RsvpDisplay = memo(function RsvpDisplay({
     if (!isBarActive) return
     const handleOutsidePointer = (e: MouseEvent | TouchEvent | Event) => {
       if (isScrubbingRef.current) return
+      // Tablet ve mobilde ilk dokunuş anında veya 400ms içinde tetiklenen sentetik dış tıklamaları yok say
+      if (Date.now() - activationTimeRef.current < 450) return
       if (progressBarRef.current && !progressBarRef.current.contains(e.target as Node)) {
         setIsBarActive(false)
         isBarActiveRef.current = false
@@ -306,6 +309,8 @@ export const RsvpDisplay = memo(function RsvpDisplay({
 
     // Bar zaten aktifse: İkinci dokunuşta hemen konumu güncelle ve sürüklemeyi başlat
     if (isBarActiveRef.current) {
+      // Sentetik mükerrer event'leri önle (aynı dokunuşun 300ms içinde çift algılanmasını engelle)
+      if (Date.now() - activationTimeRef.current < 320) return
       isScrubbingRef.current = true
       setIsScrubbing(true)
       resetBarActiveTimer()
@@ -314,7 +319,7 @@ export const RsvpDisplay = memo(function RsvpDisplay({
     }
 
     // Bar pasifken: İlk dokunuşta barı aktif et ve büyüt (kazara konum atlatmaz!)
-    // Ancak parmak yatay kaydırılırsa (drag) move handler'da sürüklemeye yumuşakça geçecek
+    activationTimeRef.current = Date.now()
     isBarActiveRef.current = true
     setIsBarActive(true)
     triggerHaptic('tap')
@@ -354,6 +359,65 @@ export const RsvpDisplay = memo(function RsvpDisplay({
     }
 
     e.stopPropagation()
+    isScrubbingRef.current = false
+    setIsScrubbing(false)
+    lastScrubIndexRef.current = -1
+    triggerHaptic('jump')
+    resetBarActiveTimer()
+  }
+
+  // Tablet ve Dokunmatik Cihazlar İçin Doğrudan Native Touch Yöneticileri (zenOverlay'e sızmayı kesin olarak durdurur)
+  const handleProgressTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+    e.stopPropagation()
+    if (e.touches.length !== 1) return
+    const touch = e.touches[0]
+    pointerDownPosRef.current = { x: touch.clientX, y: touch.clientY }
+
+    if (isBarActiveRef.current) {
+      if (Date.now() - activationTimeRef.current < 320) return
+      isScrubbingRef.current = true
+      setIsScrubbing(true)
+      resetBarActiveTimer()
+      seekFromPointerEvent(touch.clientX)
+      return
+    }
+
+    activationTimeRef.current = Date.now()
+    isBarActiveRef.current = true
+    setIsBarActive(true)
+    triggerHaptic('tap')
+    resetBarActiveTimer()
+  }
+
+  const handleProgressTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
+    e.stopPropagation()
+    if (e.touches.length !== 1) return
+    const touch = e.touches[0]
+
+    if (isScrubbingRef.current) {
+      resetBarActiveTimer()
+      seekFromPointerEvent(touch.clientX)
+      return
+    }
+
+    if (pointerDownPosRef.current) {
+      const dx = Math.abs(touch.clientX - pointerDownPosRef.current.x)
+      if (dx > 6) {
+        isScrubbingRef.current = true
+        setIsScrubbing(true)
+        resetBarActiveTimer()
+        seekFromPointerEvent(touch.clientX)
+      }
+    }
+  }
+
+  const handleProgressTouchEnd = (e: React.TouchEvent<HTMLDivElement>) => {
+    e.stopPropagation()
+    pointerDownPosRef.current = null
+    if (!isScrubbingRef.current) {
+      resetBarActiveTimer()
+      return
+    }
     isScrubbingRef.current = false
     setIsScrubbing(false)
     lastScrubIndexRef.current = -1
@@ -582,42 +646,47 @@ export const RsvpDisplay = memo(function RsvpDisplay({
             onPointerMove={handleProgressPointerMove}
             onPointerUp={handleProgressPointerUp}
             onPointerCancel={handleProgressPointerUp}
+            onTouchStart={handleProgressTouchStart}
+            onTouchMove={handleProgressTouchMove}
+            onTouchEnd={handleProgressTouchEnd}
+            onTouchCancel={handleProgressTouchEnd}
             className={cn(
               'group absolute inset-x-0 bottom-0 flex flex-col justify-end select-none touch-none z-30 transition-all duration-200 cursor-pointer',
               isBarActive
-                ? 'h-12 sm:h-14 pb-2 px-2.5 sm:px-3 bg-gradient-to-t from-background/50 via-background/25 to-transparent'
-                : 'h-10 sm:h-12 pb-1.5 px-2.5 sm:px-3 hover:bg-foreground/[0.02]',
+                ? 'h-14 sm:h-16 md:h-18 pb-2.5 sm:pb-3 px-3 sm:px-4 md:px-6 bg-gradient-to-t from-background/60 via-background/30 to-transparent'
+                : 'h-12 sm:h-14 md:h-16 pb-2 sm:pb-2.5 px-3 sm:px-4 md:px-6 hover:bg-foreground/[0.03]',
             )}
           >
             {/* Aktif olduğunda beliren mikro yüzde, kılavuz ve hızlı adım düğmeleri */}
             {isBarActive && (
-              <div className="flex items-center justify-between px-1 mb-1.5 pointer-events-auto animate-in fade-in zoom-in-95 duration-150 select-none">
+              <div className="flex items-center justify-between px-1 mb-1.5 md:mb-2 pointer-events-auto animate-in fade-in zoom-in-95 duration-150 select-none">
                 {onPrev ? (
                   <button
                     type="button"
                     onPointerDown={(e) => e.stopPropagation()}
+                    onTouchStart={(e) => e.stopPropagation()}
                     onClick={(e) => {
                       e.stopPropagation()
                       onPrev()
                       triggerHaptic('step')
                       resetBarActiveTimer()
                     }}
-                    className="flex items-center gap-0.5 px-2 py-0.5 rounded-md bg-foreground/10 hover:bg-foreground/15 text-[10px] font-medium text-foreground transition-all cursor-pointer active:scale-95 shadow-2xs"
+                    className="flex items-center gap-1 px-2.5 py-1 md:px-3 md:py-1.5 rounded-lg bg-foreground/10 hover:bg-foreground/15 text-[11px] md:text-xs font-semibold text-foreground transition-all cursor-pointer active:scale-95 shadow-2xs"
                     title="Önceki cümle başına sar"
                   >
-                    <ChevronLeft className="size-3" />
-                    <span className="hidden xs:inline">Cümle</span>
+                    <ChevronLeft className="size-3.5 md:size-4" />
+                    <span>Cümle</span>
                   </button>
                 ) : <div />}
 
-                <div className="flex items-center gap-2 pointer-events-none">
-                  <span className="text-[11px] font-bold text-primary tracking-wide tabular-nums">
+                <div className="flex items-center gap-2 md:gap-3 pointer-events-none">
+                  <span className="text-xs md:text-sm font-bold text-primary tracking-wide tabular-nums">
                     %{Math.round(progressPct)}
                   </span>
-                  <span className="text-[10px] font-medium text-muted-foreground/80 hidden sm:inline">
+                  <span className="text-[11px] md:text-xs font-medium text-muted-foreground/85 hidden sm:inline">
                     Kaydırın veya dokunun
                   </span>
-                  <span className="text-[10px] tabular-nums font-semibold text-muted-foreground">
+                  <span className="text-xs md:text-sm tabular-nums font-semibold text-muted-foreground">
                     {index + 1} / {total}
                   </span>
                 </div>
@@ -626,17 +695,18 @@ export const RsvpDisplay = memo(function RsvpDisplay({
                   <button
                     type="button"
                     onPointerDown={(e) => e.stopPropagation()}
+                    onTouchStart={(e) => e.stopPropagation()}
                     onClick={(e) => {
                       e.stopPropagation()
                       onNext()
                       triggerHaptic('step')
                       resetBarActiveTimer()
                     }}
-                    className="flex items-center gap-0.5 px-2 py-0.5 rounded-md bg-foreground/10 hover:bg-foreground/15 text-[10px] font-medium text-foreground transition-all cursor-pointer active:scale-95 shadow-2xs"
+                    className="flex items-center gap-1 px-2.5 py-1 md:px-3 md:py-1.5 rounded-lg bg-foreground/10 hover:bg-foreground/15 text-[11px] md:text-xs font-semibold text-foreground transition-all cursor-pointer active:scale-95 shadow-2xs"
                     title="Sonraki cümle başına sar"
                   >
-                    <span className="hidden xs:inline">Cümle</span>
-                    <ChevronRight className="size-3" />
+                    <span>Cümle</span>
+                    <ChevronRight className="size-3.5 md:size-4" />
                   </button>
                 ) : <div />}
               </div>
@@ -647,8 +717,8 @@ export const RsvpDisplay = memo(function RsvpDisplay({
               className={cn(
                 'relative w-full overflow-hidden transition-all duration-200 rounded-full',
                 isBarActive
-                  ? 'h-2.5 sm:h-3 bg-foreground/20 ring-1 ring-primary/40 shadow-inner'
-                  : 'h-1.5 sm:h-2 bg-foreground/15 group-hover:h-2 group-hover:bg-foreground/20',
+                  ? 'h-3 sm:h-3.5 md:h-4 bg-foreground/20 ring-1 ring-primary/40 shadow-inner'
+                  : 'h-2 sm:h-2.5 md:h-3 bg-foreground/15 group-hover:h-2.5 group-hover:bg-foreground/20',
               )}
             >
               {/* Doluluk göstergesi */}
@@ -656,7 +726,7 @@ export const RsvpDisplay = memo(function RsvpDisplay({
                 className={cn(
                   'h-full transition-[width] duration-75 ease-out rounded-full',
                   isBarActive
-                    ? 'bg-primary shadow-[0_0_10px_rgba(59,130,246,0.7)]'
+                    ? 'bg-primary shadow-[0_0_12px_rgba(59,130,246,0.8)]'
                     : 'bg-primary/90',
                 )}
                 style={{
@@ -671,9 +741,9 @@ export const RsvpDisplay = memo(function RsvpDisplay({
                 'pointer-events-none absolute -translate-x-1/2 rounded-full bg-primary border-2 border-background shadow-md transition-all duration-100',
                 isBarActive
                   ? isScrubbing
-                    ? 'bottom-1.5 size-5 sm:size-5.5 scale-110 shadow-[0_0_12px_rgba(59,130,246,0.9)] ring-2 ring-primary/30'
-                    : 'bottom-1.5 size-4.5 sm:size-5 shadow-[0_0_10px_rgba(59,130,246,0.7)]'
-                  : 'bottom-1 size-3 sm:size-3.5 shadow-xs opacity-90 group-hover:scale-110',
+                    ? 'bottom-2 sm:bottom-2.5 size-6 sm:size-7 md:size-8 scale-110 shadow-[0_0_16px_rgba(59,130,246,0.95)] ring-2 ring-primary/30'
+                    : 'bottom-2 sm:bottom-2.5 size-5.5 sm:size-6.5 md:size-7 shadow-[0_0_12px_rgba(59,130,246,0.8)]'
+                  : 'bottom-1.5 size-4 sm:size-4.5 md:size-5.5 shadow-sm opacity-95 group-hover:scale-110',
               )}
               style={{
                 left: `${progressPct}%`,

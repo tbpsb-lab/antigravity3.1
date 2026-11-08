@@ -696,6 +696,27 @@ export function ReaderApp() {
   const chunksRef = useRef(chunks)
   chunksRef.current = chunks
 
+  // Gerçek Zamanlı Cihaz & Sekme Senkronizasyonu (Karekod & Vault)
+  const syncManagerRef = useRef<SyncChannelManager | null>(null)
+
+  const broadcastSyncState = useCallback(() => {
+    if (!syncManagerRef.current) return
+    const curIdx = indexRef.current
+    const curChunk = chunksRef.current[curIdx]
+    const curWordIndex = curChunk?.startIndex ?? curIdx
+    syncManagerRef.current.broadcast({
+      type: 'progress',
+      docTitle,
+      wordIndex: curWordIndex,
+      pageNumber: curChunk?.pageNumber ?? pageInfo?.currentPage,
+      chunkSize,
+      wpm,
+      theme,
+      fontFace,
+      fontScale,
+    })
+  }, [docTitle, pageInfo, chunkSize, wpm, theme, fontFace, fontScale])
+
   useEffect(() => {
     let unlockTimer: ReturnType<typeof setTimeout> | null = null
 
@@ -1696,27 +1717,6 @@ export function ReaderApp() {
     setFontOpen(false)
     setSpeedTestOpen(true)
   }, [])
-
-  // Gerçek Zamanlı Cihaz & Sekme Senkronizasyonu (Karekod & Vault)
-  const syncManagerRef = useRef<SyncChannelManager | null>(null)
-
-  const broadcastSyncState = useCallback(() => {
-    if (!syncManagerRef.current) return
-    const curIdx = indexRef.current
-    const curChunk = chunksRef.current[curIdx]
-    const curWordIndex = curChunk?.startIndex ?? curIdx
-    syncManagerRef.current.broadcast({
-      type: 'progress',
-      docTitle,
-      wordIndex: curWordIndex,
-      pageNumber: curChunk?.pageNumber ?? pageInfo?.currentPage,
-      chunkSize,
-      wpm,
-      theme,
-      fontFace,
-      fontScale,
-    })
-  }, [docTitle, pageInfo, chunkSize, wpm, theme, fontFace, fontScale])
 
   // Kindle Bildirimine tıklandığında yumuşak ve zarif geçişle kalınan yere atla veya metne geç
   const handleApplyKindleSync = useCallback(() => {

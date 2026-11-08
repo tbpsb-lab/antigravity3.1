@@ -68,38 +68,81 @@ export function getDeviceId(): string {
   return id
 }
 
+export function sanitizeVaultId(raw: string | null | undefined): string {
+  if (!raw) return ''
+  const trimmed = raw.trim()
+
+  // Kullanıcı tam URL veya sorgu dizesi yapıştırdıysa:
+  if (trimmed.includes('://') || trimmed.includes('?') || trimmed.includes('/')) {
+    try {
+      const full = trimmed.startsWith('http') ? trimmed : `https://${trimmed}`
+      const url = new URL(full)
+      const s = url.searchParams.get('sync') || url.searchParams.get('s')
+      if (s) {
+        const clean = s.trim().toUpperCase()
+        return clean.startsWith('HZL-') ? clean : `HZL-${clean}`
+      }
+    } catch {}
+
+    const match = trimmed.match(/HZL-\d{4,8}/i)
+    if (match) return match[0].toUpperCase()
+
+    const digitMatch = trimmed.match(/\b\d{4,8}\b/)
+    if (digitMatch) return `HZL-${digitMatch[0]}`
+  }
+
+  const clean = trimmed.toUpperCase()
+  if (/^HZL-\d{4,8}$/.test(clean)) return clean
+  if (/^\d{4,8}$/.test(clean)) return `HZL-${clean}`
+
+  const match = clean.match(/HZL-\d{4,8}/)
+  if (match) return match[0]
+
+  const cleanChars = clean.replace(/[^A-Z0-9-]/g, '').substring(0, 12)
+  return cleanChars.startsWith('HZL-') ? cleanChars : `HZL-${cleanChars}`
+}
+
 export function getSyncVaultId(): string {
   if (typeof window === 'undefined') return 'HZL-1000'
 
-  // 1. URL parametresini kontrol et: ?sync=XYZ
+  // 1. URL parametresini kontrol et: ?sync=XYZ veya ?s=XYZ
   try {
     const params = new URLSearchParams(window.location.search)
-    const urlSync = params.get('sync')
+    const urlSync = params.get('sync') || params.get('s')
     if (urlSync && urlSync.trim()) {
-      const cleanSync = urlSync.trim().toUpperCase()
-      localStorage.setItem(VAULT_KEY, cleanSync)
-      // URL'yi temizle (kullanıcıyı rahatsız etmesin)
-      params.delete('sync')
-      const newQuery = params.toString() ? `?${params.toString()}` : ''
-      window.history.replaceState({}, '', window.location.pathname + newQuery)
-      return cleanSync
+      const cleanSync = sanitizeVaultId(urlSync)
+      if (cleanSync) {
+        localStorage.setItem(VAULT_KEY, cleanSync)
+        return cleanSync
+      }
     }
   } catch {}
 
   // 2. localStorage kontrolü
-  let vaultId = localStorage.getItem(VAULT_KEY)
+  const rawVault = localStorage.getItem(VAULT_KEY)
+  let vaultId = sanitizeVaultId(rawVault)
   if (!vaultId) {
     // 6 haneli kolay okunur kod üret: HZL-XXXX
     const randomCode = Math.floor(1000 + Math.random() * 9000)
     vaultId = `HZL-${randomCode}`
-    localStorage.setItem(VAULT_KEY, vaultId)
+  }
+  // Eğer localStorage'daki değer URL gibi bozuk bir değerse, hemen temiz halini kaydet
+  if (rawVault !== vaultId) {
+    try {
+      localStorage.setItem(VAULT_KEY, vaultId)
+    } catch {}
   }
   return vaultId
 }
 
 export function setSyncVaultId(newVaultId: string): void {
   if (typeof window === 'undefined') return
-  localStorage.setItem(VAULT_KEY, newVaultId.trim().toUpperCase())
+  const clean = sanitizeVaultId(newVaultId)
+  if (clean) {
+    try {
+      localStorage.setItem(VAULT_KEY, clean)
+    } catch {}
+  }
 }
 
 export function getPairedDevices(): SyncedDevice[] {

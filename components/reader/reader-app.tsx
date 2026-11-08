@@ -1885,6 +1885,19 @@ export function ReaderApp() {
           showAudioToast(`Eşleşme Kodu: ${newCode}`)
           broadcastSyncState()
         }}
+        onApplySyncUrlParams={(params) => {
+          if (typeof params.index === 'number') {
+            seek(params.index)
+          }
+          if (typeof params.wpm === 'number') {
+            setWpm(params.wpm)
+          }
+          const details = [
+            params.pageNumber ? `Sayfa ${params.pageNumber}` : null,
+            typeof params.index === 'number' ? `${params.index + 1}. Öbek` : null,
+          ].filter(Boolean).join(' • ')
+          showAudioToast(`Eşitlendi (${details || 'Kaldığınız yer'})`)
+        }}
       />
 
       <AboutModal

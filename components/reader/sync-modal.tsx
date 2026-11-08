@@ -18,10 +18,12 @@ import { generateQRMatrix, qrMatrixToSvgPath } from '@/lib/qr-code'
 import {
   getSyncVaultId,
   setSyncVaultId,
+  sanitizeVaultId,
   getPairedDevices,
   removePairedDevice,
   generateSyncUrl,
   type SyncedDevice,
+  type SyncUrlParams,
 } from '@/lib/device-sync'
 import { triggerHaptic } from '@/lib/haptics'
 
@@ -29,6 +31,7 @@ type SyncModalProps = {
   open: boolean
   onClose: () => void
   onManualSyncCodeApplied?: (newVaultId: string) => void
+  onApplySyncUrlParams?: (params: { index?: number; pageNumber?: number; wpm?: number }) => void
   index?: number
   pageNumber?: number
   wpm?: number
@@ -41,6 +44,7 @@ export const SyncModal = memo(function SyncModal({
   open,
   onClose,
   onManualSyncCodeApplied,
+  onApplySyncUrlParams,
   index,
   pageNumber,
   wpm,
@@ -49,7 +53,8 @@ export const SyncModal = memo(function SyncModal({
   fontFace,
 }: SyncModalProps) {
   const [vaultId, setVaultId] = useState<string>('')
-  const [copied, setCopied] = useState(false)
+  const [copiedCode, setCopiedCode] = useState(false)
+  const [copiedLink, setCopiedLink] = useState(false)
   const [manualCode, setManualCode] = useState('')
   const [devices, setDevices] = useState<SyncedDevice[]>([])
 
@@ -79,19 +84,65 @@ export const SyncModal = memo(function SyncModal({
     return qrMatrixToSvgPath(matrix)
   }, [syncUrl])
 
-  const handleCopy = async () => {
+  // Yalnızca temiz eşleme kodunu kopyalar (Örn: HZL-4458)
+  const handleCopyCode = async () => {
+    try {
+      await navigator.clipboard.writeText(vaultId)
+      setCopiedCode(true)
+      triggerHaptic('tap')
+      setTimeout(() => setCopiedCode(false), 2000)
+    } catch {}
+  }
+
+  // Kaldığınız kelime ve sayfaya anında atlayan tam senkronizasyon linkini kopyalar
+  const handleCopyLink = async () => {
     try {
       await navigator.clipboard.writeText(syncUrl || vaultId)
-      setCopied(true)
+      setCopiedLink(true)
       triggerHaptic('tap')
-      setTimeout(() => setCopied(false), 2000)
+      setTimeout(() => setCopiedLink(false), 2000)
     } catch {}
   }
 
   const handleApplyManualCode = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!manualCode.trim()) return
-    const clean = manualCode.trim().toUpperCase()
+    const input = manualCode.trim()
+    if (!input) return
+
+    // Kullanıcı tam bir bağlantı linki yapıştırdıysa içinden kodu ve okuma konumunu ayıkla
+    if (input.includes('://') || input.includes('?')) {
+      try {
+        const full = input.startsWith('http') ? input : `https://${input}`
+        const url = new URL(full)
+        const s = url.searchParams.get('sync') || url.searchParams.get('s')
+        const idx = url.searchParams.get('idx') || url.searchParams.get('i')
+        const p = url.searchParams.get('p') || url.searchParams.get('page')
+        const w = url.searchParams.get('wpm') || url.searchParams.get('w')
+
+        const clean = sanitizeVaultId(s || input)
+        if (clean) {
+          setSyncVaultId(clean)
+          setVaultId(clean)
+          setManualCode('')
+          setDevices(getPairedDevices())
+          triggerHaptic('tap')
+          onManualSyncCodeApplied?.(clean)
+
+          if (idx || p || w) {
+            onApplySyncUrlParams?.({
+              index: idx ? parseInt(idx, 10) : undefined,
+              pageNumber: p ? parseInt(p, 10) : undefined,
+              wpm: w ? parseInt(w, 10) : undefined,
+            })
+          }
+          return
+        }
+      } catch {}
+    }
+
+    // Normal kod girişi (örn: 4458 veya HZL-4458)
+    const clean = sanitizeVaultId(input)
+    if (!clean) return
     setSyncVaultId(clean)
     setVaultId(clean)
     setManualCode('')
@@ -188,49 +239,69 @@ export const SyncModal = memo(function SyncModal({
           </p>
         </div>
 
-        {/* Eşleme Kodu ve Kopyalama */}
-        <div className="flex items-center justify-between gap-2 p-2.5 rounded-2xl border border-border/60 bg-muted/20">
+        {/* Eşleme Kodu ve Kopyalama Eylemleri */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-2.5 rounded-2xl border border-border/60 bg-muted/20">
           <div className="min-w-0 flex-1 pl-1">
             <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider block">
               Eşleme Kodu
             </span>
-            <span className="font-mono text-sm sm:text-base font-bold text-foreground tracking-widest">
+            <span className="font-mono text-sm sm:text-base font-bold text-foreground tracking-widest block truncate">
               {vaultId}
             </span>
           </div>
-          <button
-            type="button"
-            onClick={handleCopy}
-            className="ctl inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-border/80 bg-background hover:bg-muted/50 text-xs font-semibold text-foreground transition-all cursor-pointer shadow-xs active:scale-95"
-            title="Bağlantı linkini kopyala"
-          >
-            {copied ? (
-              <>
-                <Check className="size-3.5 text-emerald-500" />
-                <span className="text-emerald-500">Kopyalandı</span>
-              </>
-            ) : (
-              <>
-                <Copy className="size-3.5 text-muted-foreground" />
-                <span>Kopyala</span>
-              </>
-            )}
-          </button>
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              type="button"
+              onClick={handleCopyCode}
+              className="ctl inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl border border-border/80 bg-background hover:bg-muted/50 text-xs font-semibold text-foreground transition-all cursor-pointer shadow-xs active:scale-95"
+              title="Yalnızca 6 haneli eşleme kodunu kopyala"
+            >
+              {copiedCode ? (
+                <>
+                  <Check className="size-3.5 text-emerald-500" />
+                  <span className="text-emerald-500 text-[11px]">Kopyalandı</span>
+                </>
+              ) : (
+                <>
+                  <Copy className="size-3.5 text-muted-foreground" />
+                  <span className="text-[11px]">Kodu Kopyala</span>
+                </>
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={handleCopyLink}
+              className="ctl inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl border border-border/80 bg-background hover:bg-muted/50 text-xs font-semibold text-foreground transition-all cursor-pointer shadow-xs active:scale-95"
+              title="Doğrudan kaldığınız yeri açan bağlantı linkini kopyala"
+            >
+              {copiedLink ? (
+                <>
+                  <Check className="size-3.5 text-emerald-500" />
+                  <span className="text-emerald-500 text-[11px]">Link Kopyalandı</span>
+                </>
+              ) : (
+                <>
+                  <ExternalLink className="size-3.5 text-muted-foreground" />
+                  <span className="text-[11px]">Linki Kopyala</span>
+                </>
+              )}
+            </button>
+          </div>
         </div>
 
-        {/* Manuel Kod Girişi */}
+        {/* Manuel Kod veya Link Girişi */}
         <form onSubmit={handleApplyManualCode} className="flex gap-1.5">
           <input
             type="text"
             value={manualCode}
             onChange={(e) => setManualCode(e.target.value)}
-            placeholder="Başka cihazın kodunu gir (örn: HZL-8429)"
-            className="flex-1 min-w-0 h-9 px-3 rounded-xl border border-border/70 bg-background text-xs font-mono placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary/40 uppercase"
+            placeholder="Başka cihazın kodunu veya linkini yapıştır"
+            className="flex-1 min-w-0 h-9 px-3 rounded-xl border border-border/70 bg-background text-xs font-mono placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary/40"
           />
           <button
             type="submit"
             disabled={!manualCode.trim()}
-            className="ctl px-3 h-9 rounded-xl bg-primary text-primary-foreground font-semibold text-xs transition-opacity disabled:opacity-40 cursor-pointer shadow-xs"
+            className="ctl px-3.5 h-9 rounded-xl bg-primary text-primary-foreground font-semibold text-xs transition-opacity disabled:opacity-40 cursor-pointer shadow-xs shrink-0"
           >
             Bağla
           </button>

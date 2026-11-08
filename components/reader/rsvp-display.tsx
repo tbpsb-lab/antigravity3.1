@@ -107,7 +107,7 @@ export const RsvpDisplay = memo(function RsvpDisplay({
           if (chunkCalloutTimerRef.current) clearTimeout(chunkCalloutTimerRef.current)
           chunkCalloutTimerRef.current = setTimeout(() => {
             dismissChunkCallout()
-          }, 2200)
+          }, 4500)
         }
       } catch {}
     }
@@ -429,7 +429,10 @@ export const RsvpDisplay = memo(function RsvpDisplay({
     total > 1 ? Math.min(100, Math.max(0, (index / (total - 1)) * 100)) : total === 1 ? 100 : 0
 
   return (
-    <section aria-label="Okuma penceresi" className="relative w-full">
+    <section
+      aria-label="Okuma penceresi"
+      className={cn('relative w-full', showChunkCallout ? 'z-50' : 'z-20')}
+    >
       <div
         ref={containerRef}
         onClick={(e) => {
@@ -548,7 +551,8 @@ export const RsvpDisplay = memo(function RsvpDisplay({
         {/* Hız ve Öbek Göstergesi */}
         <div
           className={cn(
-            'absolute right-4 top-3 sm:right-6 sm:top-4 md:right-8 md:top-5 flex items-center gap-2 md:gap-3 font-mono text-[11px] md:text-xs tabular-nums text-muted-foreground transition-opacity duration-500 [@media(max-height:640px)]:top-2 z-30 pointer-events-auto',
+            'absolute right-4 top-3 sm:right-6 sm:top-4 md:right-8 md:top-5 flex items-center gap-2 md:gap-3 font-mono text-[11px] md:text-xs tabular-nums text-muted-foreground transition-opacity duration-500 [@media(max-height:640px)]:top-2 pointer-events-auto',
+            showChunkCallout ? 'z-[60]' : 'z-30',
             playing ? 'opacity-0 pointer-events-none' : 'opacity-100',
           )}
         >
@@ -595,7 +599,7 @@ export const RsvpDisplay = memo(function RsvpDisplay({
                   dismissChunkCallout()
                 }}
                 className={cn(
-                  'panel absolute bottom-full mb-3 z-50 select-none cursor-pointer transition-all duration-300 ease-out',
+                  'panel absolute bottom-full mb-3 z-[100] select-none cursor-pointer transition-all duration-300 ease-out shadow-2xl ring-1 ring-primary/40',
                   'right-0 w-[205px] sm:w-[220px]',
                   'p-2 sm:p-2.5 rounded-2xl shadow-xl',
                   'bg-[var(--panel)] border border-[var(--panel-border)] backdrop-blur-[var(--panel-blur)]',

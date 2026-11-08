@@ -2159,7 +2159,7 @@ export function ReaderApp() {
           {/* Okuma Penceresi */}
           <div className="w-full shrink-0 flex flex-col items-center pointer-events-auto">
             {showSpeedTestBanner && !zen && (
-              <div className="relative z-30 mb-2 sm:mb-2.5 flex w-full max-w-xs items-center justify-between gap-2 rounded-full border border-border/50 bg-background/50 px-3 py-1 shadow-2xs backdrop-blur-sm animate-in fade-in slide-in-from-top-1 duration-300">
+              <div className="relative z-10 mb-2 sm:mb-2.5 flex w-full max-w-xs items-center justify-between gap-2 rounded-full border border-border/50 bg-background/50 px-3 py-1 shadow-2xs backdrop-blur-sm animate-in fade-in slide-in-from-top-1 duration-300">
                 <button
                   type="button"
                   onClick={handleOpenSpeedTest}

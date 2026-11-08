@@ -365,7 +365,7 @@ export const FontSettings = memo(function FontSettings({
                             ? 'flex-1 px-2 bg-primary text-primary-foreground shadow-xs ring-1 ring-primary/40'
                             : 'px-2.5 border border-border/60 hover:bg-muted/50 text-foreground/80 hover:text-foreground shrink-0',
                         )}
-                        title={`${size} kelime (Kısayol: ${size})`}
+                        title={`${size} Kelime (Kısayol: ${size})`}
                       >
                         <span className="inline-flex items-center justify-center leading-none">
                           <span
@@ -379,7 +379,7 @@ export const FontSettings = memo(function FontSettings({
                             {size}
                           </span>
                           {active && (
-                            <span className="ml-1 font-semibold whitespace-nowrap animate-in fade-in duration-200">kelime</span>
+                            <span className="ml-1 font-semibold whitespace-nowrap animate-in fade-in duration-200">Kelime</span>
                           )}
                         </span>
                       </button>

@@ -28,6 +28,26 @@ import {
 } from '@/lib/reading-progress'
 import { DEFAULT_BOOK_PAGE_INFO, DEFAULT_BOOK_TEXT, DEFAULT_BOOK_TITLE } from '@/lib/default-book'
 import { CURATED_LIBRARY } from '@/lib/curated-library'
+import { loadReaderSettings, saveReaderSettings } from '@/lib/reader-settings'
+import { AmbientAura } from './ambient-aura'
+import { TopBar } from './top-bar'
+import { RsvpDisplay } from './rsvp-display'
+import { ContextPeek } from './context-peek'
+import { TextSheet } from './text-sheet'
+import { SpeedTestModal } from './speed-test-modal'
+import { CompletionModal } from './completion-modal'
+import { AboutModal } from './about-modal'
+import { PaperCornerCurl } from './paper-corner-curl'
+import { GlassCornerCurl } from './glass-corner-curl'
+import { NeonCornerCurl } from './neon-corner-curl'
+import { SyncModal } from './sync-modal'
+import { FONT_FACES, FONT_SCALE_MAX, FONT_SCALE_MIN, FontSettings, type FontFace } from './font-settings'
+import { triggerHaptic, primeHaptics } from '@/lib/haptics'
+import { NeuroAudioEngine } from '@/lib/neuro-audio'
+import { getSyncVaultId, SyncChannelManager, upsertPairedDevice, sanitizeVaultId } from '@/lib/device-sync'
+import { useElementHeight } from '@/lib/use-element-height'
+import { useWakeLock } from '@/lib/use-wake-lock'
+import { EyeTracker, type AttentionLossReason } from '@/components/EyeTracker'
 
 function isSameDocument(title1?: string, title2?: string): boolean {
   if (!title1 && !title2) return true
@@ -78,26 +98,6 @@ function findDocumentByTitle(targetTitle?: string): { title: string; text: strin
 
   return null
 }
-import { loadReaderSettings, saveReaderSettings } from '@/lib/reader-settings'
-import { AmbientAura } from './ambient-aura'
-import { TopBar } from './top-bar'
-import { RsvpDisplay } from './rsvp-display'
-import { ContextPeek } from './context-peek'
-import { TextSheet } from './text-sheet'
-import { SpeedTestModal } from './speed-test-modal'
-import { CompletionModal } from './completion-modal'
-import { AboutModal } from './about-modal'
-import { PaperCornerCurl } from './paper-corner-curl'
-import { GlassCornerCurl } from './glass-corner-curl'
-import { NeonCornerCurl } from './neon-corner-curl'
-import { SyncModal } from './sync-modal'
-import { FONT_FACES, FONT_SCALE_MAX, FONT_SCALE_MIN, FontSettings, type FontFace } from './font-settings'
-import { triggerHaptic, primeHaptics } from '@/lib/haptics'
-import { NeuroAudioEngine } from '@/lib/neuro-audio'
-import { getSyncVaultId, SyncChannelManager, upsertPairedDevice, sanitizeVaultId } from '@/lib/device-sync'
-import { useElementHeight } from '@/lib/use-element-height'
-import { useWakeLock } from '@/lib/use-wake-lock'
-import { EyeTracker, type AttentionLossReason } from '@/components/EyeTracker'
 
 export function ReaderApp() {
   const [theme, setTheme] = useState<ThemeId>('ios')

@@ -633,9 +633,9 @@ export class SyncChannelManager {
 
         if (!this.isDestroyed) {
           // Her bir uzak cihazın en güncel durumunu değerlendirmeye gönder
-          for (const devPayload of latestPerDevice.values()) {
+          Array.from(latestPerDevice.values()).forEach((devPayload) => {
             this.handleIncoming(devPayload)
-          }
+          })
         }
         break
       } catch {}

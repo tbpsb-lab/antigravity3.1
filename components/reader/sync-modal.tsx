@@ -63,6 +63,7 @@ export const SyncModal = memo(function SyncModal({
   const [isScanning, setIsScanning] = useState(false)
   const [isCameraLoading, setIsCameraLoading] = useState(false)
   const [scanError, setScanError] = useState<string | null>(null)
+  const [connectedSuccessMsg, setConnectedSuccessMsg] = useState<string | null>(null)
 
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
@@ -90,10 +91,21 @@ export const SyncModal = memo(function SyncModal({
       setVaultId(vId)
       setDevices(getPairedDevices())
       setScanError(null)
+      setConnectedSuccessMsg(null)
     } else {
       stopCamera()
+      setConnectedSuccessMsg(null)
     }
   }, [open, stopCamera])
+
+  // Cihazlar arası varlık (presence) güncellemelerini anında yansıt
+  useEffect(() => {
+    const handleUpdate = () => {
+      setDevices(getPairedDevices())
+    }
+    window.addEventListener('paired-devices-updated', handleUpdate)
+    return () => window.removeEventListener('paired-devices-updated', handleUpdate)
+  }, [])
 
   useEffect(() => {
     return () => {
@@ -242,9 +254,11 @@ export const SyncModal = memo(function SyncModal({
           stopCamera()
           const success = applyExtractedSync(codeData)
           if (success) {
+            setConnectedSuccessMsg('Eşleşti! Cihaz bağlandı')
+            setDevices(getPairedDevices())
             setTimeout(() => {
               onClose()
-            }, 300)
+            }, 600)
           }
           return
         }
@@ -347,6 +361,14 @@ export const SyncModal = memo(function SyncModal({
             <X className="size-3" />
           </button>
         </div>
+
+        {/* Eşleşme Başarı Bildirimi */}
+        {connectedSuccessMsg && (
+          <div className="flex items-center justify-center gap-1.5 px-2.5 py-1 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-xs font-bold animate-in fade-in zoom-in-95 duration-150">
+            <Check className="size-3.5 shrink-0" />
+            <span>{connectedSuccessMsg}</span>
+          </div>
+        )}
 
         {/* Orta Alan (Yatay Yan Yana): Solda Karekod / Kamera, Sağda Belirgin Karekod Oku Butonu ve Konum Bilgileri */}
         <div className="flex items-center gap-2.5 py-0.5">

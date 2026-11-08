@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from 'react'
-import { Eye, EyeOff, Gauge, Volume2, VolumeX, X } from 'lucide-react'
+import { Eye, EyeOff, Gauge, Volume2, VolumeX, X, Smartphone, Tablet, Laptop } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
   MAX_WPM,
@@ -77,6 +77,28 @@ export function ReaderApp() {
   const [completionOpen, setCompletionOpen] = useState(false)
   const [aboutOpen, setAboutOpen] = useState(false)
   const [syncModalOpen, setSyncModalOpen] = useState(false)
+
+  // Kindle Tarzı Kesintisiz ve Zarif Cihazlar Arası Eşitleme Durumu
+  const [kindleSyncPrompt, setKindleSyncPrompt] = useState<{
+    deviceName: string
+    deviceType: 'mobile' | 'tablet' | 'desktop'
+    wordIndex: number
+    pageNumber?: number
+    wpm?: number
+    chunkSize?: number
+    theme?: string
+    fontFace?: string
+    timestamp: number
+  } | null>(null)
+  const kindleSyncTimerRef = useRef<NodeJS.Timeout | null>(null)
+
+  const dismissKindleSync = useCallback(() => {
+    if (kindleSyncTimerRef.current) {
+      clearTimeout(kindleSyncTimerRef.current)
+      kindleSyncTimerRef.current = null
+    }
+    setKindleSyncPrompt(null)
+  }, [])
   const [showSpeedTestBanner, setShowSpeedTestBanner] = useState(false)
 
   const anyModalOpen = speedTestOpen || completionOpen || aboutOpen || syncModalOpen
@@ -1517,41 +1539,74 @@ export function ReaderApp() {
   const broadcastSyncState = useCallback(() => {
     if (!syncManagerRef.current) return
     syncManagerRef.current.broadcast({
+      type: 'progress',
       docTitle,
       wordIndex: index,
+      pageNumber: currentChunk?.pageNumber ?? pageInfo?.currentPage,
       chunkSize,
       wpm,
       theme,
       fontFace,
       fontScale,
     })
-  }, [docTitle, index, chunkSize, wpm, theme, fontFace, fontScale])
+  }, [docTitle, index, currentChunk, pageInfo, chunkSize, wpm, theme, fontFace, fontScale])
+
+  // Kindle Bildirimine tıklandığında yumuşak ve zarif geçişle kalınan yere atla
+  const handleApplyKindleSync = useCallback(() => {
+    if (!kindleSyncPrompt) return
+    triggerHaptic('jump')
+    triggerPulse()
+
+    if (typeof kindleSyncPrompt.wordIndex === 'number') {
+      seek(kindleSyncPrompt.wordIndex)
+    }
+    if (typeof kindleSyncPrompt.wpm === 'number') {
+      setWpm(kindleSyncPrompt.wpm)
+    }
+    if (typeof kindleSyncPrompt.chunkSize === 'number') {
+      handleChunkSizeChange(kindleSyncPrompt.chunkSize)
+    }
+    if (kindleSyncPrompt.theme && ['ios', 'linear', 'kindle'].includes(kindleSyncPrompt.theme)) {
+      handleThemeChange(kindleSyncPrompt.theme as ThemeId)
+    }
+    if (kindleSyncPrompt.fontFace && ['theme', 'sans', 'serif', 'mono'].includes(kindleSyncPrompt.fontFace)) {
+      setFontFace(kindleSyncPrompt.fontFace as FontFace)
+    }
+
+    const details = [
+      kindleSyncPrompt.pageNumber ? `Sayfa ${kindleSyncPrompt.pageNumber}` : null,
+      `${kindleSyncPrompt.wordIndex + 1}. kelime`,
+    ].filter(Boolean).join(' • ')
+
+    showAudioToast(`Eşitlendi (${details})`)
+    dismissKindleSync()
+  }, [kindleSyncPrompt, triggerPulse, seek, handleChunkSizeChange, handleThemeChange, showAudioToast, dismissKindleSync])
 
   useEffect(() => {
     const manager = new SyncChannelManager((payload) => {
       const myVault = getSyncVaultId()
       if (payload.vaultId !== myVault) return
 
-      showAudioToast(`${payload.senderDeviceName} ile eşitlendi`)
+      // İlerleme paketi geldiyse: Ekranı aniden zıplatmak yerine Kindle tarzı zarif bildirim göster
+      if (payload.type === 'progress' || !payload.type) {
+        const targetIdx = typeof payload.wordIndex === 'number' ? payload.wordIndex : -1
+        if (targetIdx >= 0 && Math.abs(targetIdx - index) > 2) {
+          setKindleSyncPrompt({
+            deviceName: payload.senderDeviceName || 'Diğer Cihazınız',
+            deviceType: payload.senderDeviceType || 'desktop',
+            wordIndex: targetIdx,
+            pageNumber: payload.pageNumber,
+            wpm: payload.wpm,
+            chunkSize: payload.chunkSize,
+            theme: payload.theme,
+            fontFace: payload.fontFace,
+            timestamp: payload.timestamp || Date.now(),
+          })
 
-      if (payload.theme && ['ios', 'linear', 'kindle'].includes(payload.theme)) {
-        handleThemeChange(payload.theme as ThemeId)
-      }
-      if (payload.fontFace && ['theme', 'sans', 'serif', 'mono'].includes(payload.fontFace)) {
-        setFontFace(payload.fontFace as FontFace)
-      }
-      if (typeof payload.fontScale === 'number' && payload.fontScale >= FONT_SCALE_MIN && payload.fontScale <= FONT_SCALE_MAX) {
-        setFontScale(payload.fontScale)
-      }
-      if (typeof payload.chunkSize === 'number' && [1, 2, 3].includes(payload.chunkSize)) {
-        handleChunkSizeChange(payload.chunkSize)
-      }
-      if (typeof payload.wpm === 'number' && payload.wpm >= 100 && payload.wpm <= 1200) {
-        setWpm(payload.wpm)
-      }
-      if (payload.docTitle && payload.docTitle === docTitle) {
-        if (typeof payload.wordIndex === 'number' && payload.wordIndex >= 0 && payload.wordIndex < words.length) {
-          seek(payload.wordIndex)
+          if (kindleSyncTimerRef.current) clearTimeout(kindleSyncTimerRef.current)
+          kindleSyncTimerRef.current = setTimeout(() => {
+            setKindleSyncPrompt(null)
+          }, 5000)
         }
       }
     })
@@ -1560,8 +1615,11 @@ export function ReaderApp() {
     return () => {
       manager.destroy()
       syncManagerRef.current = null
+      if (kindleSyncTimerRef.current) {
+        clearTimeout(kindleSyncTimerRef.current)
+      }
     }
-  }, [docTitle, words.length, handleThemeChange, handleChunkSizeChange, seek, showAudioToast])
+  }, [index])
 
   // Okuma duraklatıldığında veya değiştiğinde diğer eşleşmiş cihazlara son durumu ilet
   useEffect(() => {
@@ -1677,6 +1735,55 @@ export function ReaderApp() {
         onToggleNeuroAudio={toggleNeuroAudio}
         hidden={zen}
       />
+
+      {/* Kindle Tarzı Kesintisiz ve Zarif Cihazlar Arası Eşitleme Bildirimi (5 sn sonra kendiliğinden kaybolur) */}
+      {kindleSyncPrompt && !zen && (
+        <div className="fixed top-12 sm:top-14 inset-x-0 z-40 flex justify-center px-3 pointer-events-none animate-in fade-in slide-in-from-top-2 duration-300">
+          <div
+            onClick={handleApplyKindleSync}
+            className="pointer-events-auto flex items-center justify-between gap-2.5 px-3.5 py-2 rounded-2xl border border-primary/30 bg-background/95 shadow-xl backdrop-blur-md cursor-pointer hover:border-primary/60 hover:scale-[1.01] active:scale-[0.99] transition-all max-w-sm sm:max-w-md w-full text-foreground"
+          >
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="size-7 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                {kindleSyncPrompt.deviceType === 'mobile' ? (
+                  <Smartphone className="size-4 text-sky-500" />
+                ) : kindleSyncPrompt.deviceType === 'tablet' ? (
+                  <Tablet className="size-4 text-purple-500" />
+                ) : (
+                  <Laptop className="size-4 text-emerald-500" />
+                )}
+              </div>
+              <div className="min-w-0 text-left">
+                <div className="text-xs font-bold truncate">
+                  {kindleSyncPrompt.deviceName} cihazında kaldınız
+                </div>
+                <div className="text-[10.5px] text-muted-foreground font-mono truncate">
+                  {kindleSyncPrompt.pageNumber ? `Sayfa ${kindleSyncPrompt.pageNumber} • ` : ''}
+                  {kindleSyncPrompt.wordIndex + 1}. kelime
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1.5 shrink-0">
+              <span className="text-[11px] font-bold text-primary flex items-center gap-0.5 underline underline-offset-2">
+                Oraya Git →
+              </span>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  dismissKindleSync()
+                }}
+                className="ctl size-5 rounded-full hover:bg-muted text-muted-foreground hover:text-foreground flex items-center justify-center cursor-pointer"
+                title="Kapat"
+                aria-label="Kapat"
+              >
+                <X className="size-3" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <main
         className={cn(
@@ -1928,9 +2035,13 @@ export function ReaderApp() {
         fontFace={fontFace}
         onManualSyncCodeApplied={(newCode) => {
           showAudioToast(`Eşleşme Kodu: ${newCode}`)
+          syncManagerRef.current?.updateVaultId(newCode)
           broadcastSyncState()
         }}
         onApplySyncUrlParams={(params) => {
+          if (params.vaultId) {
+            syncManagerRef.current?.updateVaultId(params.vaultId)
+          }
           if (typeof params.index === 'number') {
             seek(params.index)
           }

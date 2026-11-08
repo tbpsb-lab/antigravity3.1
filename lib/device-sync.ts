@@ -16,9 +16,11 @@ export type SyncedDevice = {
 }
 
 export type SyncPayload = {
+  type?: 'progress' | 'presence' | 'presence_query'
   vaultId: string
   senderDeviceId: string
   senderDeviceName: string
+  senderDeviceType?: 'desktop' | 'mobile' | 'tablet'
   docTitle?: string
   wordIndex: number
   pageNumber?: number
@@ -183,6 +185,37 @@ export function getPairedDevices(): SyncedDevice[] {
   return list
 }
 
+export function upsertPairedDevice(dev: { id: string; name: string; type: 'desktop' | 'mobile' | 'tablet' }): SyncedDevice[] {
+  if (typeof window === 'undefined') return []
+  const currentId = getDeviceId()
+  let list = getPairedDevices()
+
+  const existingIdx = list.findIndex((d) => d.id === dev.id)
+  const now = Date.now()
+  const cleanName = dev.id === currentId ? `${getDeviceName()} (Bu Cihaz)` : dev.name.replace(' (Bu Cihaz)', '')
+
+  if (existingIdx !== -1) {
+    list[existingIdx].lastSeen = now
+    list[existingIdx].name = cleanName
+    list[existingIdx].type = dev.type
+  } else {
+    list.push({
+      id: dev.id,
+      name: cleanName,
+      type: dev.type,
+      lastSeen: now,
+      isCurrent: dev.id === currentId,
+    })
+  }
+
+  try {
+    localStorage.setItem(DEVICES_LIST_KEY, JSON.stringify(list))
+    window.dispatchEvent(new CustomEvent('paired-devices-updated'))
+  } catch {}
+
+  return list
+}
+
 export function removePairedDevice(deviceId: string): SyncedDevice[] {
   if (typeof window === 'undefined') return []
   let list = getPairedDevices().filter((d) => d.id !== deviceId)
@@ -330,43 +363,186 @@ export function generateSyncUrl(vaultId: string, extra?: SyncUrlParams): string 
  */
 export class SyncChannelManager {
   private channel: BroadcastChannel | null = null
+  private eventSource: EventSource | null = null
   private onMessageCallback: ((payload: SyncPayload) => void) | null = null
+  private vaultId: string
+  private isDestroyed = false
 
-  constructor(onMessage: (payload: SyncPayload) => void) {
+  constructor(onMessage: (payload: SyncPayload) => void, initialVaultId?: string) {
     this.onMessageCallback = onMessage
+    this.vaultId = initialVaultId || getSyncVaultId()
+
+    // 1. Yerel Sekmeler Arası İletişim (BroadcastChannel)
     if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
       try {
-        this.channel = new BroadcastChannel(CHANNEL_NAME)
+        const chanName = `${CHANNEL_NAME}_${this.vaultId.replace(/[^A-Za-z0-9_-]/g, '_')}`
+        this.channel = new BroadcastChannel(chanName)
         this.channel.onmessage = (event) => {
           if (event.data && typeof event.data === 'object') {
-            const payload = event.data as SyncPayload
-            if (payload.senderDeviceId !== getDeviceId()) {
-              this.onMessageCallback?.(payload)
-            }
+            this.handleIncoming(event.data as SyncPayload)
           }
         }
       } catch {}
     }
+
+    // 2. Cihazlar Arası Canlı Bulut Senkronizasyonu (ntfy.sh SSE)
+    this.connectCloudStream()
+
+    // 3. Başlangıçta diğer cihazlara "Ben buradayım" bildir ve diğer cihazları sorgula
+    this.broadcastPresence()
   }
 
-  public broadcast(payload: Omit<SyncPayload, 'senderDeviceId' | 'senderDeviceName' | 'timestamp' | 'vaultId'>): void {
-    if (!this.channel) return
-    const fullPayload: SyncPayload = {
-      ...payload,
-      vaultId: getSyncVaultId(),
-      senderDeviceId: getDeviceId(),
-      senderDeviceName: getDeviceName(),
-      timestamp: Date.now(),
-    }
+  private connectCloudStream() {
+    if (typeof window === 'undefined' || typeof EventSource === 'undefined') return
+    if (this.isDestroyed || !this.vaultId) return
+
     try {
-      this.channel.postMessage(fullPayload)
+      const topic = `hizlioku_sync_${this.vaultId.toLowerCase().replace(/[^a-z0-9_-]/g, '_')}`
+      const sseUrl = `https://ntfy.sh/${topic}/sse`
+      const es = new EventSource(sseUrl)
+
+      es.onmessage = (e) => {
+        try {
+          const raw = JSON.parse(e.data)
+          if (raw.event === 'message' && raw.message) {
+            const payload = JSON.parse(raw.message) as SyncPayload
+            this.handleIncoming(payload)
+          }
+        } catch {}
+      }
+
+      es.onerror = () => {
+        // Otomatik yeniden bağlanma tarayıcı EventSource motoru tarafından yönetilir
+      }
+
+      this.eventSource = es
     } catch {}
   }
 
-  public destroy(): void {
+  private handleIncoming(payload: SyncPayload) {
+    if (!payload || typeof payload !== 'object') return
+    // Kendi cihazımızın gönderdiği paketleri atla
+    if (payload.senderDeviceId === getDeviceId()) return
+
+    // Karşı cihazın varlığını cihaz listesine işle
+    if (payload.senderDeviceId && payload.senderDeviceName) {
+      upsertPairedDevice({
+        id: payload.senderDeviceId,
+        name: payload.senderDeviceName,
+        type: payload.senderDeviceType || 'desktop',
+      })
+    }
+
+    // Karşı cihaz ilk bağlantıda kimler var diye sorduysa (presence_query), kendi varlığımızı ona ilet
+    if (payload.type === 'presence_query') {
+      this.sendDirectPresence('presence')
+    }
+
+    this.onMessageCallback?.(payload)
+  }
+
+  public broadcast(payload: Omit<SyncPayload, 'senderDeviceId' | 'senderDeviceName' | 'timestamp' | 'vaultId'>): void {
+    if (this.isDestroyed) return
+    const fullPayload: SyncPayload = {
+      ...payload,
+      type: payload.type || 'progress',
+      vaultId: this.vaultId,
+      senderDeviceId: getDeviceId(),
+      senderDeviceName: getDeviceName(),
+      senderDeviceType: getDeviceType(),
+      timestamp: Date.now(),
+    }
+
+    // Yerel sekmelere ilet
+    try {
+      this.channel?.postMessage(fullPayload)
+    } catch {}
+
+    // Cihazlar arası bulut köprüsüne ilet
+    this.postToCloud(fullPayload)
+  }
+
+  public broadcastPresence(): void {
+    this.sendDirectPresence('presence_query')
+  }
+
+  private sendDirectPresence(type: 'presence' | 'presence_query') {
+    if (this.isDestroyed) return
+    const fullPayload: SyncPayload = {
+      type,
+      vaultId: this.vaultId,
+      senderDeviceId: getDeviceId(),
+      senderDeviceName: getDeviceName(),
+      senderDeviceType: getDeviceType(),
+      wordIndex: 0,
+      chunkSize: 1,
+      wpm: 300,
+      theme: 'ios',
+      fontFace: 'theme',
+      fontScale: 1,
+      timestamp: Date.now(),
+    }
+
+    try {
+      this.channel?.postMessage(fullPayload)
+    } catch {}
+
+    this.postToCloud(fullPayload)
+  }
+
+  private postToCloud(payload: SyncPayload) {
+    if (!this.vaultId || typeof window === 'undefined') return
+    try {
+      const topic = `hizlioku_sync_${this.vaultId.toLowerCase().replace(/[^a-z0-9_-]/g, '_')}`
+      fetch(`https://ntfy.sh/${topic}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Title': 'HizliOku Sync',
+        },
+        body: JSON.stringify(payload),
+      }).catch(() => {})
+    } catch {}
+  }
+
+  public updateVaultId(newVaultId: string) {
+    if (!newVaultId || this.vaultId === newVaultId) return
+    this.vaultId = newVaultId
+
+    if (this.eventSource) {
+      this.eventSource.close()
+      this.eventSource = null
+    }
     if (this.channel) {
       this.channel.close()
       this.channel = null
+    }
+
+    if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+      try {
+        const chanName = `${CHANNEL_NAME}_${this.vaultId.replace(/[^A-Za-z0-9_-]/g, '_')}`
+        this.channel = new BroadcastChannel(chanName)
+        this.channel.onmessage = (event) => {
+          if (event.data && typeof event.data === 'object') {
+            this.handleIncoming(event.data as SyncPayload)
+          }
+        }
+      } catch {}
+    }
+
+    this.connectCloudStream()
+    this.broadcastPresence()
+  }
+
+  public destroy(): void {
+    this.isDestroyed = true
+    if (this.channel) {
+      this.channel.close()
+      this.channel = null
+    }
+    if (this.eventSource) {
+      this.eventSource.close()
+      this.eventSource = null
     }
     this.onMessageCallback = null
   }

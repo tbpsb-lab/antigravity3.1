@@ -57,29 +57,45 @@ export const ContextPeek = memo(function ContextPeek({
   }, [])
 
   // Konteyner boyutuna göre ekranda dikey ve yatay eksende ne kadar kelime alabileceğini dinamik hesapla.
-  // Tam 3 satırın taşmadan, kelime kırpılmadan %100 ekrana sığmasını ve her sayfanın ardışık olmasını sağlar.
+  // Mobil telefonda dikeyde 3 satır, yatayda 2 satır; masaüstü ve tablette 3-4 satır doldurur.
   const capacity = useMemo(() => {
     if (!containerSize.width) {
-      return 24 // İlk yükleme / SSR için dengeli varsayılan
-    }
-    // İki yandaki butonlar ve boşluklar düşülmüş metin alanı
-    const buttonSpace = containerSize.width >= 768 ? 96 : 72
-    let availableWidth = Math.max(120, containerSize.width - buttonSpace)
-    if (containerSize.width >= 768) {
-      availableWidth = Math.min(availableWidth, 768 - buttonSpace)
+      return 36 // İlk yükleme / SSR için dengeli varsayılan
     }
 
-    // Türkçede 1 kelimenin ortalama kapladığı alan (harf genişliği + boşluk + buton padding)
-    let wordSlotPx = 56
-    if (containerSize.width >= 768) {
-      wordSlotPx = 72
-    } else if (containerSize.width >= 600) {
-      wordSlotPx = 64
-    } else {
-      wordSlotPx = 54
+    // Mobil telefon yatay tutuş (landscape phone, max-height 520px) kontrolü -> 2 satır
+    const isLandscapeShort =
+      typeof window !== 'undefined' &&
+      window.innerHeight <= 520 &&
+      window.matchMedia?.('(orientation: landscape)').matches
+
+    if (isLandscapeShort) {
+      const buttonSpace = 64
+      const availableWidth = Math.max(120, containerSize.width - buttonSpace)
+      const wordsPerLine = Math.max(6, Math.floor(availableWidth / 48))
+      return Math.max(12, 2 * wordsPerLine)
     }
 
-    const wordsPerLine = Math.max(5, Math.floor(availableWidth / wordSlotPx))
+    // Masaüstü ve Geniş Tablet (width >= 768px): 3 - 4 satır
+    if (containerSize.width >= 768) {
+      const buttonSpace = 96
+      const availableWidth = Math.min(containerSize.width - buttonSpace, 768 - buttonSpace)
+      const wordsPerLine = Math.max(10, Math.floor(availableWidth / 50))
+      return Math.max(38, Math.floor(3.6 * wordsPerLine))
+    }
+
+    // Tablet / Orta Ekran (600px - 767px): 3 - 4 satır
+    if (containerSize.width >= 600) {
+      const buttonSpace = 80
+      const availableWidth = containerSize.width - buttonSpace
+      const wordsPerLine = Math.max(8, Math.floor(availableWidth / 52))
+      return Math.max(28, Math.floor(3.5 * wordsPerLine))
+    }
+
+    // Mobil Telefon Dikey (width < 600px): Tam 3 satır
+    const buttonSpace = 72
+    const availableWidth = Math.max(120, containerSize.width - buttonSpace)
+    const wordsPerLine = Math.max(5, Math.floor(availableWidth / 54))
     return Math.max(15, 3 * wordsPerLine)
   }, [containerSize.width])
 
@@ -233,7 +249,7 @@ export const ContextPeek = memo(function ContextPeek({
 
         {/* Ortadaki Metin Alanı: Scrollbar kesinlikle görünmez (scrollbar-none), tüm ekranlarda (mobil, tablet, masaüstü) KESİNLİKLE 3 SATIR */}
         <div className="flex-1 min-h-0 h-full overflow-hidden [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden flex items-start">
-          <p className="text-pretty text-xs sm:text-[13.5px] md:text-[15px] leading-[1.4] sm:leading-[1.45] md:leading-[1.48] text-muted-foreground w-full select-none m-0 p-0 line-clamp-3">
+          <p className="text-pretty text-xs sm:text-[13.5px] md:text-[15px] leading-[1.4] sm:leading-[1.45] md:leading-[1.48] text-muted-foreground w-full select-none m-0 p-0 line-clamp-3 sm:line-clamp-4">
             {slice.map((w, i) => {
               const absolute = start + i
               const current = absolute >= index && absolute < index + chunkSize

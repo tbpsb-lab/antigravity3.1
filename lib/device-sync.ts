@@ -146,8 +146,11 @@ export function sanitizeVaultId(raw: string | null | undefined): string {
   if (/^HZL-\d{4,8}$/.test(clean)) return clean
   if (/^\d{4,8}$/.test(clean)) return `HZL-${clean}`
 
-  const match = clean.match(/HZL-\d{4,8}/)
-  if (match) return match[0]
+  const match = clean.match(/HZL[_-]?(\d{4,8})/)
+  if (match) return `HZL-${match[1]}`
+
+  const standaloneDigits = trimmed.match(/\b\d{4,8}\b/)
+  if (standaloneDigits) return `HZL-${standaloneDigits[0]}`
 
   const cleanChars = clean.replace(/[^A-Z0-9-]/g, '').substring(0, 12)
   return cleanChars.startsWith('HZL-') ? cleanChars : `HZL-${cleanChars}`

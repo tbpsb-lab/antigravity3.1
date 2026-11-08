@@ -440,11 +440,11 @@ export const FontSettings = memo(function FontSettings({
           </div>
         </div>
 
-        {/* 4. Özellik Satırları (Daha dar, kompakt satırlar; G harfi ve ikonlar temaya uygun renkte) */}
+        {/* 4. Özellik Satırları (Okunabilir satır yüksekliği, harf altları kesilmez; B, N, G, E kısayolları altı çizili) */}
         <div className="flex flex-col border-t border-border/40 divide-y divide-border/25 pt-0.5">
           {/* Akıllı Bionic Öbekleme */}
           {onBionicChange && (
-            <div className="flex items-center justify-between gap-2 py-1 px-1">
+            <div className="flex items-center justify-between gap-2 py-1.25 px-1">
               <div className="flex items-center gap-2 min-w-0">
                 <BrainIcon
                   className={cn(
@@ -452,11 +452,11 @@ export const FontSettings = memo(function FontSettings({
                     bionicEnabled ? 'text-primary' : 'text-muted-foreground/50',
                   )}
                 />
-                <div className="min-w-0">
-                  <p className="text-[11.5px] font-semibold text-foreground truncate leading-tight">
-                    Akıllı <span className="desktop-shortcut-key font-semibold md:font-bold md:text-primary md:underline md:underline-offset-2 md:decoration-2 md:decoration-primary/70">B</span>ionic Öbekleme
+                <div className="min-w-0 flex flex-col justify-center">
+                  <p className="text-[11.5px] font-semibold text-foreground leading-normal whitespace-nowrap">
+                    Akıllı <span className="desktop-shortcut-key font-bold text-primary underline underline-offset-[3px] decoration-2 decoration-primary">B</span>ionic Öbekleme
                   </p>
-                  <p className="text-[9.5px] text-muted-foreground truncate leading-none mt-0.5">
+                  <p className="text-[10px] text-muted-foreground leading-normal mt-0.5 whitespace-nowrap">
                     2K-3K modlarında kökleri vurgular
                   </p>
                 </div>
@@ -484,18 +484,18 @@ export const FontSettings = memo(function FontSettings({
 
           {/* Nöroakustik Odak Sesi */}
           {onNeuroAudioChange && (
-            <div className="flex items-center justify-between gap-2 py-1 px-1">
+            <div className="flex items-center justify-between gap-2 py-1.25 px-1">
               <div className="flex items-center gap-2 min-w-0">
                 {neuroAudioEnabled ? (
                   <Volume2 className="size-3.5 text-primary shrink-0 transition-colors animate-pulse" />
                 ) : (
                   <VolumeX className="size-3.5 text-muted-foreground/50 shrink-0 transition-colors" />
                 )}
-                <div className="min-w-0">
-                  <p className="text-[11.5px] font-semibold text-foreground truncate leading-tight">
-                    <span className="desktop-shortcut-key font-semibold md:font-bold md:text-primary md:underline md:underline-offset-2 md:decoration-2 md:decoration-primary/70">N</span>öroakustik Odak Sesi
+                <div className="min-w-0 flex flex-col justify-center">
+                  <p className="text-[11.5px] font-semibold text-foreground leading-normal whitespace-nowrap">
+                    <span className="desktop-shortcut-key font-bold text-primary underline underline-offset-[3px] decoration-2 decoration-primary">N</span>öroakustik Odak Sesi
                   </p>
-                  <p className="text-[9.5px] text-muted-foreground truncate leading-none mt-0.5">
+                  <p className="text-[10px] text-muted-foreground leading-normal mt-0.5 whitespace-nowrap">
                     Pembe gürültü & 40Hz Gama
                   </p>
                 </div>
@@ -523,18 +523,18 @@ export const FontSettings = memo(function FontSettings({
 
           {/* Göz & Dikkat İzleme (G harfi ve ikon diğerleriyle uyumlu tema renginde) */}
           {onEyeTrackingChange && (
-            <div className="flex items-center justify-between gap-2 py-1 px-1">
+            <div className="flex items-center justify-between gap-2 py-1.25 px-1">
               <div className="flex items-center gap-2 min-w-0">
                 {eyeTrackingEnabled ? (
                   <Eye className="size-3.5 text-primary shrink-0 transition-colors animate-pulse" />
                 ) : (
                   <EyeOff className="size-3.5 text-muted-foreground/50 shrink-0 transition-colors" />
                 )}
-                <div className="min-w-0">
-                  <p className="text-[11.5px] font-semibold text-foreground truncate leading-tight">
-                    <span className="desktop-shortcut-key font-semibold md:font-bold md:text-primary md:underline md:underline-offset-2 md:decoration-2 md:decoration-primary/70">G</span>öz & Dikkat İzleme
+                <div className="min-w-0 flex flex-col justify-center">
+                  <p className="text-[11.5px] font-semibold text-foreground leading-normal whitespace-nowrap">
+                    <span className="desktop-shortcut-key font-bold text-primary underline underline-offset-[3px] decoration-2 decoration-primary">G</span>öz & Dikkat İzleme
                   </p>
-                  <p className="text-[9.5px] text-muted-foreground truncate leading-none mt-0.5">
+                  <p className="text-[10px] text-muted-foreground leading-normal mt-0.5 whitespace-nowrap">
                     Ekrandan kopunca otomatik duraklatır
                   </p>
                 </div>
@@ -561,14 +561,14 @@ export const FontSettings = memo(function FontSettings({
           )}
 
           {/* Cihaz Eşleştir */}
-          <div className="flex items-center justify-between gap-2 py-1 px-1">
+          <div className="flex items-center justify-between gap-2 py-1.25 px-1">
             <div className="flex items-center gap-2 min-w-0">
               <QrCode className="size-3.5 text-primary shrink-0 transition-colors" />
-              <div className="min-w-0">
-                <p className="text-[11.5px] font-semibold text-foreground truncate leading-tight">
-                  Cihaz <span className="desktop-shortcut-key font-semibold md:font-bold md:text-primary md:underline md:underline-offset-2 md:decoration-2 md:decoration-primary/70">E</span>şleştir
+              <div className="min-w-0 flex flex-col justify-center">
+                <p className="text-[11.5px] font-semibold text-foreground leading-normal whitespace-nowrap">
+                  Cihaz <span className="desktop-shortcut-key font-bold text-primary underline underline-offset-[3px] decoration-2 decoration-primary">E</span>şleştir
                 </p>
-                <p className="text-[9.5px] text-muted-foreground truncate leading-none mt-0.5">
+                <p className="text-[10px] text-muted-foreground leading-normal mt-0.5 whitespace-nowrap">
                   Ekranlar arası senkronizasyon
                 </p>
               </div>

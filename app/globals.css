@@ -671,14 +671,23 @@ html[data-theme='kindle']::-webkit-scrollbar-track {
   }
 }
 
-/* Dokunmatik cihazlarda (telefon ve tablet) klavye kısayol rozetlerini ve harf vurgularını tamamen gizle */
+.desktop-shortcut-key {
+  font-weight: 700;
+  color: var(--primary);
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+  text-decoration-color: var(--primary);
+}
+
+[data-theme='kindle'] .desktop-shortcut-key {
+  color: oklch(0.42 0.09 45);
+  text-decoration-color: oklch(0.42 0.09 45);
+}
+
+/* Dokunmatik cihazlarda (telefon ve tablet) klavye kısayol rozetlerini (t, 1, 2, 3) gizle */
 @media (hover: none), (pointer: coarse) {
   .desktop-shortcut-badge {
     display: none !important;
-  }
-  .desktop-shortcut-key {
-    font-weight: inherit !important;
-    color: inherit !important;
-    text-decoration: none !important;
   }
 }

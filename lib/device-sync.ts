@@ -23,6 +23,7 @@ export type SyncPayload = {
   senderDeviceType?: 'desktop' | 'mobile' | 'tablet'
   targetDeviceId?: string
   targetDeviceName?: string
+  knownDevices?: { id: string; name: string; type: 'desktop' | 'mobile' | 'tablet'; lastSeen?: number }[]
   docTitle?: string
   wordIndex: number
   pageNumber?: number
@@ -63,8 +64,32 @@ export function clearUnpairedTombstone(_deviceId?: string): void {}
 export function getDeviceType(): 'desktop' | 'mobile' | 'tablet' {
   if (typeof window === 'undefined') return 'desktop'
   const ua = navigator.userAgent.toLowerCase()
-  if (/ipad|tablet|(android(?!.*mobile))/i.test(ua)) return 'tablet'
-  if (/mobile|iphone|ipod|android/i.test(ua)) return 'mobile'
+  const hasTouch = typeof navigator !== 'undefined' && (navigator.maxTouchPoints || 0) > 0
+
+  // iPad ve iPadOS tespiti (Modern iPadOS varsayılan olarak Mac userAgent gönderir)
+  const isIPad =
+    /ipad/i.test(ua) ||
+    (typeof navigator !== 'undefined' && navigator.platform === 'MacIntel' && (navigator.maxTouchPoints || 0) > 1) ||
+    (hasTouch && /macintosh/i.test(ua))
+
+  if (isIPad || /tablet|(android(?!.*mobile))/i.test(ua)) return 'tablet'
+
+  if (/mobile|iphone|ipod|android/i.test(ua)) {
+    // Büyük ekranlı dokunmatik Android tabletler
+    if (typeof window !== 'undefined') {
+      const minDim = Math.min(window.innerWidth, window.innerHeight)
+      const maxDim = Math.max(window.innerWidth, window.innerHeight)
+      if (minDim >= 600 && maxDim >= 900) return 'tablet'
+    }
+    return 'mobile'
+  }
+
+  // Windows / Surface / Dokunmatik tablet modları
+  if (hasTouch && typeof window !== 'undefined') {
+    const minDim = Math.min(window.innerWidth, window.innerHeight)
+    if (minDim >= 600 && minDim <= 1024) return 'tablet'
+  }
+
   return 'desktop'
 }
 
@@ -73,10 +98,11 @@ export function getDeviceName(): string {
   const type = getDeviceType()
   const ua = navigator.userAgent
   let browser = 'Tarayıcı'
-  if (/chrome/i.test(ua) && !/edg/i.test(ua)) browser = 'Chrome'
-  else if (/safari/i.test(ua) && !/chrome/i.test(ua)) browser = 'Safari'
-  else if (/firefox/i.test(ua)) browser = 'Firefox'
-  else if (/edg/i.test(ua)) browser = 'Edge'
+
+  if (/edg/i.test(ua)) browser = 'Edge'
+  else if (/chrome|crios/i.test(ua)) browser = 'Chrome'
+  else if (/firefox|fxios/i.test(ua)) browser = 'Firefox'
+  else if (/safari/i.test(ua) && !/chrome|crios/i.test(ua)) browser = 'Safari'
 
   if (type === 'mobile') return `Telefon (${browser})`
   if (type === 'tablet') return `Tablet (${browser})`
@@ -211,7 +237,7 @@ export function getPairedDevices(): SyncedDevice[] {
   return list
 }
 
-export function upsertPairedDevice(dev: { id: string; name: string; type: 'desktop' | 'mobile' | 'tablet' }): SyncedDevice[] {
+export function upsertPairedDevice(dev: { id: string; name: string; type: 'desktop' | 'mobile' | 'tablet'; lastSeen?: number }): SyncedDevice[] {
   if (typeof window === 'undefined') return []
   const currentId = getDeviceId()
   let list = getPairedDevices()
@@ -578,6 +604,20 @@ export class SyncChannelManager {
                   })
                 }
 
+                // Çoklu cihaz mesh listesini birleştir (3+ cihazın tamamını otomatik birbirine bağla)
+                if (Array.isArray(payload.knownDevices)) {
+                  for (const dev of payload.knownDevices) {
+                    if (dev && dev.id && dev.name && dev.id !== getDeviceId()) {
+                      upsertPairedDevice({
+                        id: dev.id,
+                        name: dev.name,
+                        type: dev.type || 'desktop',
+                        lastSeen: dev.lastSeen,
+                      })
+                    }
+                  }
+                }
+
                 if (payload.type === 'progress' || !payload.type) {
                   const ts = payload.timestamp || (raw.time ? raw.time * 1000 : 0)
                   if (ts >= highestTimestamp) {
@@ -644,6 +684,20 @@ export class SyncChannelManager {
       })
     }
 
+    // Çoklu cihaz mesh listesini birleştir (3+ cihazın tamamını otomatik birbirine bağla)
+    if (Array.isArray(payload.knownDevices)) {
+      for (const dev of payload.knownDevices) {
+        if (dev && dev.id && dev.name && dev.id !== getDeviceId()) {
+          upsertPairedDevice({
+            id: dev.id,
+            name: dev.name,
+            type: dev.type || 'desktop',
+            lastSeen: dev.lastSeen,
+          })
+        }
+      }
+    }
+
     // Karşı cihaz ilk bağlantıda kimler var diye sorduysa (presence_query), kendi varlığımızı ona ilet
     if (payload.type === 'presence_query') {
       this.sendDirectPresence('presence')
@@ -678,8 +732,14 @@ export class SyncChannelManager {
     this.postToCloud(fullPayload)
   }
 
-  public broadcast(payload: Omit<SyncPayload, 'senderDeviceId' | 'senderDeviceName' | 'timestamp' | 'vaultId'>): void {
+  public broadcast(payload: Omit<SyncPayload, 'senderDeviceId' | 'senderDeviceName' | 'timestamp' | 'vaultId' | 'knownDevices'>): void {
     if (this.isDestroyed) return
+    const knownDevices = getPairedDevices().map((d) => ({
+      id: d.id,
+      name: d.name.replace(' (Bu Cihaz)', ''),
+      type: d.type,
+      lastSeen: d.lastSeen,
+    }))
     const fullPayload: SyncPayload = {
       ...payload,
       type: payload.type || 'progress',
@@ -687,6 +747,7 @@ export class SyncChannelManager {
       senderDeviceId: getDeviceId(),
       senderDeviceName: getDeviceName(),
       senderDeviceType: getDeviceType(),
+      knownDevices,
       timestamp: Date.now(),
     }
 
@@ -705,12 +766,19 @@ export class SyncChannelManager {
 
   private sendDirectPresence(type: 'presence' | 'presence_query') {
     if (this.isDestroyed) return
+    const knownDevices = getPairedDevices().map((d) => ({
+      id: d.id,
+      name: d.name.replace(' (Bu Cihaz)', ''),
+      type: d.type,
+      lastSeen: d.lastSeen,
+    }))
     const fullPayload: SyncPayload = {
       type,
       vaultId: this.vaultId,
       senderDeviceId: getDeviceId(),
       senderDeviceName: getDeviceName(),
       senderDeviceType: getDeviceType(),
+      knownDevices,
       wordIndex: 0,
       chunkSize: 1,
       wpm: 300,
@@ -778,6 +846,12 @@ export class SyncChannelManager {
 
     this.fetchLatestCloudState()
     this.broadcastPresence()
+    setTimeout(() => {
+      if (!this.isDestroyed) {
+        this.broadcastPresence()
+        this.fetchLatestCloudState()
+      }
+    }, 1500)
   }
 
   public destroy(): void {

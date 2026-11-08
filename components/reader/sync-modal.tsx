@@ -581,7 +581,7 @@ export const SyncModal = memo(function SyncModal({
               ) : null}
               {typeof index === 'number' ? (
                 <span className="rounded-md bg-muted/60 border border-border/40 px-1.5 py-0.5 leading-none">
-                  {index + 1}. Öbek
+                  {index + 1}. Kelime
                 </span>
               ) : null}
               {wpm ? (
@@ -792,7 +792,7 @@ export const SyncModal = memo(function SyncModal({
               )}
               {typeof index === 'number' && (
                 <span className="px-2.5 py-1 rounded-lg bg-neutral-100 font-semibold border border-neutral-200">
-                  {index + 1}. Öbek
+                  {index + 1}. Kelime
                 </span>
               )}
               {wpm && (

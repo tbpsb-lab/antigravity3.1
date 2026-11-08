@@ -78,6 +78,14 @@ export function ReaderApp() {
   const [aboutOpen, setAboutOpen] = useState(false)
   const [syncModalOpen, setSyncModalOpen] = useState(false)
 
+  // Cihaz Eşleştir penceresi açıldığında mevcut bağlı cihazları ve varlık durumunu anında tara
+  useEffect(() => {
+    if (syncModalOpen) {
+      syncManagerRef.current?.broadcastPresence()
+      syncManagerRef.current?.fetchLatestCloudState()
+    }
+  }, [syncModalOpen])
+
   // Kindle Tarzı Kesintisiz ve Zarif Cihazlar Arası Eşitleme Durumu
   const [kindleSyncPrompt, setKindleSyncPrompt] = useState<{
     deviceName: string
@@ -1377,7 +1385,7 @@ export function ReaderApp() {
         if (urlSync || urlIdx || urlPage) {
           const parts = [
             urlTargetPage ? `Sayfa ${urlTargetPage}` : null,
-            urlTargetIndex !== null ? `${urlTargetIndex + 1}. Öbek` : null,
+            urlTargetIndex !== null ? `${urlTargetIndex + 1}. Kelime` : null,
           ].filter(Boolean)
           urlSyncDetails = parts.length > 0 ? parts.join(' • ') : 'Kaldığınız yer'
 
@@ -1388,7 +1396,10 @@ export function ReaderApp() {
       }
     } catch {}
 
-    const activeChunkSize = Math.max(1, Math.min(3, settings.chunkSize ?? 1))
+    const parsedChunkFromUrl = urlChunk ? parseInt(urlChunk, 10) : NaN
+    const activeChunkSize = [1, 2, 3].includes(parsedChunkFromUrl)
+      ? parsedChunkFromUrl
+      : Math.max(1, Math.min(3, settings.chunkSize ?? 1))
     const activeFootnotes = settings.readFootnotes ?? true
     const hasMigratedDefaultBook =
       typeof window !== 'undefined' && localStorage.getItem('odak_default_yasamak_v6') === 'true'
@@ -1410,7 +1421,12 @@ export function ReaderApp() {
       setDocTitle(DEFAULT_BOOK_TITLE)
       setPageInfo(DEFAULT_BOOK_PAGE_INFO)
       if (urlTargetIndex !== null) {
-        setIndex(urlTargetIndex)
+        const nextChunks = createChunks(DEFAULT_BOOK_TEXT, activeChunkSize, {
+          enableFootnotes: activeFootnotes,
+          pageInfo: DEFAULT_BOOK_PAGE_INFO,
+        })
+        const targetChunkIdx = findChunkIndexForWord(nextChunks, urlTargetIndex)
+        setIndex(targetChunkIdx)
         if (urlSyncDetails) {
           showAudioToast(`Masaüstü ile eşitlendi (${urlSyncDetails})`)
         }
@@ -1428,7 +1444,12 @@ export function ReaderApp() {
       setPageInfo(resolvedPageInfo)
       
       if (urlTargetIndex !== null) {
-        setIndex(urlTargetIndex)
+        const nextChunks = createChunks(lastDoc.text, activeChunkSize, {
+          enableFootnotes: activeFootnotes,
+          pageInfo: resolvedPageInfo,
+        })
+        const targetChunkIdx = findChunkIndexForWord(nextChunks, urlTargetIndex)
+        setIndex(targetChunkIdx)
         saveReadingProgress(lastDoc.title || DEFAULT_BOOK_TITLE, lastDoc.text, urlTargetIndex, resolvedPageInfo)
         if (urlSyncDetails) {
           showAudioToast(`Masaüstü ile eşitlendi (${urlSyncDetails})`)
@@ -1570,10 +1591,11 @@ export function ReaderApp() {
     if (!syncManagerRef.current) return
     const curIdx = indexRef.current
     const curChunk = chunksRef.current[curIdx]
+    const curWordIndex = curChunk?.startIndex ?? curIdx
     syncManagerRef.current.broadcast({
       type: 'progress',
       docTitle,
-      wordIndex: curIdx,
+      wordIndex: curWordIndex,
       pageNumber: curChunk?.pageNumber ?? pageInfo?.currentPage,
       chunkSize,
       wpm,
@@ -1590,20 +1612,29 @@ export function ReaderApp() {
     triggerHaptic('jump')
     triggerPulse()
 
-    if (typeof kindleSyncPrompt.wordIndex === 'number') {
-      seek(kindleSyncPrompt.wordIndex)
-    }
     if (typeof kindleSyncPrompt.wpm === 'number') {
       setWpm(kindleSyncPrompt.wpm)
-    }
-    if (typeof kindleSyncPrompt.chunkSize === 'number') {
-      handleChunkSizeChange(kindleSyncPrompt.chunkSize)
     }
     if (kindleSyncPrompt.theme && ['ios', 'linear', 'kindle'].includes(kindleSyncPrompt.theme)) {
       handleThemeChange(kindleSyncPrompt.theme as ThemeId)
     }
     if (kindleSyncPrompt.fontFace && ['theme', 'sans', 'serif', 'mono'].includes(kindleSyncPrompt.fontFace)) {
       setFontFace(kindleSyncPrompt.fontFace as FontFace)
+    }
+
+    const targetChunkSize =
+      typeof kindleSyncPrompt.chunkSize === 'number' && [1, 2, 3].includes(kindleSyncPrompt.chunkSize)
+        ? kindleSyncPrompt.chunkSize
+        : chunkSize
+
+    if (targetChunkSize !== chunkSize) {
+      setChunkSize(targetChunkSize)
+    }
+
+    if (typeof kindleSyncPrompt.wordIndex === 'number') {
+      const nextChunks = createChunks(text, targetChunkSize, { enableFootnotes: readFootnotes, pageInfo })
+      const targetChunkIdx = findChunkIndexForWord(nextChunks, kindleSyncPrompt.wordIndex)
+      seek(targetChunkIdx)
     }
 
     const details = [
@@ -1613,7 +1644,7 @@ export function ReaderApp() {
 
     showAudioToast(`Eşitlendi (${details})`)
     dismissKindleSync()
-  }, [kindleSyncPrompt, triggerPulse, seek, handleChunkSizeChange, handleThemeChange, showAudioToast, dismissKindleSync])
+  }, [kindleSyncPrompt, triggerPulse, seek, chunkSize, text, readFootnotes, pageInfo, handleThemeChange, showAudioToast, dismissKindleSync])
 
   // Cihaz Eşleşme ve Ayrılma Canlı Bildirimleri (Zen Modu Hariç)
   useEffect(() => {
@@ -1662,10 +1693,10 @@ export function ReaderApp() {
         if (playingRef.current) return // Okuma devam ederken dikkat dağıtma
 
         const targetIdx = typeof payload.wordIndex === 'number' ? payload.wordIndex : -1
-        const curIdx = indexRef.current
+        const curWordIdx = chunksRef.current[indexRef.current]?.startIndex ?? indexRef.current
 
         // KULLANICI MANTIĞI: Yalnızca karşı cihaz mevcut cihazdan DAHA İLERİDEYSE uyar (Kindle Whispersync)
-        if (targetIdx > curIdx) {
+        if (targetIdx > curWordIdx) {
           if (dismissedIndexRef.current === targetIdx) return
 
           triggerHaptic('tap')
@@ -2138,7 +2169,7 @@ export function ReaderApp() {
           syncManagerRef.current?.broadcastUnpair(devId, devName)
           showAudioToast(`${devName} ile eşleşme sonlandı`)
         }}
-        index={index}
+        index={currentChunk?.startIndex ?? index}
         pageNumber={currentChunk?.pageNumber ?? pageInfo?.currentPage}
         wpm={wpm}
         chunkSize={chunkSize}
@@ -2153,14 +2184,8 @@ export function ReaderApp() {
           if (params.vaultId) {
             syncManagerRef.current?.updateVaultId(params.vaultId)
           }
-          if (typeof params.index === 'number') {
-            seek(params.index)
-          }
           if (typeof params.wpm === 'number') {
             setWpm(params.wpm)
-          }
-          if (typeof params.chunkSize === 'number') {
-            handleChunkSizeChange(params.chunkSize)
           }
           if (params.theme) {
             handleThemeChange(params.theme as ThemeId)
@@ -2168,9 +2193,25 @@ export function ReaderApp() {
           if (params.fontFace) {
             setFontFace(params.fontFace as FontFace)
           }
+
+          const targetChunkSize =
+            typeof params.chunkSize === 'number' && [1, 2, 3].includes(params.chunkSize)
+              ? params.chunkSize
+              : chunkSize
+
+          if (targetChunkSize !== chunkSize) {
+            setChunkSize(targetChunkSize)
+          }
+
+          if (typeof params.index === 'number') {
+            const nextChunks = createChunks(text, targetChunkSize, { enableFootnotes: readFootnotes, pageInfo })
+            const targetChunkIdx = findChunkIndexForWord(nextChunks, params.index)
+            seek(targetChunkIdx)
+          }
+
           const details = [
             params.pageNumber ? `Sayfa ${params.pageNumber}` : null,
-            typeof params.index === 'number' ? `${params.index + 1}. Öbek` : null,
+            typeof params.index === 'number' ? `${params.index + 1}. Kelime` : null,
           ].filter(Boolean).join(' • ')
           showAudioToast(`Eşitlendi (${details || 'Kaldığınız yer'})`)
 

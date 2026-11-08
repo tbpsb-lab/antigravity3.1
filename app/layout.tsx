@@ -33,27 +33,27 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       {
-        url: `${BASE_PATH}/favicon.ico?v=4`,
+        url: `${BASE_PATH}/favicon.ico?v=5`,
         sizes: 'any',
       },
       {
-        url: `${BASE_PATH}/icon-light-32x32.png?v=4`,
+        url: `${BASE_PATH}/icon-light-32x32.png?v=5`,
         sizes: '32x32',
         type: 'image/png',
         media: '(prefers-color-scheme: light)',
       },
       {
-        url: `${BASE_PATH}/icon-dark-32x32.png?v=4`,
+        url: `${BASE_PATH}/icon-dark-32x32.png?v=5`,
         sizes: '32x32',
         type: 'image/png',
         media: '(prefers-color-scheme: dark)',
       },
       {
-        url: `${BASE_PATH}/icon.svg?v=4`,
+        url: `${BASE_PATH}/icon.svg?v=5`,
         type: 'image/svg+xml',
       },
     ],
-    apple: `${BASE_PATH}/apple-icon.png?v=4`,
+    apple: `${BASE_PATH}/apple-icon.png?v=5`,
   },
 }
 
@@ -85,9 +85,9 @@ export default function RootLayout({
       className={`${inter.variable} ${geist.variable} ${geistMono.variable} ${literata.variable}`}
     >
       <head>
-        <link rel="icon" href={`${BASE_PATH}/favicon.ico?v=4`} sizes="any" />
-        <link rel="icon" type="image/svg+xml" href={`${BASE_PATH}/icon.svg?v=4`} />
-        <link rel="apple-touch-icon" href={`${BASE_PATH}/apple-icon.png?v=4`} />
+        <link rel="icon" href={`${BASE_PATH}/favicon.ico?v=5`} sizes="any" />
+        <link rel="icon" type="image/svg+xml" href={`${BASE_PATH}/icon.svg?v=5`} />
+        <link rel="apple-touch-icon" href={`${BASE_PATH}/apple-icon.png?v=5`} />
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
       </head>
       <body suppressHydrationWarning className="antialiased">

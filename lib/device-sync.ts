@@ -202,6 +202,96 @@ export type SyncUrlParams = {
   fontFace?: string
 }
 
+export type ParsedSyncResult = {
+  vaultId: string | null
+  index?: number
+  pageNumber?: number
+  wpm?: number
+  chunkSize?: number
+  theme?: string
+  fontFace?: string
+}
+
+export function parseSyncInput(raw: string | null | undefined): ParsedSyncResult {
+  if (!raw) return { vaultId: null }
+  const trimmed = raw.trim()
+  if (!trimmed) return { vaultId: null }
+
+  let extractedVaultId: string | null = null
+  let index: number | undefined
+  let pageNumber: number | undefined
+  let wpm: number | undefined
+  let chunkSize: number | undefined
+  let theme: string | undefined
+  let fontFace: string | undefined
+
+  // 1. URL veya sorgu dizesi içeriyor mu? (Örn: https://.../?s=4458&idx=50 veya ?sync=HZL-4458)
+  if (trimmed.includes('?') || trimmed.includes('&') || trimmed.includes('://') || trimmed.includes('/')) {
+    try {
+      const full = trimmed.startsWith('http://') || trimmed.startsWith('https://')
+        ? trimmed
+        : 'https://dummy.com/' + (trimmed.startsWith('?') ? trimmed : '?' + trimmed)
+      const url = new URL(full)
+      const s = url.searchParams.get('sync') || url.searchParams.get('s')
+      const idx = url.searchParams.get('idx') || url.searchParams.get('i')
+      const p = url.searchParams.get('p') || url.searchParams.get('page')
+      const w = url.searchParams.get('wpm') || url.searchParams.get('w')
+      const ch = url.searchParams.get('chunk') || url.searchParams.get('c')
+      const t = url.searchParams.get('theme') || url.searchParams.get('t')
+      const f = url.searchParams.get('font') || url.searchParams.get('f')
+
+      if (s) extractedVaultId = sanitizeVaultId(s)
+      if (idx) {
+        const parsedIdx = parseInt(idx, 10)
+        if (!isNaN(parsedIdx)) index = parsedIdx
+      }
+      if (p) {
+        const parsedP = parseInt(p, 10)
+        if (!isNaN(parsedP)) pageNumber = parsedP
+      }
+      if (w) {
+        const parsedW = parseInt(w, 10)
+        if (!isNaN(parsedW)) wpm = parsedW
+      }
+      if (ch) {
+        const parsedC = parseInt(ch, 10)
+        if (!isNaN(parsedC)) chunkSize = parsedC
+      }
+      if (t) {
+        theme = t === 'k' ? 'kindle' : t === 'n' ? 'linear' : t === 'i' ? 'ios' : t
+      }
+      if (f) {
+        fontFace = f === 't' ? 'theme' : f === 's' ? 'sans' : f === 'r' ? 'serif' : f === 'm' ? 'mono' : f
+      }
+    } catch {}
+  }
+
+  // 2. Eğer URL'den çıkmadıysa veya doğrudan metin içerisindeyse:
+  if (!extractedVaultId) {
+    const match = trimmed.match(/HZL[_-]?([0-9A-Z]{4,8})/i)
+    if (match) {
+      extractedVaultId = 'HZL-' + match[1].toUpperCase()
+    } else {
+      const numMatch = trimmed.match(/\b\d{4,8}\b/)
+      if (numMatch) {
+        extractedVaultId = 'HZL-' + numMatch[0]
+      } else {
+        extractedVaultId = sanitizeVaultId(trimmed)
+      }
+    }
+  }
+
+  return {
+    vaultId: extractedVaultId,
+    index,
+    pageNumber,
+    wpm,
+    chunkSize,
+    theme,
+    fontFace,
+  }
+}
+
 export function generateSyncUrl(vaultId: string, extra?: SyncUrlParams): string {
   if (typeof window === 'undefined') return ''
   const origin = window.location.origin

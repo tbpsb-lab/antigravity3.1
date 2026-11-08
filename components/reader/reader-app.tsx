@@ -1937,6 +1937,15 @@ export function ReaderApp() {
           if (typeof params.wpm === 'number') {
             setWpm(params.wpm)
           }
+          if (typeof params.chunkSize === 'number') {
+            handleChunkSizeChange(params.chunkSize)
+          }
+          if (params.theme) {
+            handleThemeChange(params.theme as ThemeId)
+          }
+          if (params.fontFace) {
+            handleFontFaceChange(params.fontFace as FontFace)
+          }
           const details = [
             params.pageNumber ? `Sayfa ${params.pageNumber}` : null,
             typeof params.index === 'number' ? `${params.index + 1}. Öbek` : null,

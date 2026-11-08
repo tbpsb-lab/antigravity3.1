@@ -691,3 +691,23 @@ html[data-theme='kindle']::-webkit-scrollbar-track {
     display: none !important;
   }
 }
+
+/* Kamera Karekod Lazer Tarama Animasyonu */
+@keyframes qr-scan-line {
+  0% {
+    top: 6px;
+    opacity: 0.3;
+  }
+  50% {
+    top: calc(100% - 8px);
+    opacity: 1;
+  }
+  100% {
+    top: 6px;
+    opacity: 0.3;
+  }
+}
+
+.animate-qr-scan {
+  animation: qr-scan-line 2s ease-in-out infinite;
+}

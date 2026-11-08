@@ -63,7 +63,11 @@ export const RsvpDisplay = memo(function RsvpDisplay({
 }: RsvpDisplayProps) {
   const [containerRef, containerSize] = useElementSize<HTMLDivElement>()
 
-  // İlerleme Çubuğu Sürükleme / Scrubbing Kontrolleri (Mobil Touch + Masaüstü Mouse Drag)
+  // İlerleme Çubuğu İki Aşamalı Güvenli Etkinleştirme & Sürükleme Kontrolleri
+  const [isBarActive, setIsBarActive] = useState(false)
+  const isBarActiveRef = useRef(false)
+  const barActiveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
   const [isScrubbing, setIsScrubbing] = useState(false)
   const isScrubbingRef = useRef(false)
   const progressBarRef = useRef<HTMLDivElement | null>(null)
@@ -232,6 +236,43 @@ export const RsvpDisplay = memo(function RsvpDisplay({
     fontVariantLigatures: 'none',
   } as CSSProperties
 
+  const resetBarActiveTimer = useCallback(() => {
+    if (barActiveTimerRef.current) clearTimeout(barActiveTimerRef.current)
+    barActiveTimerRef.current = setTimeout(() => {
+      setIsBarActive(false)
+      isBarActiveRef.current = false
+    }, 4000)
+  }, [])
+
+  useEffect(() => {
+    if (playing) {
+      setIsBarActive(false)
+      isBarActiveRef.current = false
+      if (barActiveTimerRef.current) clearTimeout(barActiveTimerRef.current)
+    }
+  }, [playing])
+
+  useEffect(() => {
+    if (!isBarActive) return
+    const handleOutsidePointer = (e: MouseEvent | TouchEvent | Event) => {
+      if (progressBarRef.current && !progressBarRef.current.contains(e.target as Node)) {
+        setIsBarActive(false)
+        isBarActiveRef.current = false
+        if (barActiveTimerRef.current) clearTimeout(barActiveTimerRef.current)
+      }
+    }
+    window.addEventListener('pointerdown', handleOutsidePointer)
+    return () => {
+      window.removeEventListener('pointerdown', handleOutsidePointer)
+    }
+  }, [isBarActive])
+
+  useEffect(() => {
+    return () => {
+      if (barActiveTimerRef.current) clearTimeout(barActiveTimerRef.current)
+    }
+  }, [])
+
   const seekFromPointerEvent = useCallback(
     (clientX: number) => {
       const el = progressBarRef.current
@@ -255,8 +296,20 @@ export const RsvpDisplay = memo(function RsvpDisplay({
 
   const handleProgressPointerDown = (e: PointerEvent<HTMLDivElement>) => {
     e.stopPropagation()
+
+    // 1. AŞAMA: Bar pasifken ilk dokunuşta sadece barı bir miktar büyüt ve aktif et (Kazara konumu atlatmaz!)
+    if (!isBarActiveRef.current) {
+      isBarActiveRef.current = true
+      setIsBarActive(true)
+      triggerHaptic('tap')
+      resetBarActiveTimer()
+      return
+    }
+
+    // 2. AŞAMA: Bar aktifken ikinci dokunuşta veya sürüklemede konumu seç
     isScrubbingRef.current = true
     setIsScrubbing(true)
+    resetBarActiveTimer()
     try {
       e.currentTarget.setPointerCapture(e.pointerId)
     } catch {}
@@ -266,6 +319,7 @@ export const RsvpDisplay = memo(function RsvpDisplay({
   const handleProgressPointerMove = (e: PointerEvent<HTMLDivElement>) => {
     if (!isScrubbingRef.current) return
     e.stopPropagation()
+    resetBarActiveTimer()
     seekFromPointerEvent(e.clientX)
   }
 
@@ -279,6 +333,7 @@ export const RsvpDisplay = memo(function RsvpDisplay({
       e.currentTarget.releasePointerCapture(e.pointerId)
     } catch {}
     triggerHaptic('jump')
+    resetBarActiveTimer()
   }
 
   const progressPct =
@@ -490,7 +545,11 @@ export const RsvpDisplay = memo(function RsvpDisplay({
           <div
             ref={progressBarRef}
             role="progressbar"
-            aria-label="Okuma İlerlemesi (Kaydırmak için sürükleyin)"
+            aria-label={
+              isBarActive
+                ? 'Okuma İlerlemesi (Kaydırmak veya atlamak için dokunun)'
+                : 'Okuma İlerlemesini Etkinleştirmek İçin Dokunun'
+            }
             aria-valuenow={index}
             aria-valuemin={0}
             aria-valuemax={Math.max(0, total - 1)}
@@ -498,28 +557,58 @@ export const RsvpDisplay = memo(function RsvpDisplay({
             onPointerMove={handleProgressPointerMove}
             onPointerUp={handleProgressPointerUp}
             onPointerCancel={handleProgressPointerUp}
-            className="group absolute inset-x-0 bottom-0 h-3 sm:h-3.5 md:h-4 flex items-end cursor-ew-resize select-none touch-none z-30"
+            className={cn(
+              'group absolute inset-x-0 bottom-0 flex flex-col justify-end select-none touch-none z-30 transition-all duration-200 cursor-pointer',
+              isBarActive
+                ? 'h-8 sm:h-9 pb-1 px-1.5'
+                : 'h-3 sm:h-3.5 pb-0 px-0',
+            )}
           >
+            {/* Aktif olduğunda beliren mikro yüzde ve sayfa/öbek rozeti */}
+            {isBarActive && (
+              <div className="flex items-center justify-between px-2 mb-1 pointer-events-none animate-in fade-in zoom-in-95 duration-150">
+                <span className="text-[10px] font-bold text-primary tracking-wide">
+                  %{Math.round(progressPct)}
+                </span>
+                <span className="text-[9.5px] font-medium text-muted-foreground/80">
+                  Konumu değiştirmek için dokunun veya kaydırın
+                </span>
+                <span className="text-[10px] tabular-nums font-semibold text-muted-foreground">
+                  {index + 1} / {total}
+                </span>
+              </div>
+            )}
+
             {/* Arka plan izi (Track) */}
             <div
               className={cn(
-                'relative w-full overflow-hidden transition-all duration-150 rounded-b-2xl sm:rounded-b-3xl',
-                isScrubbing ? 'h-1.5 sm:h-2 bg-foreground/25' : 'h-1 group-hover:h-1.5 bg-foreground/15',
+                'relative w-full overflow-hidden transition-all duration-200 rounded-b-2xl sm:rounded-b-3xl',
+                isBarActive
+                  ? 'h-2 sm:h-2.5 bg-foreground/20 ring-1 ring-primary/40 shadow-inner'
+                  : 'h-1 bg-foreground/15 group-hover:h-1.5',
               )}
             >
               {/* Doluluk göstergesi */}
               <div
-                className="h-full bg-primary/85 transition-[width] duration-75 ease-out rounded-full"
+                className={cn(
+                  'h-full transition-[width] duration-75 ease-out rounded-full',
+                  isBarActive
+                    ? 'bg-primary shadow-[0_0_8px_rgba(59,130,246,0.6)]'
+                    : 'bg-primary/85',
+                )}
                 style={{
                   width: `${progressPct}%`,
                 }}
               />
             </div>
 
-            {/* Sürükleme sırasında parmak/imleç altında beliren aktif odak noktası (Thumb Indicator) */}
-            {isScrubbing && (
+            {/* Aktif olduğunda veya sürükleme sırasında parmak altında beliren odak noktası (Thumb Indicator) */}
+            {(isBarActive || isScrubbing) && (
               <div
-                className="pointer-events-none absolute bottom-0 -translate-x-1/2 size-3 sm:size-3.5 rounded-full bg-primary shadow-[0_0_10px_rgba(59,130,246,0.7)] border-2 border-background transition-transform"
+                className={cn(
+                  'pointer-events-none absolute bottom-1 -translate-x-1/2 rounded-full bg-primary border-2 border-background shadow-[0_0_12px_rgba(59,130,246,0.8)] transition-transform duration-100',
+                  isScrubbing ? 'size-4 sm:size-4.5 scale-110' : 'size-3 sm:size-3.5',
+                )}
                 style={{
                   left: `${progressPct}%`,
                 }}

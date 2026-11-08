@@ -14,6 +14,7 @@ import {
   Trash2,
   Loader2,
   ZoomIn,
+  Sun,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { generateQRMatrix, qrMatrixToSvgPath } from '@/lib/qr-code'
@@ -74,6 +75,41 @@ export const SyncModal = memo(function SyncModal({
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const scanTimerRef = useRef<number | null>(null)
+  const wakeLockRef = useRef<any>(null)
+
+  // Ekranı tam parlaklıkta ve açık tutma kontrolleri
+  const requestBrightnessAndFullscreen = useCallback(async () => {
+    // 1. Ekran kararmasını önle (Screen Wake Lock)
+    try {
+      if (typeof navigator !== 'undefined' && 'wakeLock' in navigator && (navigator as any).wakeLock) {
+        wakeLockRef.current = await (navigator as any).wakeLock.request('screen')
+      }
+    } catch {}
+
+    // 2. Tam Ekran modu ile tüm ekranı parlak beyaz ışığa dönüştür (Fullscreen API)
+    try {
+      if (typeof document !== 'undefined' && !document.fullscreenElement && document.documentElement.requestFullscreen) {
+        await document.documentElement.requestFullscreen()
+      }
+    } catch {}
+  }, [])
+
+  const releaseBrightnessAndFullscreen = useCallback(async () => {
+    // 1. Wake lock serbest bırak
+    if (wakeLockRef.current) {
+      try {
+        await wakeLockRef.current.release()
+      } catch {}
+      wakeLockRef.current = null
+    }
+
+    // 2. Tam ekrandan çık
+    try {
+      if (typeof document !== 'undefined' && document.fullscreenElement && document.exitFullscreen) {
+        await document.exitFullscreen()
+      }
+    } catch {}
+  }, [])
 
   const stopCamera = useCallback(() => {
     if (streamRef.current) {
@@ -103,21 +139,33 @@ export const SyncModal = memo(function SyncModal({
       stopCamera()
       setConnectedSuccessMsg(null)
       setIsQrZoomed(false)
+      releaseBrightnessAndFullscreen()
     }
-  }, [open, stopCamera])
+  }, [open, stopCamera, releaseBrightnessAndFullscreen])
 
-  // Büyük karekod açıkken Escape ile sadece büyütmeyi kapat
+  // Büyük karekod açıkken tam parlaklık & uyanık ekran modunu yönet ve Escape ile kapat
   useEffect(() => {
-    if (!isQrZoomed) return
+    if (!isQrZoomed) {
+      releaseBrightnessAndFullscreen()
+      return
+    }
+
+    requestBrightnessAndFullscreen()
+
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.stopPropagation()
         setIsQrZoomed(false)
+        releaseBrightnessAndFullscreen()
       }
     }
+
     window.addEventListener('keydown', handleKeyDown, true)
-    return () => window.removeEventListener('keydown', handleKeyDown, true)
-  }, [isQrZoomed])
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown, true)
+      releaseBrightnessAndFullscreen()
+    }
+  }, [isQrZoomed, requestBrightnessAndFullscreen, releaseBrightnessAndFullscreen])
 
   // Cihazlar arası varlık (presence) güncellemelerini anında yansıt
   useEffect(() => {
@@ -507,6 +555,7 @@ export const SyncModal = memo(function SyncModal({
                 onClick={() => {
                   if (qrPath) {
                     setIsQrZoomed(true)
+                    requestBrightnessAndFullscreen()
                     triggerHaptic('tap')
                   }
                 }}
@@ -730,81 +779,93 @@ export const SyncModal = memo(function SyncModal({
         )}
       </div>
 
-      {/* Kocaman ve Parlak Ekran Karekod Görünümü */}
+      {/* Kocaman ve Maksimum Parlak Ekran Karekod Görünümü (Ekran Feneri & Tam Parlaklık Modu) */}
       {isQrZoomed && (
         <div
           role="dialog"
           aria-modal="true"
-          aria-label="Büyük Karekod Görünümü"
-          className="fixed inset-0 z-[100] flex flex-col items-center justify-center p-3 sm:p-5 bg-black/90 backdrop-blur-xl animate-in fade-in duration-200"
-          onClick={() => setIsQrZoomed(false)}
+          aria-label="Tam Ekran Parlak Karekod"
+          className="fixed inset-0 z-[100] flex flex-col items-center justify-between p-4 sm:p-6 bg-white text-neutral-950 animate-in fade-in duration-150 select-none cursor-pointer"
+          onClick={() => {
+            setIsQrZoomed(false)
+            releaseBrightnessAndFullscreen()
+            triggerHaptic('tap')
+          }}
         >
-          <div
-            className="relative flex flex-col items-center gap-3 sm:gap-4 p-5 sm:p-7 bg-white rounded-3xl shadow-[0_0_60px_rgba(255,255,255,0.45)] text-neutral-900 animate-in zoom-in-95 duration-200 select-none max-w-[94vw] max-h-[92vh] border-2 border-white/80"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Kapat Butonu */}
+          {/* Üst Bar: Parlaklık Rozeti, Bilgi ve Kapat Butonu */}
+          <div className="w-full flex items-center justify-between pt-2 px-1 max-w-lg">
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-900 text-xs font-bold shadow-xs">
+                <Sun className="size-4 text-amber-600 animate-spin-slow" />
+                <span>Maksimum Parlaklık & Uyanık Ekran</span>
+              </span>
+            </div>
+
             <button
               type="button"
-              onClick={() => {
+              onClick={(e) => {
+                e.stopPropagation()
                 setIsQrZoomed(false)
+                releaseBrightnessAndFullscreen()
                 triggerHaptic('tap')
               }}
-              className="ctl absolute top-3 right-3 size-9 sm:size-10 rounded-full bg-neutral-100 hover:bg-neutral-200 text-neutral-600 hover:text-neutral-950 flex items-center justify-center cursor-pointer transition-all active:scale-90 shadow-xs"
-              aria-label="Büyük Karekodu Kapat"
+              className="ctl size-10 sm:size-11 rounded-full bg-neutral-100 hover:bg-neutral-200 text-neutral-800 hover:text-black flex items-center justify-center cursor-pointer transition-all active:scale-90 shadow-sm border border-neutral-300"
+              aria-label="Kapat"
             >
-              <X className="size-5" />
+              <X className="size-6" />
             </button>
+          </div>
 
-            {/* Başlık ve Eşleme Kodu */}
-            <div className="flex flex-col items-center gap-1 text-center pr-6 sm:pr-8">
-              <span className="text-[10px] sm:text-xs font-bold tracking-widest uppercase text-neutral-500">
-                Eşleştirme Karekodu
+          {/* Orta Alan: Kocaman ve Kristal Netliğinde Karekod */}
+          <div className="flex-1 flex flex-col items-center justify-center gap-3 my-auto w-full">
+            {/* Eşleme Kodu */}
+            <div className="text-center">
+              <span className="text-[11px] font-bold tracking-widest uppercase text-neutral-500 block mb-0.5">
+                CİHAZ EŞLEŞTİRME KODU
               </span>
-              <span className="font-mono text-2xl sm:text-3xl font-black tracking-widest text-neutral-950">
+              <span className="font-mono text-3xl sm:text-4xl md:text-5xl font-black tracking-widest text-black">
                 {vaultId}
               </span>
             </div>
 
-            {/* Kocaman, Parlak ve Net Karekod */}
-            <div
-              className="p-3 sm:p-4 bg-white rounded-2xl flex items-center justify-center shadow-inner border border-neutral-100 cursor-pointer"
-              onClick={() => setIsQrZoomed(false)}
-              title="Kapatmak için tıklayın"
-            >
+            {/* Kocaman Karekod (Maksimum Kontrast & Keskinlik) */}
+            <div className="p-4 sm:p-6 bg-white rounded-3xl flex items-center justify-center shadow-lg border-2 border-neutral-200">
               {qrPath && (
                 <svg
                   viewBox={`-4 -4 ${qrSize + 8} ${qrSize + 8}`}
-                  className="w-64 h-64 sm:w-80 sm:h-80 md:w-96 md:h-96 max-w-[75vw] max-h-[55vh] shape-rendering-crispEdges text-neutral-950 fill-current"
-                  aria-label="Büyük Senkronizasyon Karekodu"
+                  className="w-72 h-72 sm:w-88 sm:h-88 md:w-[420px] md:h-[420px] max-w-[85vw] max-h-[60vh] shape-rendering-crispEdges text-black fill-current"
+                  aria-label="Tam Ekran Senkronizasyon Karekodu"
                 >
                   <path d={qrPath} />
                 </svg>
               )}
             </div>
 
-            {/* Konum Bilgileri */}
+            {/* Konum ve Hız Rozetleri */}
             <div className="flex flex-wrap items-center justify-center gap-2 text-xs sm:text-sm font-mono text-neutral-700">
               {pageNumber && (
-                <span className="px-2.5 py-1 rounded-lg bg-neutral-100 font-bold border border-neutral-200">
+                <span className="px-3 py-1 rounded-xl bg-neutral-100 font-bold border border-neutral-300">
                   Sayfa {pageNumber}
                 </span>
               )}
               {typeof index === 'number' && (
-                <span className="px-2.5 py-1 rounded-lg bg-neutral-100 font-semibold border border-neutral-200">
+                <span className="px-3 py-1 rounded-xl bg-neutral-100 font-semibold border border-neutral-300">
                   {index + 1}. Kelime
                 </span>
               )}
               {wpm && (
-                <span className="px-2.5 py-1 rounded-lg bg-neutral-100 border border-neutral-200">
+                <span className="px-3 py-1 rounded-xl bg-neutral-100 border border-neutral-300">
                   {wpm} k/dk
                 </span>
               )}
             </div>
+          </div>
 
-            <p className="text-[11px] sm:text-xs text-neutral-500 font-medium text-center">
-              Kapatmak için ekrana veya herhangi bir yere dokunun
-            </p>
+          {/* Alt Bilgi: Kapatma İpucu */}
+          <div className="pb-3 text-center">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-neutral-100 text-neutral-600 text-xs font-medium border border-neutral-200">
+              Kapatmak için ekrana herhangi bir yere dokunun
+            </span>
           </div>
         </div>
       )}

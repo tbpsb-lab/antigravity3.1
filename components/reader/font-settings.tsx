@@ -208,8 +208,8 @@ export const FontSettings = memo(function FontSettings({
         aria-label="Görünüm ve okuma ayarları"
         inert={!open}
         className={cn(
-          'panel panel-solid absolute -right-12 top-full z-50 mt-2 w-[min(20.5rem,calc(100vw-1.5rem))] origin-top-right p-2 sm:p-2.5 sm:right-0 transition-all duration-200 ease-out shadow-2xl flex flex-col gap-1',
-          'max-h-[calc(100dvh-5.5rem)] overflow-y-auto overscroll-contain touch-pan-y landscape-short:max-h-[calc(100dvh-3.75rem)] landscape-short:w-[min(22rem,calc(100vw-1.5rem))] landscape-short:p-2.5',
+          'panel panel-solid absolute -right-12 top-full z-50 mt-2 w-[min(18.5rem,calc(100vw-1.5rem))] origin-top-right p-2 sm:right-0 transition-all duration-200 ease-out shadow-2xl flex flex-col gap-1',
+          'max-h-[calc(100dvh-5.5rem)] overflow-y-auto overscroll-contain touch-pan-y landscape-short:max-h-[calc(100dvh-3.75rem)] landscape-short:w-[min(20rem,calc(100vw-1.5rem))] landscape-short:p-2',
           open ? 'scale-100 opacity-100' : 'pointer-events-none scale-95 opacity-0',
         )}
       >
@@ -386,7 +386,7 @@ export const FontSettings = memo(function FontSettings({
               e.stopPropagation()
               step(e.deltaY < 0 ? FONT_SCALE_STEP : -FONT_SCALE_STEP)
             }}
-            className="w-9 sm:w-10 h-full flex flex-col items-center justify-between py-0.5 px-0.5 rounded-lg bg-muted/30 hover:bg-muted/60 border border-border/60 hover:border-primary/50 transition-all select-none shadow-xs group cursor-ns-resize shrink-0"
+            className="w-8.5 sm:w-9 h-full flex flex-col items-center justify-between py-0.5 px-0.5 rounded-lg bg-muted/30 hover:bg-muted/60 border border-border/60 hover:border-primary/50 transition-all select-none shadow-xs group cursor-ns-resize shrink-0"
             title={`Yazı Boyutu: %${Math.round(scale * 100)} (Tıkla veya Farenin Tekerleğiyle Kaydır)`}
             role="group"
             aria-label="Dikey Yazı Boyutu Kadranı"
@@ -449,23 +449,23 @@ export const FontSettings = memo(function FontSettings({
           </div>
         </div>
 
-        {/* 4. Özellik Satırları (Daha belirgin ikonlar ve konforlu butonlar/anahtarlar) */}
+        {/* 4. Özellik Satırları (Kompakt ve zarif satırlar; ikonlar ve butonlar orantılı) */}
         <div className="flex flex-col border-t border-border/40 divide-y divide-border/25 pt-0.5">
           {/* Akıllı Bionic Öbekleme */}
           {onBionicChange && (
-            <div className="flex items-center justify-between gap-2.5 py-1.5 px-1">
-              <div className="flex items-center gap-2.5 min-w-0">
+            <div className="flex items-center justify-between gap-2 py-1.25 px-0.5">
+              <div className="flex items-center gap-2 min-w-0">
                 <BrainIcon
                   className={cn(
-                    'size-4.5 shrink-0 transition-colors',
+                    'size-4 shrink-0 transition-colors',
                     bionicEnabled ? 'text-primary' : 'text-muted-foreground/50',
                   )}
                 />
                 <div className="min-w-0 flex flex-col justify-center">
-                  <p className="text-[11.5px] font-semibold text-foreground leading-normal whitespace-nowrap">
+                  <p className="text-[11px] font-semibold text-foreground leading-normal whitespace-nowrap">
                     Akıllı <span className="desktop-shortcut-key font-bold text-primary underline underline-offset-[3px] decoration-2 decoration-primary">B</span>ionic Öbekleme
                   </p>
-                  <p className="text-[10px] text-muted-foreground leading-normal mt-0.5 whitespace-nowrap">
+                  <p className="text-[9.5px] text-muted-foreground leading-normal mt-0.5 whitespace-nowrap">
                     2K-3K modlarında kökleri vurgular
                   </p>
                 </div>
@@ -476,15 +476,15 @@ export const FontSettings = memo(function FontSettings({
                 aria-checked={bionicEnabled}
                 onClick={() => onBionicChange(!bionicEnabled)}
                 className={cn(
-                  'relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none',
+                  'relative inline-flex h-4.5 w-8 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none',
                   bionicEnabled ? 'bg-primary' : 'bg-muted/70',
                 )}
                 aria-label="Akıllı Bionic Öbekleme (Kısayol: B)"
               >
                 <span
                   className={cn(
-                    'pointer-events-none inline-block size-4 transform rounded-full bg-background shadow-md ring-0 transition duration-200 ease-in-out',
-                    bionicEnabled ? 'translate-x-4' : 'translate-x-0',
+                    'pointer-events-none inline-block size-3.5 transform rounded-full bg-background shadow-md ring-0 transition duration-200 ease-in-out',
+                    bionicEnabled ? 'translate-x-3.5' : 'translate-x-0',
                   )}
                 />
               </button>
@@ -493,18 +493,18 @@ export const FontSettings = memo(function FontSettings({
 
           {/* Nöroakustik Odak Sesi */}
           {onNeuroAudioChange && (
-            <div className="flex items-center justify-between gap-2.5 py-1.5 px-1">
-              <div className="flex items-center gap-2.5 min-w-0">
+            <div className="flex items-center justify-between gap-2 py-1.25 px-0.5">
+              <div className="flex items-center gap-2 min-w-0">
                 {neuroAudioEnabled ? (
-                  <Volume2 className="size-4.5 text-primary shrink-0 transition-colors animate-pulse" />
+                  <Volume2 className="size-4 text-primary shrink-0 transition-colors animate-pulse" />
                 ) : (
-                  <VolumeX className="size-4.5 text-muted-foreground/50 shrink-0 transition-colors" />
+                  <VolumeX className="size-4 text-muted-foreground/50 shrink-0 transition-colors" />
                 )}
                 <div className="min-w-0 flex flex-col justify-center">
-                  <p className="text-[11.5px] font-semibold text-foreground leading-normal whitespace-nowrap">
+                  <p className="text-[11px] font-semibold text-foreground leading-normal whitespace-nowrap">
                     <span className="desktop-shortcut-key font-bold text-primary underline underline-offset-[3px] decoration-2 decoration-primary">N</span>öroakustik Odak Sesi
                   </p>
-                  <p className="text-[10px] text-muted-foreground leading-normal mt-0.5 whitespace-nowrap">
+                  <p className="text-[9.5px] text-muted-foreground leading-normal mt-0.5 whitespace-nowrap">
                     Pembe gürültü & 40Hz Gama
                   </p>
                 </div>
@@ -515,15 +515,15 @@ export const FontSettings = memo(function FontSettings({
                 aria-checked={neuroAudioEnabled}
                 onClick={() => onNeuroAudioChange(!neuroAudioEnabled)}
                 className={cn(
-                  'relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none',
+                  'relative inline-flex h-4.5 w-8 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none',
                   neuroAudioEnabled ? 'bg-primary' : 'bg-muted/70',
                 )}
                 aria-label="Nöroakustik Odak Sesi (Kısayol: N)"
               >
                 <span
                   className={cn(
-                    'pointer-events-none inline-block size-4 transform rounded-full bg-background shadow-md ring-0 transition duration-200 ease-in-out',
-                    neuroAudioEnabled ? 'translate-x-4' : 'translate-x-0',
+                    'pointer-events-none inline-block size-3.5 transform rounded-full bg-background shadow-md ring-0 transition duration-200 ease-in-out',
+                    neuroAudioEnabled ? 'translate-x-3.5' : 'translate-x-0',
                   )}
                 />
               </button>
@@ -532,18 +532,18 @@ export const FontSettings = memo(function FontSettings({
 
           {/* Göz & Dikkat İzleme (G harfi ve ikon diğerleriyle uyumlu tema renginde) */}
           {onEyeTrackingChange && (
-            <div className="flex items-center justify-between gap-2.5 py-1.5 px-1">
-              <div className="flex items-center gap-2.5 min-w-0">
+            <div className="flex items-center justify-between gap-2 py-1.25 px-0.5">
+              <div className="flex items-center gap-2 min-w-0">
                 {eyeTrackingEnabled ? (
-                  <Eye className="size-4.5 text-primary shrink-0 transition-colors animate-pulse" />
+                  <Eye className="size-4 text-primary shrink-0 transition-colors animate-pulse" />
                 ) : (
-                  <EyeOff className="size-4.5 text-muted-foreground/50 shrink-0 transition-colors" />
+                  <EyeOff className="size-4 text-muted-foreground/50 shrink-0 transition-colors" />
                 )}
                 <div className="min-w-0 flex flex-col justify-center">
-                  <p className="text-[11.5px] font-semibold text-foreground leading-normal whitespace-nowrap">
+                  <p className="text-[11px] font-semibold text-foreground leading-normal whitespace-nowrap">
                     <span className="desktop-shortcut-key font-bold text-primary underline underline-offset-[3px] decoration-2 decoration-primary">G</span>öz & Dikkat İzleme
                   </p>
-                  <p className="text-[10px] text-muted-foreground leading-normal mt-0.5 whitespace-nowrap">
+                  <p className="text-[9.5px] text-muted-foreground leading-normal mt-0.5 whitespace-nowrap">
                     Ekrandan kopunca otomatik duraklatır
                   </p>
                 </div>
@@ -554,15 +554,15 @@ export const FontSettings = memo(function FontSettings({
                 aria-checked={eyeTrackingEnabled}
                 onClick={() => onEyeTrackingChange(!eyeTrackingEnabled)}
                 className={cn(
-                  'relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none',
+                  'relative inline-flex h-4.5 w-8 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none',
                   eyeTrackingEnabled ? 'bg-primary' : 'bg-muted/70',
                 )}
                 aria-label="Göz & Dikkat İzleme (Kısayol: G)"
               >
                 <span
                   className={cn(
-                    'pointer-events-none inline-block size-4 transform rounded-full bg-background shadow-md ring-0 transition duration-200 ease-in-out',
-                    eyeTrackingEnabled ? 'translate-x-4' : 'translate-x-0',
+                    'pointer-events-none inline-block size-3.5 transform rounded-full bg-background shadow-md ring-0 transition duration-200 ease-in-out',
+                    eyeTrackingEnabled ? 'translate-x-3.5' : 'translate-x-0',
                   )}
                 />
               </button>
@@ -570,14 +570,14 @@ export const FontSettings = memo(function FontSettings({
           )}
 
           {/* Cihaz Eşleştir */}
-          <div className="flex items-center justify-between gap-2.5 py-1.5 px-1">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <QrCode className="size-4.5 text-primary shrink-0 transition-colors" />
+          <div className="flex items-center justify-between gap-2 py-1.25 px-0.5">
+            <div className="flex items-center gap-2 min-w-0">
+              <QrCode className="size-4 text-primary shrink-0 transition-colors" />
               <div className="min-w-0 flex flex-col justify-center">
-                <p className="text-[11.5px] font-semibold text-foreground leading-normal whitespace-nowrap">
+                <p className="text-[11px] font-semibold text-foreground leading-normal whitespace-nowrap">
                   Cihaz <span className="desktop-shortcut-key font-bold text-primary underline underline-offset-[3px] decoration-2 decoration-primary">E</span>şleştir
                 </p>
-                <p className="text-[10px] text-muted-foreground leading-normal mt-0.5 whitespace-nowrap">
+                <p className="text-[9.5px] text-muted-foreground leading-normal mt-0.5 whitespace-nowrap">
                   Ekranlar arası senkronizasyon
                 </p>
               </div>
@@ -588,12 +588,12 @@ export const FontSettings = memo(function FontSettings({
                 setOpen(false)
                 onOpenSync?.()
               }}
-              className="ctl px-2.5 py-1 text-[11px] font-semibold rounded-lg text-primary bg-primary/10 hover:bg-primary/20 border border-primary/30 transition-all shrink-0 cursor-pointer flex items-center gap-1.5 shadow-xs active:scale-95"
+              className="ctl px-2 py-0.5 text-[10.5px] font-semibold rounded-lg text-primary bg-primary/10 hover:bg-primary/20 border border-primary/30 transition-all shrink-0 cursor-pointer flex items-center gap-1 shadow-xs active:scale-95"
               aria-label="Cihaz Eşleştir (Kısayol: E)"
               title="Karekod ve Eşleme Menüsünü Aç (E)"
             >
               <span>Eşle</span>
-              <ArrowRight className="size-3" />
+              <ArrowRight className="size-2.5" />
             </button>
           </div>
         </div>

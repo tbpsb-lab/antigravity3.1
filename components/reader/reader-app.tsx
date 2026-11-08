@@ -1700,7 +1700,7 @@ export function ReaderApp() {
           {/* Alt Zarif Bağlam Şeridi */}
           <div
             data-wheel="context-peek"
-            className="context-peek-box relative z-30 w-full max-w-3xl shrink-0 mt-1 sm:mt-1.5 landscape-short:mt-0.5 min-h-[84px] sm:min-h-[116px] md:min-h-[136px] max-h-[102px] sm:max-h-[148px] md:max-h-[172px] landscape-short:min-h-[72px] landscape-short:max-h-[86px] flex flex-col overflow-visible pointer-events-auto"
+            className="context-peek-box relative z-30 w-full max-w-3xl shrink-0 mt-1 sm:mt-1.5 landscape-short:mt-0.5 min-h-[84px] sm:min-h-[116px] md:min-h-[136px] max-h-[102px] sm:max-h-[148px] md:max-h-[172px] landscape-short:min-h-[76px] landscape-short:max-h-[92px] flex flex-col overflow-visible pointer-events-auto"
           >
             <ContextPeek
               words={words}

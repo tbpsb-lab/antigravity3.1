@@ -59,23 +59,24 @@ export const ContextPeek = memo(function ContextPeek({
   // Konteyner boyutuna göre ekranda dikey ve yatay eksende ne kadar kelime alabileceğini dinamik hesapla.
   // 1, 2 ve 3 kelimelik öbeklerle (chunkSize) %100 tam ve ardışık sayfalama için
   // kapasite değerleri 6'nın katı (EKOK) olarak belirlenir:
-  // - Mobil telefon yatay (max-height 520px): 12 kelime (tam 2 satır)
+  // - Mobil telefon yatay (max-height 520px): 24 kelime (geniş ekranda tek satıra düşmeyen tam 2 satır)
   // - Mobil telefon dikey: 18 kelime (tam 3 satır)
   // - Tablet / orta ekran (600px - 767px): 24 kelime (3 - 4 satır)
   // - iPad Pro 12.9" ve Masaüstü (>= 768px): 30 kelime (tam 3 - 4 satır, WebKit çökmesi ve kelime kaybı yok)
   const capacity = useMemo(() => {
-    if (!containerSize.width) {
-      return 30 // Dengeli varsayılan
-    }
-
-    // Mobil telefon yatay tutuş (landscape phone, max-height 520px) kontrolü -> 2 satır
+    // Mobil telefon yatay tutuş (landscape phone, max-height 520px) kontrolü -> Tam 2 satır
     const isLandscapeShort =
       typeof window !== 'undefined' &&
       window.innerHeight <= 520 &&
-      window.matchMedia?.('(orientation: landscape)').matches
+      (window.matchMedia?.('(orientation: landscape)').matches ||
+        (containerSize.width > 0 && containerSize.height > 0 && containerSize.width > containerSize.height))
 
     if (isLandscapeShort) {
-      return 12 // 2 satır
+      return 24 // Geniş ekranda tek satıra düşmeden tam 2 satırı dolduracak 24 kelime
+    }
+
+    if (!containerSize.width) {
+      return 30 // Dengeli varsayılan
     }
 
     // Masaüstü ve Geniş Tablet (iPad Pro 12.9 inç, iPad, masaüstü, width >= 768px): 3 - 4 satır
@@ -90,7 +91,7 @@ export const ContextPeek = memo(function ContextPeek({
 
     // Mobil Telefon Dikey (width < 600px): Tam 3 satır
     return 18 // 3 satır
-  }, [containerSize.width])
+  }, [containerSize.width, containerSize.height])
 
   // Kapasite değiştikçe ana bileşene bildir
   useEffect(() => {
@@ -224,25 +225,25 @@ export const ContextPeek = memo(function ContextPeek({
       </div>
 
       {/* Ana Gövde: Solda minik < butonu, Ortada kesinlikle scrollbarsız esnek metin alanı, Sağda minik > butonu */}
-      <div className="relative flex flex-1 min-h-0 items-center gap-1.5 sm:gap-2.5 w-full my-auto">
+      <div className="relative flex flex-1 min-h-0 items-center gap-1.5 sm:gap-2.5 landscape-short:gap-1.5 w-full my-auto">
         {/* Sol Sayfa Geri Atla Butonu: Minik ve şeffaf */}
         <button
           type="button"
           onClick={handlePrev}
           disabled={!canGoPrev}
           className={cn(
-            'ctl relative z-10 size-7 sm:size-8 md:size-10 shrink-0 self-center rounded-full border border-border/40 bg-foreground/5 hover:bg-foreground/15 text-muted-foreground hover:text-foreground backdrop-blur-xs transition-all flex items-center justify-center cursor-pointer shadow-2xs',
+            'ctl relative z-10 size-7 sm:size-8 md:size-10 landscape-short:size-6.5 shrink-0 self-center rounded-full border border-border/40 bg-foreground/5 hover:bg-foreground/15 text-muted-foreground hover:text-foreground backdrop-blur-xs transition-all flex items-center justify-center cursor-pointer shadow-2xs',
             !canGoPrev && 'opacity-20 pointer-events-none',
           )}
           aria-label="Önceki bağlam sayfası"
           title="Önceki bağlam (Shift + ←)"
         >
-          <ChevronLeft className="size-4 md:size-5" />
+          <ChevronLeft className="size-4 md:size-5 landscape-short:size-3.5" />
         </button>
 
-        {/* Ortadaki Metin Alanı: WebKit tek satır çökmesini önleyen garantili blok kapsayıcı, tablet ve masaüstünde 3-4 satır */}
-        <div className="flex-1 min-w-0 min-h-[52px] sm:min-h-[70px] md:min-h-[88px] max-h-[76px] sm:max-h-[102px] md:max-h-[126px] overflow-hidden [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden flex flex-col justify-center">
-          <p className="text-pretty text-xs sm:text-[13.5px] md:text-[15px] leading-[1.42] sm:leading-[1.46] md:leading-[1.48] text-muted-foreground w-full select-none m-0 p-0 text-left">
+        {/* Ortadaki Metin Alanı: WebKit tek satır çökmesini önleyen garantili blok kapsayıcı, tablet ve masaüstünde 3-4 satır, telefon yatayda tam 2 satır */}
+        <div className="flex-1 min-w-0 min-h-[52px] sm:min-h-[70px] md:min-h-[88px] max-h-[76px] sm:max-h-[102px] md:max-h-[126px] landscape-short:min-h-[44px] landscape-short:max-h-[56px] overflow-hidden [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden flex flex-col justify-center">
+          <p className="text-pretty text-xs sm:text-[13.5px] md:text-[15px] landscape-short:text-[12px] leading-[1.42] sm:leading-[1.46] md:leading-[1.48] landscape-short:leading-[1.38] text-muted-foreground w-full select-none m-0 p-0 text-left">
             {slice.map((w, i) => {
               const absolute = start + i
               const current = absolute >= index && absolute < index + chunkSize
